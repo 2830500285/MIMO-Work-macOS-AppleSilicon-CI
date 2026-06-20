@@ -8,7 +8,7 @@ import {
   type SpeechTranscriptionRequest,
   type SpeechTranscriptionResult
 } from '../../shared/speech-to-text'
-import { describeNetworkError } from '../../../kun/src/adapters/tool/image-gen-tool-provider.js'
+import { describeNetworkError } from './local-media-utils'
 
 const FILE_EXTENSION_BY_MIME: Record<string, string> = {
   'audio/wav': 'wav',

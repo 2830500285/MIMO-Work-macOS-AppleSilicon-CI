@@ -68,7 +68,7 @@ describe('ProviderModelsManager', () => {
           reasoning: {
             supportedEfforts: ['off', 'high'],
             defaultEffort: 'high',
-            requestProtocol: 'deepseek-chat-completions'
+            requestProtocol: 'mimo-chat-completions'
           }
         }
       }
@@ -83,9 +83,9 @@ describe('ProviderModelsManager', () => {
 
   it('keeps model names on a separate row from compact capability badges', () => {
     const html = renderManager(provider({
-      models: ['deepseek-v4-pro'],
+      models: ['mimo-v2.5-pro'],
       modelProfiles: {
-        'deepseek-v4-pro': {
+        'mimo-v2.5-pro': {
           contextWindowTokens: 1_000_000,
           inputModalities: ['text', 'image'],
           outputModalities: ['text'],
@@ -94,7 +94,7 @@ describe('ProviderModelsManager', () => {
           reasoning: {
             supportedEfforts: ['off', 'high'],
             defaultEffort: 'high',
-            requestProtocol: 'deepseek-chat-completions'
+            requestProtocol: 'mimo-chat-completions'
           }
         }
       }
@@ -106,7 +106,7 @@ describe('ProviderModelsManager', () => {
   })
 
   it('exposes the complete model name on hover for truncated rows', () => {
-    const longModelId = 'MiniMax-Text-01-very-long-model-name-with-extra-tags-and-context'
+    const longModelId = 'mimo-text-01-very-long-model-name-with-extra-tags-and-context'
     const html = renderManager(provider({ models: [longModelId] }))
 
     expect(html).toContain(`title="${longModelId}"`)
@@ -131,15 +131,15 @@ describe('ProviderModelsManager', () => {
   it('renders media generation capability models in the unified list', () => {
     const html = renderManager(provider({
       textToSpeech: { protocol: 'mimo-tts', baseUrl: 'https://api.example.com/v1', models: ['mimo-v2.5-tts'] },
-      music: { protocol: 'minimax-music', baseUrl: 'https://api.example.com/v1', models: ['music-2.6'] },
-      video: { protocol: 'minimax-video', baseUrl: 'https://api.example.com/v1', models: ['MiniMax-Hailuo-2.3'] }
+      music: { protocol: 'custom-music', baseUrl: 'https://api.example.com/v1', models: ['music-2.6'] },
+      video: { protocol: 'custom-video', baseUrl: 'https://api.example.com/v1', models: ['custom-video-model'] }
     }))
 
     expect(html).toContain('mimo-v2.5-tts')
     expect(html).toContain('Text to speech')
     expect(html).toContain('music-2.6')
     expect(html).toContain('Music generation')
-    expect(html).toContain('MiniMax-Hailuo-2.3')
+    expect(html).toContain('custom-video-model')
     expect(html).toContain('Video generation')
   })
 })

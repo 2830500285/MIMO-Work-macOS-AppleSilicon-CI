@@ -30,24 +30,27 @@ describe('MessageTimeline initial heatmap empty hero routing', () => {
     await i18n.changeLanguage('en')
   })
 
-  it('shows the collapsed Kun calendar for eligible initial chat states', () => {
+  it('shows the MIMO Work wordmark hero for eligible initial chat states', () => {
     const html = renderHero()
 
-    expect(html).toContain('Expand calendar')
-    expect(html).not.toContain('Daily Kun usage calendar')
+    expect(html).toContain('aria-label="MIMO Work"')
+    expect(html).toContain('Start your agent rhythm')
+    expect(html).not.toContain('Daily MIMO usage calendar')
+    expect(html).not.toContain('Expand calendar')
     expect(html).not.toContain('Start a new conversation')
   })
 
   it('keeps offline, missing-workspace, and Claw empty states gated away from the heatmap', () => {
     const offlineHtml = renderHero({ ready: false })
-    expect(offlineHtml).toContain('Kun is waking the local agent')
-    expect(offlineHtml).toContain('ds-kun-state-sleep')
+    expect(offlineHtml).toContain('MIMO Work is waking the local agent')
+    expect(offlineHtml).toContain('aria-label="MIMO Work"')
+    expect(offlineHtml).not.toContain('ds-runtime-wake-kun')
     const workspaceHtml = renderHero({ hasWorkspace: false })
     expect(workspaceHtml).toContain('Choose working directory')
-    expect(workspaceHtml).toContain('ds-kun-state-sit')
+    expect(workspaceHtml).toContain('lucide-folder-open')
     const clawHtml = renderHero({ route: 'claw' })
     expect(clawHtml).toContain('Start a conversation with this assistant')
-    expect(clawHtml).toContain('ds-kun-state-greet')
+    expect(clawHtml).toContain('lucide-message-circle')
     expect(clawHtml).not.toContain('Kun usage')
   })
 

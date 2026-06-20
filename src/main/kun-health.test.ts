@@ -10,6 +10,14 @@ describe('isKunHealthResponseBody', () => {
     }))).toBe(true)
   })
 
+  it('accepts MIMO Work adapter health responses', () => {
+    expect(isKunHealthResponseBody(JSON.stringify({
+      status: 'ok',
+      service: 'mimo-work',
+      mode: 'adapter'
+    }))).toBe(true)
+  })
+
   it('rejects generic or legacy runtime health responses', () => {
     expect(isKunHealthResponseBody(JSON.stringify({ status: 'ok' }))).toBe(false)
     expect(isKunHealthResponseBody(JSON.stringify({

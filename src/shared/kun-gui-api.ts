@@ -115,6 +115,9 @@ export const DESKTOP_COMMANDS = [
 ] as const
 export type DesktopCommand = typeof DESKTOP_COMMANDS[number]
 export type SkillSaveResult = { ok: true; path: string } | { ok: false; message: string }
+export type RecommendedSkillInstallResult =
+  | { ok: true; path: string; fileCount: number; sourceUrl: string }
+  | { ok: false; message: string }
 export type SkillListItem = {
   id: string
   name: string
@@ -149,8 +152,8 @@ export type UiPluginInstallIpcResult =
 export type UiPluginLoadIpcResult =
   | { ok: true; manifest: UiPluginManifestV1; figures: UiPluginRuntimeFigures }
   | { ok: false; error: string }
-export type DeepseekConfigFileResult = { path: string; content: string; exists: boolean }
-export type DeepseekConfigSaveResult = { ok: true; path: string }
+export type MimoWorkConfigFileResult = { path: string; content: string; exists: boolean }
+export type MimoWorkConfigSaveResult = { ok: true; path: string }
 export type TurnCompleteNotificationPayload = {
   threadId?: string
   title: string
@@ -167,7 +170,13 @@ export type ClawChannelMirrorResult =
   | { ok: true }
   | { ok: false; message: string }
 export type UpstreamModelsResult =
-  | { ok: true; modelIds: string[]; defaultModelId?: string; modelGroups?: ModelProviderModelGroup[] }
+  | {
+    ok: true
+    modelIds: string[]
+    defaultModelId?: string
+    defaultProviderId?: string
+    modelGroups?: ModelProviderModelGroup[]
+  }
   | { ok: false; message: string }
 export type ModelProviderModelGroup = {
   providerId: string
@@ -227,13 +236,14 @@ export type KunGuiApi = {
   listSkills: (workspaceRoot?: string) => Promise<SkillListResult>
   listSkillRoots: (workspaceRoot?: string) => Promise<SkillRootListResult>
   saveSkillFile: (rootPath: string, skillName: string, content: string) => Promise<SkillSaveResult>
+  installRecommendedSkill: (id: string) => Promise<RecommendedSkillInstallResult>
   openSkillRoot: (rootPath: string) => Promise<PathOpenResult>
-  listUiPlugins: () => Promise<UiPluginListIpcResult>
-  installUiPlugin: () => Promise<UiPluginInstallIpcResult>
-  removeUiPlugin: (id: string) => Promise<{ ok: boolean }>
-  loadUiPlugin: (id: string) => Promise<UiPluginLoadIpcResult>
-  getKunConfigFile: () => Promise<DeepseekConfigFileResult>
-  setKunConfigFile: (content: string) => Promise<DeepseekConfigSaveResult>
+  listUiPlugins?: () => Promise<UiPluginListIpcResult>
+  installUiPlugin?: () => Promise<UiPluginInstallIpcResult>
+  removeUiPlugin?: (id: string) => Promise<{ ok: boolean }>
+  loadUiPlugin?: (id: string) => Promise<UiPluginLoadIpcResult>
+  getKunConfigFile: () => Promise<MimoWorkConfigFileResult>
+  setKunConfigFile: (content: string) => Promise<MimoWorkConfigSaveResult>
   openKunConfigDir: () => Promise<PathOpenResult>
   getGitBranches: (workspaceRoot: string) => Promise<GitBranchesResult>
   switchGitBranch: (workspaceRoot: string, branch: string) => Promise<GitBranchesResult>

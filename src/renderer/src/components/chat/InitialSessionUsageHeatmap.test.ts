@@ -114,38 +114,33 @@ describe('InitialSessionUsageHeatmap', () => {
     await i18n.changeLanguage('en')
   })
 
-  it('renders populated usage with accessible day summaries without starter actions', () => {
+  it('renders the static MIMO Work wordmark without usage controls in the default hero', () => {
     const html = render(state({ usage: usage(), loaded: true }))
 
-    expect(html).toContain('ds-runtime-wake-stage')
-    expect(html).toContain('Overview')
-    expect(html).toContain('Models')
-    expect(html).toContain('All')
-    expect(html).toContain('90d')
-    expect(html).toContain('Daily Kun usage calendar')
-    expect(html).toContain('Sessions')
-    expect(html).toContain('Messages')
-    expect(html).toContain('Current streak')
-    expect(html).toContain('Collapse calendar')
-    expect(html).toContain('2026-05-01')
-    expect(html).toContain('10.0k')
-    expect(html).toContain('You&#x27;ve used 11.2k tokens across 2 active days.')
-    expect(html).toContain('aria-label="2026-05-02')
+    expect(html).toContain('aria-label="MIMO Work"')
+    expect(html).toContain('MIMO Work')
+    expect(html).toContain('#ff7a3d')
+    expect(html).toContain('#9fa2a0')
+    expect(html).not.toContain('Overview')
+    expect(html).not.toContain('Daily MIMO usage calendar')
+    expect(html).not.toContain('Collapse calendar')
+    expect(html).not.toContain('Expand calendar')
     expect(html).not.toContain('Explain this project&#x27;s structure')
   })
 
   it('renders the usage panel without the animated hero in focus mode', () => {
     const html = render(state({ usage: usage(), loaded: true }), { hideHero: true })
 
-    expect(html).toContain('Daily Kun usage calendar')
+    expect(html).toContain('Daily MIMO usage calendar')
     expect(html).toContain('aria-label="2026-05-02')
     expect(html).toContain('Overview')
     expect(html).toContain('Models')
     expect(html).toContain('Sessions')
     expect(html).toContain('Messages')
-    expect(html).toContain('Collapse calendar')
     expect(html).toContain('You&#x27;ve used 11.2k tokens across 2 active days.')
-    expect(html).not.toContain('ds-runtime-wake-stage')
+    expect(html).not.toContain('Collapse calendar')
+    expect(html).not.toContain('Expand calendar')
+    expect(html).not.toContain('aria-label="MIMO Work"')
   })
 
   it('renders stacked model usage bars with a hover breakdown tooltip', () => {
@@ -165,6 +160,7 @@ describe('InitialSessionUsageHeatmap', () => {
       cacheHitRate: 1906304 / (1906304 + 459039)
     }
     const html = render(state({ usage: usage(), loaded: true }), {
+      hideHero: true,
       initialActiveTab: 'models',
       initialModelHoverIndex: 0,
       modelState: modelState({
@@ -175,7 +171,7 @@ describe('InitialSessionUsageHeatmap', () => {
           timezone: 'UTC',
           buckets: [
             {
-              model: 'deepseek-v4-pro',
+              model: 'mimo-v4-pro',
               ...detailedDay
             }
           ],
@@ -214,7 +210,7 @@ describe('InitialSessionUsageHeatmap', () => {
       bucket('2026-05-09', 0, 0),
       bucket('2026-05-10', 10000)
     ]
-    const html = render(state({ usage: usage(buckets), loaded: true }), { rangeKey: '7d' })
+    const html = render(state({ usage: usage(buckets), loaded: true }), { hideHero: true, rangeKey: '7d' })
 
     expect(html).toContain('2026-05-01')
     expect(html).toContain('aria-label="2026-05-10')
@@ -225,31 +221,33 @@ describe('InitialSessionUsageHeatmap', () => {
   it('renders loading, empty, and error states as calendar-only warmup states', () => {
     const loadingHtml = render(state({ loading: true }))
     expect(loadingHtml).toContain('Preparing your usage calendar')
-    expect(loadingHtml).toContain('Checking history')
-    expect(loadingHtml).toContain('Collapse calendar')
-    expect(loadingHtml).not.toContain('Daily Kun usage calendar')
+    expect(loadingHtml).not.toContain('Checking history')
+    expect(loadingHtml).not.toContain('Daily MIMO usage calendar')
+    expect(loadingHtml).not.toContain('Collapse calendar')
+    expect(loadingHtml).not.toContain('Expand calendar')
     expect(loadingHtml).not.toContain('Explain this project&#x27;s structure')
 
     const emptyHtml = render(state({ usage: usage([bucket('2026-05-01', 0, 0)]), loaded: true }))
     expect(emptyHtml).toContain('Start your agent rhythm')
-    expect(emptyHtml).toContain('No usage has been recorded yet')
+    expect(emptyHtml).not.toContain('No usage has been recorded yet')
     expect(emptyHtml).not.toContain('aria-label="2026-05-01')
     expect(emptyHtml).not.toContain('Explain this project&#x27;s structure')
 
     const errorHtml = render(state({ loaded: true, error: 'boom' }))
     expect(errorHtml).toContain('Start now, sync usage later')
-    expect(errorHtml).toContain('Usage can be retried later')
+    expect(errorHtml).not.toContain('Usage can be retried later')
     expect(errorHtml).not.toContain('Explain this project&#x27;s structure')
   })
 
-  it('renders the Kun hero with a collapsed calendar card', () => {
-    const html = render(state({ usage: usage(), loaded: true }), { initialCollapsed: true })
+  it('renders the MIMO Work wordmark without a collapsed calendar card', () => {
+    const html = render(state({ usage: usage(), loaded: true }))
 
-    expect(html).toContain('Expand calendar')
-    expect(html).toContain('ds-runtime-wake-stage')
-    expect(html).toContain('ds-kun-state-sleep')
+    expect(html).toContain('aria-label="MIMO Work"')
+    expect(html).toContain('MIMO Work')
+    expect(html).not.toContain('Expand calendar')
+    expect(html).not.toContain('Collapse calendar')
     expect(html).not.toContain('Keep the canvas clear')
-    expect(html).not.toContain('Daily Kun usage calendar')
+    expect(html).not.toContain('Daily MIMO usage calendar')
   })
 
   it('uses turns as the intensity fallback when token totals are unavailable', () => {

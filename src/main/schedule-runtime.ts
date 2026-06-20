@@ -706,9 +706,7 @@ export class ScheduleRuntime {
       const secret = settings.schedule.internal.secret.trim()
       if (secret) {
         const auth = req.headers.authorization ?? ''
-        // 新名字 x-kun-secret 优先;旧名字 x-deepseek-gui-secret 已配置
-        // 在外部系统里,属于对外契约,必须长期兼容。
-        const rawHeaderSecret = req.headers['x-kun-secret'] ?? req.headers['x-deepseek-gui-secret']
+        const rawHeaderSecret = req.headers['x-mimo-work-secret']
         const headerSecret = Array.isArray(rawHeaderSecret) ? rawHeaderSecret[0] : rawHeaderSecret
         if (auth !== `Bearer ${secret}` && headerSecret !== secret) {
           writeJson(res, 401, { ok: false, message: 'Unauthorized.' })

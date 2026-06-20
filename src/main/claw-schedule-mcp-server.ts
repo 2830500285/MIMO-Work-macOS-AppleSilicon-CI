@@ -71,15 +71,15 @@ export async function runClawScheduleMcpServerFromArgv(argv: string[]): Promise<
   if (!options) return false
 
   const server = new McpServer(
-    { name: 'kun-schedule', version: '0.1.0' },
+    { name: 'mimo-work-schedule', version: '0.1.0' },
     { capabilities: { logging: {} } }
   )
 
   const registerListTool = (name: string): void => {
     server.registerTool(name, {
       description: name.startsWith('claw_')
-        ? 'Legacy alias. List scheduled tasks managed by the currently running Kun app.'
-        : 'List scheduled tasks managed by the currently running Kun app.'
+        ? 'Legacy alias. List scheduled tasks managed by the currently running MIMO Work app.'
+        : 'List scheduled tasks managed by the currently running MIMO Work app.'
     }, async () => {
       try {
         const result = await postJson(options, '/schedule/internal/list', {})
@@ -101,8 +101,8 @@ export async function runClawScheduleMcpServerFromArgv(argv: string[]): Promise<
   const registerCreateTool = (name: string): void => {
     server.registerTool(name, {
       description: name.startsWith('claw_')
-        ? 'Legacy alias. Create a scheduled task in Kun. Supports one-time (`at`), daily, or interval schedules.'
-        : 'Create a scheduled task in Kun. Supports one-time (`at`), daily, or interval schedules. When creating from an existing conversation, pass that conversation\'s provider_id, model, and reasoning_effort so the scheduled task keeps the same execution settings.',
+        ? 'Legacy alias. Create a scheduled task in MIMO Work. Supports one-time (`at`), daily, or interval schedules.'
+        : 'Create a scheduled task in MIMO Work. Supports one-time (`at`), daily, or interval schedules. When creating from an existing conversation, pass that conversation\'s provider_id, model, and reasoning_effort so the scheduled task keeps the same execution settings.',
       inputSchema: {
         title: z.string().min(1).describe('Short task title shown in the GUI'),
         prompt: z.string().min(1).describe('The prompt/instruction the agent should run at schedule time'),
@@ -112,8 +112,8 @@ export async function runClawScheduleMcpServerFromArgv(argv: string[]): Promise<
         every_minutes: z.number().int().min(1).max(10080).optional().describe('Interval in minutes, required when schedule_kind is `interval`'),
         workspace_root: z.string().optional().describe('Optional workspace directory override'),
         claw_channel_id: z.string().optional().describe('Optional Claw IM channel id whose persona should run this task'),
-        provider_id: z.string().optional().describe('Optional model provider id configured in Kun settings'),
-        model: z.string().optional().describe('Optional model id, e.g. deepseek-v4-pro / deepseek-v4-flash'),
+        provider_id: z.string().optional().describe('Optional model provider id configured in MIMO Work settings'),
+        model: z.string().optional().describe('Optional model id, e.g. mimo-v2.5-pro / mimo-v2-flash'),
         reasoning_effort: z.enum(['auto', 'off', 'low', 'medium', 'high', 'max']).optional().describe('Optional reasoning strength'),
         mode: z.enum(['agent', 'plan']).optional().describe('Execution mode'),
         enabled: z.boolean().optional().describe('Whether the task should be enabled immediately')
@@ -155,8 +155,8 @@ export async function runClawScheduleMcpServerFromArgv(argv: string[]): Promise<
   const registerUpdateTool = (name: string): void => {
     server.registerTool(name, {
       description: name.startsWith('claw_')
-        ? 'Legacy alias. Update an existing Kun scheduled task.'
-        : 'Update an existing Kun scheduled task.',
+        ? 'Legacy alias. Update an existing MIMO Work scheduled task.'
+        : 'Update an existing MIMO Work scheduled task.',
       inputSchema: {
         task_id: z.string().min(1).describe('Task id returned by gui_schedule_list or gui_schedule_create'),
         title: z.string().optional(),
@@ -218,8 +218,8 @@ export async function runClawScheduleMcpServerFromArgv(argv: string[]): Promise<
   const registerDeleteTool = (name: string): void => {
     server.registerTool(name, {
       description: name.startsWith('claw_')
-        ? 'Legacy alias. Delete a scheduled task from Kun.'
-        : 'Delete a scheduled task from Kun.',
+        ? 'Legacy alias. Delete a scheduled task from MIMO Work.'
+        : 'Delete a scheduled task from MIMO Work.',
       inputSchema: {
         task_id: z.string().min(1).describe('Task id returned by gui_schedule_list or gui_schedule_create')
       }

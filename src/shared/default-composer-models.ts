@@ -1,2 +1,2 @@
-/** When upstream `GET /v1/models` fails, offer these ids in the composer (matches TUI picker + common IDs). */
-export const DEFAULT_COMPOSER_MODEL_IDS = ['deepseek-v4-pro', 'deepseek-v4-flash'] as const
+/** When upstream `GET /v1/models` fails, offer MIMO Work's built-in MiMo model ids. */
+export const DEFAULT_COMPOSER_MODEL_IDS = ['mimo-v2.5-pro', 'mimo-v2-flash'] as const

@@ -288,7 +288,7 @@ export function createNavigationActions(
     try {
       if (typeof window.kunGui === 'undefined') {
         throw new Error(
-          'Preload bridge missing (window.kunGui). Restart the app or check BrowserWindow preload path.'
+          'MIMO Work desktop bridge is unavailable. Restart the app or check the preload path.'
         )
       }
       const settings = await rendererRuntimeClient.getSettings({ forceRefresh: true })
@@ -341,10 +341,11 @@ export function createNavigationActions(
         if (typeof window.kunGui === 'undefined') {
           set({
             error: formatRuntimeError(
-              'Preload bridge missing (window.kunGui). Restart the app or check BrowserWindow preload path.'
+              'MIMO Work desktop bridge is unavailable. Restart the app or check the preload path.'
             ),
             runtimeConnection: 'offline',
-            runtimeErrorDetail: 'Preload bridge missing (window.kunGui). Restart the app or check BrowserWindow preload path.',
+            runtimeErrorDetail:
+              'MIMO Work desktop bridge is unavailable. Restart the app or check the preload path.',
             initialSetupOpen: false,
             initialSetupMode: 'required'
           })

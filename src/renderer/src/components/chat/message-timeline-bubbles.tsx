@@ -18,6 +18,37 @@ import { ModelMetaTag, WritePromptMetaDisclosure } from './message-timeline-card
 import { readNumber, formatDuration, formatToolTitle } from './message-timeline-tools'
 
 const COPY_FEEDBACK_RESET_MS = 1600
+const CURRENT_USER_REQUEST_MARKER = '[Current user request]'
+const MIMO_WORK_INTERNAL_PROMPT_SIGNATURES = [
+  'MIMO Work runtime context / 本轮执行上下文:',
+  '[Code managed instructions]',
+  'MIMO Work execution guardrails:'
+]
+
+function parseMimoWorkRuntimePromptForDisplay(text: string): string | null {
+  const trimmed = text.trim()
+  if (!trimmed) return null
+  const hasInternalSignature = MIMO_WORK_INTERNAL_PROMPT_SIGNATURES.some((signature) =>
+    trimmed.includes(signature)
+  )
+  const currentRequestIndex = trimmed.lastIndexOf(CURRENT_USER_REQUEST_MARKER)
+  if (currentRequestIndex >= 0 && (hasInternalSignature || trimmed.startsWith(CURRENT_USER_REQUEST_MARKER))) {
+    const visible = trimmed.slice(currentRequestIndex + CURRENT_USER_REQUEST_MARKER.length).trim()
+    return visible || null
+  }
+  if (!hasInternalSignature) return null
+  const delimiterIndex = trimmed.lastIndexOf('\n---\n')
+  if (delimiterIndex >= 0) {
+    const visible = trimmed.slice(delimiterIndex + '\n---\n'.length).trim()
+    return visible || null
+  }
+  const splitIndex = trimmed.indexOf('\n\n')
+  if (splitIndex >= 0) {
+    const visible = trimmed.slice(splitIndex + 2).trim()
+    return visible || null
+  }
+  return null
+}
 
 /**
  * User message bubble with hover affordance to rewind/edit. Click the rewind
@@ -48,11 +79,13 @@ function UserMessageBubble({
     if (!parsed.managed && !parsed.inbound && block.managedBy !== 'claw' && route !== 'claw') return null
     return parsed
   }, [block.managedBy, block.text, route])
+  const parsedRuntimePrompt = useMemo(() => parseMimoWorkRuntimePromptForDisplay(block.text), [block.text])
   const metaDisplayText =
     typeof block.meta?.displayText === 'string' && block.meta.displayText.trim()
       ? block.meta.displayText.trim()
       : null
-  const displayText = metaDisplayText ?? parsedWritePrompt?.userInput ?? parsedClawPrompt?.text ?? block.text
+  const displayText =
+    metaDisplayText ?? parsedWritePrompt?.userInput ?? parsedClawPrompt?.text ?? parsedRuntimePrompt ?? block.text
   const canEdit = !metaDisplayText
   const showClawInboundCard = route === 'claw' && parsedClawPrompt?.inbound === true
 
@@ -79,7 +112,7 @@ function UserMessageBubble({
   }
 
   const cancelEdit = (): void => {
-    setDraft(block.text)
+    setDraft(displayText)
     setEditing(false)
   }
 
@@ -202,7 +235,7 @@ function ClawInboundMessageCard({
   ].filter(Boolean)
 
   return (
-    <div className="w-full max-w-[min(560px,calc(100vw-3rem))] rounded-[18px] border border-ds-border bg-ds-card px-4 py-3 text-left shadow-[0_14px_34px_rgba(86,103,136,0.08)]">
+    <div className="w-full max-w-[min(560px,calc(100vw-3rem))] rounded-[18px] border border-ds-border bg-ds-card px-4 py-3 text-left shadow-[0_14px_34px_rgba(31,35,41,0.08)]">
       <div className="flex items-center gap-2 text-[12px] font-semibold text-ds-muted">
         <MessageSquareQuote className="h-3.5 w-3.5" strokeWidth={1.8} />
         <span>{t('clawTimelineInbound', { source: display.sourceLabel ?? t('claw') })}</span>
@@ -996,7 +1029,7 @@ function UserInputBubble({
           : 'active'
   const questionCount = block.questions.length
   const containerClass = nested
-    ? `overflow-hidden rounded-[14px] border px-3.5 py-3 text-[13px] leading-5 shadow-[0_8px_22px_rgba(20,47,95,0.035)] ${
+    ? `overflow-hidden rounded-[14px] border px-3.5 py-3 text-[13px] leading-5 shadow-[0_8px_22px_rgba(31,35,41,0.035)] ${
         tone === 'error'
           ? 'border-red-300/65 bg-ds-card/88 dark:border-red-800/55 dark:bg-red-950/20'
           : tone === 'success'
@@ -1005,7 +1038,7 @@ function UserInputBubble({
               ? 'border-ds-border-muted bg-ds-card/78'
               : 'border-accent/22 bg-ds-card/90'
       }`
-    : `overflow-hidden rounded-[16px] border px-4 py-4 text-[13px] leading-6 shadow-[0_14px_36px_rgba(20,47,95,0.055)] ${
+    : `overflow-hidden rounded-[16px] border px-4 py-4 text-[13px] leading-6 shadow-[0_14px_36px_rgba(31,35,41,0.055)] ${
         tone === 'error'
           ? 'border-red-300/70 bg-ds-card/90 dark:border-red-800/60 dark:bg-red-950/20'
           : tone === 'success'
@@ -1349,7 +1382,7 @@ function MessageBubbleImpl({ block, nested = false }: { block: ChatBlock; nested
             : t('approvalPending')
     return (
       <div
-        className={`rounded-[22px] border px-4 py-4 text-[13px] leading-6 shadow-[0_12px_30px_rgba(86,103,136,0.04)] ${
+        className={`rounded-[22px] border px-4 py-4 text-[13px] leading-6 shadow-[0_12px_30px_rgba(31,35,41,0.04)] ${
           block.status === 'error'
             ? 'border-red-300/80 bg-red-500/10 dark:border-red-800/60 dark:bg-red-950/35'
             : 'border-accent/35 bg-[linear-gradient(180deg,rgba(79,124,255,0.08),rgba(79,124,255,0.12))] text-ds-ink'
@@ -1462,7 +1495,7 @@ function ToolEntry({ block, nested = false }: { block: ToolBlock; nested?: boole
   const canExpand = hasDetail || block.status === 'running'
 
   return (
-    <div className={`rounded-[22px] border shadow-[0_12px_30px_rgba(86,103,136,0.04)] ${tone}`}>
+    <div className={`rounded-[22px] border shadow-[0_12px_30px_rgba(31,35,41,0.04)] ${tone}`}>
       <button
         type="button"
         onClick={() => {

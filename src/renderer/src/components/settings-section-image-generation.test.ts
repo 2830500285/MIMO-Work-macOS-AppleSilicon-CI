@@ -8,10 +8,13 @@ import { ImageGenerationSettingsSection } from './settings-section-image-generat
 const labels: Record<string, string> = {
   back: 'Back',
   general: 'General',
+  providers: 'Providers',
+  personalization: 'Personalization',
   write: 'Write',
   agents: 'AI assistant',
   keyboardShortcuts: 'Keyboard shortcuts',
   claw: 'Connect phone',
+  environments: 'Environments',
   settingsFooter: 'Settings',
   imageGen: 'Image generation',
   imageGenEnabled: 'Enable image generation',
@@ -67,19 +70,18 @@ describe('ImageGenerationSettingsSection', () => {
     expect(html).toContain('value="240000"')
   })
 
-  it('places the image generation tab between Write and AI assistant', () => {
+  it('keeps image generation out of the standalone settings sidebar', () => {
     const html = renderToStaticMarkup(createElement(SettingsSidebar, {
-      category: 'imageGeneration',
+      category: 'providers',
       goBack: () => undefined,
       setCategory: () => undefined,
       t
     }))
 
-    const writeIndex = html.indexOf('Write')
-    const imageIndex = html.indexOf('Image generation')
-    const agentsIndex = html.indexOf('AI assistant')
-    expect(writeIndex).toBeGreaterThanOrEqual(0)
-    expect(imageIndex).toBeGreaterThan(writeIndex)
-    expect(agentsIndex).toBeGreaterThan(imageIndex)
+    expect(html).toContain('Providers')
+    expect(html).toContain('Personalization')
+    expect(html).toContain('AI assistant')
+    expect(html).toContain('Environments')
+    expect(html).not.toContain('Image generation')
   })
 })

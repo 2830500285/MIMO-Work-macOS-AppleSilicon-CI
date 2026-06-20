@@ -12,7 +12,7 @@ import {
 import type { ChatState } from './chat-store-types'
 import {
   isClawWorkspacePath,
-  isInternalDeepSeekGuiWorkspace,
+  isInternalMimoWorkWorkspace,
   isInternalTemporaryWorkspace,
   normalizeWorkspaceRoot,
   workspaceRootIdentityKey
@@ -72,6 +72,17 @@ export function providerIdForComposerModel(
   return modelGroups.find((group) => modelGroupHasModel(group, model))?.providerId ?? ''
 }
 
+export function providerHasComposerModel(
+  modelGroups: readonly ModelProviderModelGroup[],
+  providerId: string,
+  modelId: string
+): boolean {
+  const normalizedProviderId = providerId.trim()
+  if (!normalizedProviderId) return false
+  const group = modelGroups.find((item) => item.providerId === normalizedProviderId)
+  return group ? modelGroupHasModel(group, modelId) : false
+}
+
 function modelGroupHasModel(group: ModelProviderModelGroup, modelId: string): boolean {
   const normalized = normalizeComposerModelId(modelId)
   if (!normalized) return false
@@ -89,7 +100,7 @@ export function compactCodeWorkspaceRoots(workspaceRoots: readonly (string | und
     const normalized = normalizeWorkspaceRoot(workspaceRoot ?? '').replace(/[\\/]+$/, '')
     if (!normalized) continue
     if (isInternalTemporaryWorkspace(normalized)) continue
-    if (isInternalDeepSeekGuiWorkspace(normalized)) continue
+    if (isInternalMimoWorkWorkspace(normalized)) continue
     if (isClawWorkspacePath(normalized)) continue
     const key = workspaceRootIdentityKey(normalized)
     if (seen.has(key)) continue

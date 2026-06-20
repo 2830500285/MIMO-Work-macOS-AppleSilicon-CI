@@ -23,6 +23,7 @@ import { readBrowserStorageItem, writeBrowserStorageItem } from '../lib/browser-
 import { normalizeWorkspaceRoot } from '../lib/workspace-path'
 import { getProvider } from '../agent/registry'
 import type { SkillListItem } from '@shared/kun-gui-api'
+import { RECOMMENDED_SKILL_PACKAGES } from '@shared/recommended-marketplace'
 import type {
   CoreRuntimeInfoJson,
   CoreRuntimeToolDiagnosticsJson
@@ -50,10 +51,12 @@ type MarketplaceItem = {
   description?: string
   group: 'recommended' | 'personal'
   sourceLabel?: string
+  sourceLabelKey?: string
   detail?: string
   statusTone?: 'default' | 'success' | 'warning' | 'error'
   systemManaged?: boolean
   mcpConfig?: (workspaceRoot: string) => JsonRecord
+  recommendedSkillPackageId?: string
   skillInstructions?: string
 }
 
@@ -334,6 +337,10 @@ function itemDescription(item: MarketplaceItem, t: (key: string) => string): str
   return item.description ?? (item.descriptionKey ? t(item.descriptionKey) : '')
 }
 
+function itemSourceLabel(item: MarketplaceItem, t: (key: string) => string): string {
+  return item.sourceLabel ?? (item.sourceLabelKey ? t(item.sourceLabelKey) : '')
+}
+
 export function skillMarketplaceItemsFromDiscoveredSkills(
   skills: SkillListItem[],
   labels: { project: string; global: string }
@@ -426,6 +433,7 @@ const RECOMMENDED_ITEMS: MarketplaceItem[] = [
     titleKey: 'pluginMcpGuiScheduleTitle',
     descriptionKey: 'pluginMcpGuiScheduleDesc',
     group: 'recommended',
+    sourceLabelKey: 'pluginSourceMimoWork',
     systemManaged: true
   },
   {
@@ -434,6 +442,7 @@ const RECOMMENDED_ITEMS: MarketplaceItem[] = [
     titleKey: 'pluginMcpPlaywrightTitle',
     descriptionKey: 'pluginMcpPlaywrightDesc',
     group: 'recommended',
+    sourceLabelKey: 'pluginSourceMcpOfficial',
     mcpConfig: () =>
       buildMcpConfig(
         'playwright',
@@ -447,6 +456,7 @@ const RECOMMENDED_ITEMS: MarketplaceItem[] = [
     titleKey: 'pluginMcpGithubTitle',
     descriptionKey: 'pluginMcpGithubDesc',
     group: 'recommended',
+    sourceLabelKey: 'pluginSourceMcpOfficial',
     mcpConfig: () =>
       buildMcpConfig(
         'github',
@@ -460,6 +470,7 @@ const RECOMMENDED_ITEMS: MarketplaceItem[] = [
     titleKey: 'pluginMcpContext7Title',
     descriptionKey: 'pluginMcpContext7Desc',
     group: 'recommended',
+    sourceLabelKey: 'pluginSourceContext7',
     mcpConfig: () =>
       buildMcpConfig(
         'context7',
@@ -468,41 +479,43 @@ const RECOMMENDED_ITEMS: MarketplaceItem[] = [
       )
   },
   {
-    id: 'code-review',
-    kind: 'skill',
-    titleKey: 'pluginSkillReviewTitle',
-    descriptionKey: 'pluginSkillReviewDesc',
+    id: 'memory',
+    kind: 'mcp',
+    titleKey: 'pluginMcpMemoryTitle',
+    descriptionKey: 'pluginMcpMemoryDesc',
     group: 'recommended',
-    skillInstructions:
-      'Use this skill when reviewing a code change. Prioritize correctness, regressions, security, performance, and missing tests. Lead with concrete findings and file references.'
+    sourceLabelKey: 'pluginSourceMcpOfficial',
+    mcpConfig: () =>
+      buildMcpConfig(
+        'memory',
+        'npx',
+        ['-y', '@modelcontextprotocol/server-memory']
+      )
   },
   {
-    id: 'frontend-polish',
-    kind: 'skill',
-    titleKey: 'pluginSkillFrontendTitle',
-    descriptionKey: 'pluginSkillFrontendDesc',
+    id: 'sequential-thinking',
+    kind: 'mcp',
+    titleKey: 'pluginMcpSequentialThinkingTitle',
+    descriptionKey: 'pluginMcpSequentialThinkingDesc',
     group: 'recommended',
-    skillInstructions:
-      'Use this skill when improving UI. Preserve the product style, check responsive states, avoid generic layouts, and verify the result visually before handing it back.'
+    sourceLabelKey: 'pluginSourceMcpOfficial',
+    mcpConfig: () =>
+      buildMcpConfig(
+        'sequential-thinking',
+        'npx',
+        ['-y', '@modelcontextprotocol/server-sequential-thinking']
+      )
   },
-  {
-    id: 'bug-hunt',
+  ...RECOMMENDED_SKILL_PACKAGES.map((item): MarketplaceItem => ({
+    id: item.id,
     kind: 'skill',
-    titleKey: 'pluginSkillBugTitle',
-    descriptionKey: 'pluginSkillBugDesc',
+    titleKey: item.titleKey,
+    descriptionKey: item.descriptionKey,
     group: 'recommended',
-    skillInstructions:
-      'Use this skill when investigating bugs. Reproduce or narrow the symptom, trace the data flow, identify the smallest fix, and add focused verification where possible.'
-  },
-  {
-    id: 'release-notes',
-    kind: 'skill',
-    titleKey: 'pluginSkillReleaseTitle',
-    descriptionKey: 'pluginSkillReleaseDesc',
-    group: 'recommended',
-    skillInstructions:
-      'Use this skill when preparing release notes. Group user-facing changes by outcome, call out migrations or risks, and keep wording concise and scannable.'
-  }
+    sourceLabelKey: item.sourceLabelKey,
+    detail: item.sourceUrl,
+    recommendedSkillPackageId: item.id
+  }))
 ]
 
 export function recommendedMarketplaceItemIds(): string[] {
@@ -561,9 +574,9 @@ export function PluginMarketplaceView(): ReactElement {
         available: true
       },
       {
-        id: 'global-deepseek',
-        label: t('pluginSkillRootGlobalDeepseek'),
-        path: '~/.kun/skills',
+        id: 'global-mimo-work',
+        label: t('pluginSkillRootGlobalMimoWork'),
+        path: '~/.mimo-work/skills',
         available: true
       }
     ]
@@ -748,10 +761,12 @@ export function PluginMarketplaceView(): ReactElement {
         const title = itemTitle(item, t).toLowerCase()
         const description = itemDescription(item, t).toLowerCase()
         const source = item.sourceLabel?.toLowerCase() ?? ''
+        const sourceKey = item.sourceLabelKey ? t(item.sourceLabelKey).toLowerCase() : ''
         return !normalizedQuery ||
           title.includes(normalizedQuery) ||
           description.includes(normalizedQuery) ||
           source.includes(normalizedQuery) ||
+          sourceKey.includes(normalizedQuery) ||
           item.id.includes(normalizedQuery)
       })
       .filter((item) => {
@@ -802,10 +817,31 @@ export function PluginMarketplaceView(): ReactElement {
       }
 
       if (!selectedSkillRoot?.path) {
+        if (!item.recommendedSkillPackageId) {
+          setNotice({ tone: 'error', message: t('pluginSkillRootMissing') })
+          return
+        }
+      }
+      if (item.group === 'personal') return
+      if (item.recommendedSkillPackageId) {
+        const result = await window.kunGui.installRecommendedSkill(item.recommendedSkillPackageId)
+        if (!result.ok) {
+          setNotice({ tone: 'error', message: result.message })
+          return
+        }
+        markInstalled(storageKey('skill', item.id))
+        await refreshSkillList()
+        setNotice({
+          tone: 'success',
+          message: t('pluginSkillDownloaded', { path: result.path, count: result.fileCount })
+        })
+        return
+      }
+      const skillRootPath = selectedSkillRoot?.path
+      if (!skillRootPath) {
         setNotice({ tone: 'error', message: t('pluginSkillRootMissing') })
         return
       }
-      if (item.group === 'personal') return
       const title = itemTitle(item, t)
       const description = itemDescription(item, t)
       const content = buildSkillContent(
@@ -814,7 +850,7 @@ export function PluginMarketplaceView(): ReactElement {
         description,
         item.skillInstructions ?? description
       )
-      const result = await window.kunGui.saveSkillFile(selectedSkillRoot.path, item.id, content)
+      const result = await window.kunGui.saveSkillFile(skillRootPath, item.id, content)
       if (!result.ok) {
         setNotice({ tone: 'error', message: result.message })
         return
@@ -1240,7 +1276,7 @@ function mcpRuntimeStatusTone(status: McpMarketplaceOverlayStatus): string {
     case 'connected':
       return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200'
     case 'configured':
-      return 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-200'
+      return 'bg-[var(--ds-accent-soft)] text-ds-ink dark:bg-[rgba(251,129,71,0.16)] dark:text-[#ffad7f]'
     case 'drift':
       return 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200'
     case 'error':
@@ -1330,11 +1366,11 @@ function PluginSection({
                     <span className="truncate text-[17px] font-semibold text-ds-ink">
                       {itemTitle(item, t)}
                     </span>
-                    {item.sourceLabel ? (
+                    {itemSourceLabel(item, t) ? (
                       <span
                         className={`shrink-0 rounded-md px-2 py-0.5 text-[11px] font-semibold ${marketplaceSourceTone(item.statusTone)}`}
                       >
-                        {item.sourceLabel}
+                        {itemSourceLabel(item, t)}
                       </span>
                     ) : null}
                     {skillDisabled ? (

@@ -21,15 +21,14 @@ import {
   mapImageSize,
   createImageGenClient,
   ImageGenHttpError,
+  detectImage,
   type ImageGenClient
-} from '../../../kun/src/adapters/tool/image-gen-tool-provider.js'
-import { detectImage } from '../../../kun/src/attachments/attachment-store.js'
+} from './local-media-utils'
 
 // Matches WORKSPACE_IMAGE_DIR in workspace-files.ts so infographics land in
 // the same workspace-level folder as pasted images.
 const INFOGRAPHIC_IMAGE_DIR = 'img'
 const IMAGE_SIZE_TIER = '1K'
-const MINIMAX_PROMPT_MAX_CHARS = 1_500
 const MAX_REFERENCE_IMAGE_BYTES = 10 * 1024 * 1024
 const REFERENCE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
 // Portrait reads best for infographics (768x1024); design mockups read best
@@ -83,7 +82,8 @@ function fitPromptToMaxChars(prefix: string, text: string, maxChars: number): st
 }
 
 function imagePromptMaxChars(imageGeneration: KunImageGenerationSettingsV1): number | undefined {
-  return imageGeneration.protocol === 'minimax-image' ? MINIMAX_PROMPT_MAX_CHARS : undefined
+  void imageGeneration
+  return undefined
 }
 
 async function readReferenceImage(

@@ -137,8 +137,20 @@ describe('app-ipc-schemas', () => {
       theme: 'dark',
       agents: {
         kun: {
+          runtimeEngine: 'mimo-work',
           port: 9000,
-          model: 'deepseek-chat',
+          model: 'mimo-chat',
+          mimo: {
+            mode: 'tokenplan',
+            apiKey: 'tp-unit-test-key-12345678901234567890',
+            baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
+            region: 'cn',
+            model: 'mimo-v2.5-pro',
+            metadata: {
+              mode: 'tokenplan',
+              region: 'cn'
+            }
+          },
           modelProfiles: {
             'custom-vision-model': {
               aliases: ['custom-vision'],
@@ -160,7 +172,7 @@ describe('app-ipc-schemas', () => {
       },
       write: {
         inlineCompletion: {
-          model: 'deepseek-v4-pro',
+          model: 'mimo-v4-pro',
           maxTokens: 128
         },
         selectionAssist: {
@@ -175,39 +187,46 @@ describe('app-ipc-schemas', () => {
     })
 
     expect(payload.agents?.kun?.port).toBe(9000)
+    expect(payload.agents?.kun?.runtimeEngine).toBe('mimo-work')
+    expect(payload.agents?.kun?.mimo).toMatchObject({
+      mode: 'tokenplan',
+      baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
+      region: 'cn',
+      model: 'mimo-v2.5-pro'
+    })
     expect(payload.agents?.kun?.modelProfiles?.['custom-vision-model']?.inputModalities).toEqual(['text', 'image'])
     expect(payload.agents?.kun?.tokenEconomy?.enabled).toBe(true)
     expect(payload.agents?.kun?.tokenEconomy?.historyHygiene?.maxToolResultTokens).toBe(4000)
-    expect(payload.write?.inlineCompletion?.model).toBe('deepseek-v4-pro')
+    expect(payload.write?.inlineCompletion?.model).toBe('mimo-v4-pro')
     expect(payload.write?.selectionAssist?.infographicPrompt).toBe('手绘风格信息图。')
     expect(payload.write?.selectionAssist?.quickActions).toHaveLength(2)
-    expect(payload.disabledSkillIds).toEqual(['test-skill-08'])
+    expect(payload.disabledSkillIds).toBeUndefined()
   })
 
   it('accepts media generation settings and provider capability patches', () => {
     const payload = settingsPatchSchema.parse({
       provider: {
         providers: [{
-          id: 'minimax',
-          name: 'MiniMax',
+          id: 'mimo',
+          name: 'MIMO',
           apiKey: 'sk-media',
-          baseUrl: 'https://api.minimaxi.com/anthropic',
+          baseUrl: 'https://api.mimoi.com/anthropic',
           endpointFormat: 'messages',
-          models: ['MiniMax-M3'],
+          models: ['MIMO-M3'],
           textToSpeech: {
-            protocol: 'minimax-t2a',
-            baseUrl: 'https://api.minimax.io',
+            protocol: 'mimo-tts',
+            baseUrl: 'https://api.mimo.io',
             models: ['speech-2.8-hd']
           },
           music: {
-            protocol: 'minimax-music',
-            baseUrl: 'https://api.minimax.io',
+            protocol: 'custom-music',
+            baseUrl: 'https://api.mimo.io',
             models: ['music-2.6']
           },
           video: {
-            protocol: 'minimax-video',
-            baseUrl: 'https://api.minimax.io',
-            models: ['MiniMax-Hailuo-2.3']
+            protocol: 'custom-video',
+            baseUrl: 'https://api.mimo.io',
+            models: ['MIMO-Hailuo-2.3']
           }
         }]
       },
@@ -215,8 +234,8 @@ describe('app-ipc-schemas', () => {
         kun: {
           textToSpeech: {
             enabled: true,
-            providerId: 'minimax',
-            protocol: 'minimax-t2a',
+            providerId: 'mimo',
+            protocol: 'mimo-tts',
             model: 'speech-2.8-hd',
             voice: 'male-qn-qingse',
             format: 'mp3',
@@ -224,17 +243,17 @@ describe('app-ipc-schemas', () => {
           },
           musicGeneration: {
             enabled: true,
-            providerId: 'minimax',
-            protocol: 'minimax-music',
+            providerId: 'mimo',
+            protocol: 'custom-music',
             model: 'music-2.6',
             format: 'mp3',
             timeoutMs: 300000
           },
           videoGeneration: {
             enabled: true,
-            providerId: 'minimax',
-            protocol: 'minimax-video',
-            model: 'MiniMax-Hailuo-2.3',
+            providerId: 'mimo',
+            protocol: 'custom-video',
+            model: 'MIMO-Hailuo-2.3',
             defaultDuration: 6,
             defaultResolution: '1080P',
             timeoutMs: 900000,
@@ -256,8 +275,8 @@ describe('app-ipc-schemas', () => {
         enabled: true,
         keepAwake: true,
         defaultWorkspaceRoot: '/tmp/schedule',
-        providerId: 'minimax-token-plan',
-        model: 'deepseek-v4-flash',
+        providerId: 'mimo-token-plan',
+        model: 'mimo-v4-flash',
         mode: 'plan',
         promptPrefix: 'Use the project checklist.',
         skills: {
@@ -275,7 +294,7 @@ describe('app-ipc-schemas', () => {
           prompt: 'Review the repo',
           workspaceRoot: '/tmp/schedule',
           clawChannelId: 'channel-1',
-          providerId: 'minimax-token-plan',
+          providerId: 'mimo-token-plan',
           model: 'auto',
           reasoningEffort: 'high',
           mode: 'agent',
@@ -291,23 +310,23 @@ describe('app-ipc-schemas', () => {
     })
 
     expect(payload.schedule?.internal?.port).toBe(9788)
-    expect(payload.schedule?.providerId).toBe('minimax-token-plan')
+    expect(payload.schedule?.providerId).toBe('mimo-token-plan')
     expect(payload.schedule?.tasks?.[0]?.schedule?.kind).toBe('daily')
     expect(payload.schedule?.tasks?.[0]?.reasoningEffort).toBe('high')
     expect(payload.schedule?.tasks?.[0]?.clawChannelId).toBe('channel-1')
-    expect(payload.schedule?.tasks?.[0]?.providerId).toBe('minimax-token-plan')
+    expect(payload.schedule?.tasks?.[0]?.providerId).toBe('mimo-token-plan')
 
     const fromText = scheduleTaskFromTextPayloadSchema.parse({
       text: 'Remind me tomorrow morning to ship the review',
       workspaceRoot: '/tmp/schedule',
       clawChannelId: 'channel-1',
-      modelHint: 'deepseek-v4-pro',
+      modelHint: 'mimo-v4-pro',
       mode: 'agent'
     })
 
     expect(fromText.workspaceRoot).toBe('/tmp/schedule')
     expect(fromText.clawChannelId).toBe('channel-1')
-    expect(fromText.modelHint).toBe('deepseek-v4-pro')
+    expect(fromText.modelHint).toBe('mimo-v4-pro')
   })
 
   it('strips legacy settings keys before validating settings patches', () => {
@@ -382,7 +401,7 @@ describe('app-ipc-schemas', () => {
       provider: {
         apiKey: 'sk-updated',
         providers: [{
-          id: 'deepseek',
+          id: 'mimo',
           apiKey: 'sk-updated',
           endpointFormat: 'responses'
         }]
@@ -391,7 +410,7 @@ describe('app-ipc-schemas', () => {
 
     expect(payload.provider?.apiKey).toBe('sk-updated')
     expect(payload.provider?.providers?.[0]).toEqual({
-      id: 'deepseek',
+      id: 'mimo',
       apiKey: 'sk-updated',
       endpointFormat: 'responses'
     })
@@ -407,6 +426,22 @@ describe('app-ipc-schemas', () => {
     })
 
     expect(payload.keyboardShortcuts?.bindings?.settings).toEqual(['Ctrl+,'])
+  })
+
+  it('accepts environment projects in settings patches', () => {
+    const payload = settingsPatchSchema.parse({
+      environmentProjects: [
+        {
+          path: '/Users/mac/Documents/MIMO Work',
+          setupCommand: 'npm install'
+        }
+      ]
+    })
+
+    expect(payload.environmentProjects?.[0]).toEqual({
+      path: '/Users/mac/Documents/MIMO Work',
+      setupCommand: 'npm install'
+    })
   })
 
   it('rejects unknown settings patch fields', () => {
@@ -437,7 +472,7 @@ describe('app-ipc-schemas', () => {
   })
 
   it('allows only safe external URL protocols', () => {
-    expect(isSafeOpenExternalUrl('https://deepseek.com')).toBe(true)
+    expect(isSafeOpenExternalUrl('https://mimo.com')).toBe(true)
     expect(isSafeOpenExternalUrl('http://127.0.0.1:5173')).toBe(true)
     expect(isSafeOpenExternalUrl('mailto:zhongxingyuemail@gmail.com')).toBe(true)
     expect(isSafeOpenExternalUrl('javascript:alert(1)')).toBe(false)
@@ -566,10 +601,10 @@ describe('app-ipc-schemas', () => {
         beforeContext: '',
         afterContext: ' intro'
       }],
-      model: 'deepseek-v4-pro'
+      model: 'mimo-v4-pro'
     })
 
-    expect(payload.model).toBe('deepseek-v4-pro')
+    expect(payload.model).toBe('mimo-v4-pro')
     expect(payload.mode).toBe('edit')
     expect(payload.workspaceRoot).toBe('/tmp/workspace')
     expect(payload.cursor.line).toBe(3)

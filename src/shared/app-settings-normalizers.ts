@@ -1,16 +1,17 @@
 import {
-  DEFAULT_DEEPSEEK_BASE_URL,
+  DEFAULT_MIMO_BASE_URL,
   type ClawImProvider,
   type ClawRunMode,
+  type EnvironmentProjectV1,
   type ScheduleKind,
   type ScheduleModel,
   type ScheduleReasoningEffort,
   type ScheduleTaskStatus
 } from './app-settings-types'
 
-export function normalizeDeepseekBaseUrl(baseUrl: string | null | undefined): string {
+export function normalizeMimoBaseUrl(baseUrl: string | null | undefined): string {
   const trimmed = typeof baseUrl === 'string' ? baseUrl.trim() : ''
-  return trimmed || DEFAULT_DEEPSEEK_BASE_URL
+  return trimmed || DEFAULT_MIMO_BASE_URL
 }
 
 export function compactStrings(values: unknown): string[] {
@@ -25,6 +26,36 @@ export function compactStrings(values: unknown): string[] {
     out.push(trimmed)
   }
   return out
+}
+
+export function normalizeEnvironmentProjects(value: unknown): EnvironmentProjectV1[] {
+  if (!Array.isArray(value)) return []
+  const out: EnvironmentProjectV1[] = []
+  const seen = new Set<string>()
+  for (const item of value) {
+    const path = typeof item === 'object' && item !== null && 'path' in item
+      ? String((item as { path?: unknown }).path ?? '').trim()
+      : typeof item === 'string'
+        ? item.trim()
+        : ''
+    if (!path || seen.has(path)) continue
+    seen.add(path)
+    out.push({
+      path,
+      setupCommand: typeof item === 'object' && item !== null && 'setupCommand' in item
+        ? String((item as { setupCommand?: unknown }).setupCommand ?? '').trim()
+        : ''
+    })
+  }
+  return out
+}
+
+export function normalizeLogRetentionDays(value: unknown, fallback = 7): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback
+  const days = Math.trunc(value)
+  if (days === 0) return 0
+  if (days < 0) return fallback
+  return Math.min(days, 3650)
 }
 
 export function normalizeBoolean(value: unknown, fallback: boolean): boolean {
@@ -52,7 +83,7 @@ export function normalizeClawModel(value: unknown): string {
 }
 
 export function normalizeScheduleModel(value: unknown): ScheduleModel {
-  return value === 'deepseek-v4-pro' ? 'deepseek-v4-pro' : 'deepseek-v4-flash'
+  return value === 'mimo-v2-flash' ? 'mimo-v2-flash' : 'mimo-v2.5-pro'
 }
 
 export function normalizeScheduleReasoningEffort(value: unknown): ScheduleReasoningEffort {

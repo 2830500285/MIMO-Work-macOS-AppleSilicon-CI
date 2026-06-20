@@ -1,78 +1,34 @@
-import { app } from 'electron'
 import { homedir } from 'node:os'
-import { join } from 'node:path'
 import {
   DEFAULT_KUN_DATA_DIR,
   getKunRuntimeSettings,
   type AppSettingsV1
 } from '../../shared/app-settings'
-import {
-  buildKunServeArgs,
-  resolveKunExecutable
-} from '../resolve-kun-binary'
-import {
-  isKunChildRunning,
-  reclaimKunPort,
-  resolveAvailableKunPort,
-  startKunChild,
-  stopKunChildAndWait
-} from '../kun-process'
-import { getKunBaseUrl } from '../kun-base-url'
+import { mimoWorkRuntimeAdapter } from './mimo-work-adapter'
 
-const KUN_RUNTIME_ID = 'kun' as const
-
-function appRoot(): string {
-  return app.isPackaged
-    ? app.getAppPath().replace(/app\.asar$/, 'app.asar.unpacked')
-    : app.getAppPath()
+export type ManagedRuntimeAdapter = {
+  id: 'mimo-work'
+  resolveExecutable(settings: AppSettingsV1): Promise<string>
+  ensureRunning(settings: AppSettingsV1): Promise<void>
+  stopAndWait(): Promise<void>
+  isChildRunning(): boolean
+  getBaseUrl(settings: AppSettingsV1): string
+  reclaimPort(port: number): Promise<{ ok: true } | { ok: false; message: string }>
+  resolveAvailablePort(port: number): Promise<{ port: number; changed: boolean; message?: string }>
 }
 
-export const kunRuntimeAdapter = {
-  id: KUN_RUNTIME_ID,
+export const kunRuntimeAdapter: ManagedRuntimeAdapter = mimoWorkRuntimeAdapter
 
-  async resolveExecutable(settings: AppSettingsV1): Promise<string> {
-    const runtime = getKunRuntimeSettings(settings)
-    const resolution = resolveKunExecutable(appRoot(), runtime.binaryPath)
-    if (resolution.kind === 'node-script') {
-      const scriptPath = resolution.args[0] ?? ''
-      return runtime.binaryPath.trim()
-        ? `Node.js script (${scriptPath})`
-        : `Bundled Kun (${scriptPath})`
-    }
-    return resolution.command
-  },
-
-  ensureRunning(settings: AppSettingsV1): Promise<void> {
-    return startKunChild(settings)
-  },
-
-  stopAndWait(): Promise<void> {
-    return stopKunChildAndWait()
-  },
-
-  isChildRunning(): boolean {
-    return isKunChildRunning()
-  },
-
-  getBaseUrl(settings: AppSettingsV1): string {
-    const runtime = getKunRuntimeSettings(settings)
-    return getKunBaseUrl(runtime.port)
-  },
-
-  reclaimPort(port: number): Promise<{ ok: true } | { ok: false; message: string }> {
-    return reclaimKunPort(port)
-  },
-
-  resolveAvailablePort(port: number): Promise<{ port: number; changed: boolean; message?: string }> {
-    return resolveAvailableKunPort(port)
-  }
+export function managedRuntimeAdapterForSettings(settings: AppSettingsV1): ManagedRuntimeAdapter {
+  void settings
+  return mimoWorkRuntimeAdapter
 }
 
 export function getRuntimeBaseUrlForSettings(settings: AppSettingsV1): string {
-  return kunRuntimeAdapter.getBaseUrl(settings)
+  return managedRuntimeAdapterForSettings(settings).getBaseUrl(settings)
 }
 
-/** Build the bearer-token authorization header for Kun requests. */
+/** Build the bearer-token authorization header for the local MIMO Work runtime. */
 export function runtimeAuthHeaders(settings: AppSettingsV1): Headers {
   const runtime = getKunRuntimeSettings(settings)
   const headers = new Headers()
@@ -116,8 +72,6 @@ export async function runtimeRequestViaHost(
   const text = await res.text()
   return { ok: res.ok, status: res.status, body: text }
 }
-
-export { buildKunServeArgs, resolveKunExecutable }
 
 /**
  * Default data directory used when the user has not provided one.

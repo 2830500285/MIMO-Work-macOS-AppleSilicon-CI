@@ -15,18 +15,14 @@ import type {
 import { nextGuiUpdateCheckDelay } from '../shared/gui-update-schedule'
 import { DEFAULT_GUI_UPDATE_CHANNEL, normalizeGuiUpdateChannel } from '../shared/gui-update'
 
-// R2 prefix 保持旧值:线上还在运行的 DeepSeek GUI 老版本轮询的
-// 就是 `deepseek-gui/channels/<channel>/latest/`,prefix 一改老客户端
-// 就再也收不到 Kun 的升级包。域名优先使用 kun-agent,旧域名仅作兜底。
-const PRIMARY_R2_PUBLIC_BASE_URL = 'https://www.kun-agent.com/api/r2'
-const SECONDARY_R2_PUBLIC_BASE_URL = 'https://kun-agent.com/api/r2'
-const LEGACY_R2_PUBLIC_BASE_URL = 'https://deepseek-gui.com/api/r2'
-const DEFAULT_R2_RELEASE_PREFIX = 'deepseek-gui'
+const PRIMARY_R2_PUBLIC_BASE_URL = 'https://www.mimowork.app/api/r2'
+const SECONDARY_R2_PUBLIC_BASE_URL = 'https://mimowork.app/api/r2'
+const DEFAULT_R2_RELEASE_PREFIX = 'mimo-work'
 const UPDATE_FEED_PROBE_TIMEOUT_MS = 5_000
 const { autoUpdater } = electronUpdater
 
-function envWithLegacyFallback(kunName: string, legacyName: string): string {
-  return process.env[kunName]?.trim() || process.env[legacyName]?.trim() || ''
+function envValue(name: string): string {
+  return process.env[name]?.trim() || ''
 }
 
 let initialized = false
@@ -36,7 +32,7 @@ let lastState: GuiUpdateState = { status: 'idle' }
 let downloaded = false
 let downloadPromise: Promise<string[]> | null = null
 let configuredChannel: GuiUpdateChannel = normalizeGuiUpdateChannel(
-  envWithLegacyFallback('KUN_UPDATE_CHANNEL', 'DEEPSEEK_GUI_UPDATE_CHANNEL') || undefined
+  envValue('MIMO_WORK_UPDATE_CHANNEL') || undefined
 )
 let configuredFeedUrl = ''
 let getSelectedChannel: (() => GuiUpdateChannel | Promise<GuiUpdateChannel>) | null = null
@@ -62,11 +58,8 @@ function joinUrl(base: string, ...parts: string[]): string {
 }
 
 function envUpdateUrl(channel: GuiUpdateChannel): string {
-  const channelSpecific = envWithLegacyFallback(
-    `KUN_UPDATE_URL_${channel.toUpperCase()}`,
-    `DEEPSEEK_GUI_UPDATE_URL_${channel.toUpperCase()}`
-  )
-  const direct = channelSpecific || envWithLegacyFallback('KUN_UPDATE_URL', 'DEEPSEEK_GUI_UPDATE_URL')
+  const channelSpecific = envValue(`MIMO_WORK_UPDATE_URL_${channel.toUpperCase()}`)
+  const direct = channelSpecific || envValue('MIMO_WORK_UPDATE_URL')
   return direct ? direct.replace(/\{channel\}/g, channel).replace(/\/?$/, '/') : ''
 }
 
@@ -77,7 +70,7 @@ function uniqueStrings(values: string[]): string[] {
 function defaultR2BaseUrls(): string[] {
   const configured = process.env.R2_PUBLIC_BASE_URL?.trim()
   if (configured) return [configured]
-  return [PRIMARY_R2_PUBLIC_BASE_URL, SECONDARY_R2_PUBLIC_BASE_URL, LEGACY_R2_PUBLIC_BASE_URL]
+  return [PRIMARY_R2_PUBLIC_BASE_URL, SECONDARY_R2_PUBLIC_BASE_URL]
 }
 
 function updateFeedUrlCandidates(channel: GuiUpdateChannel): string[] {
@@ -106,7 +99,7 @@ async function isUpdateFeedAccessible(feedUrl: string): Promise<boolean> {
       method: 'HEAD',
       headers: {
         Accept: 'application/x-yaml,text/yaml,text/plain,*/*',
-        'User-Agent': `kun/${app.getVersion()}`
+        'User-Agent': `mimo-work/${app.getVersion()}`
       },
       signal: controller.signal
     })
@@ -180,7 +173,7 @@ function readPackageJson(): Record<string, unknown> | null {
 }
 
 function resolveGithubReleaseUrl(): string | null {
-  const envRepo = normalizeGithubOwnerRepo(process.env.DEEPSEEK_GUI_GITHUB_REPO?.trim() ?? '')
+  const envRepo = normalizeGithubOwnerRepo(process.env.MIMO_WORK_GITHUB_REPO?.trim() ?? '')
   if (envRepo) return `https://github.com/${envRepo}/releases`
 
   const pkg = readPackageJson()
@@ -196,7 +189,7 @@ function resolveGithubReleaseUrl(): string | null {
 }
 
 function downloadPageUrl(): string {
-  const direct = envWithLegacyFallback('KUN_DOWNLOAD_URL', 'DEEPSEEK_GUI_DOWNLOAD_URL')
+  const direct = envValue('MIMO_WORK_DOWNLOAD_URL')
   if (direct) return direct
 
   const pkg = readPackageJson()
@@ -246,7 +239,7 @@ function parseYamlScalar(source: string, key: string): string {
 
 function macAutoUpdateAllowed(): boolean {
   if (process.platform !== 'darwin') return true
-  if (process.env.DEEPSEEK_GUI_ALLOW_UNSIGNED_UPDATES === '1') return true
+  if (process.env.MIMO_WORK_ALLOW_UNSIGNED_UPDATES === '1') return true
 
   const pkg = readPackageJson()
   const hints = pkg?.buildHints
@@ -369,7 +362,7 @@ async function runScheduledGuiUpdateCheck(): Promise<void> {
       await writeLastScheduledCheckAt(nowMs)
       await checkGuiUpdate()
     } catch (error) {
-      console.warn('[kun-gui updater] scheduled GUI update check failed:', error)
+      console.warn('[mimo-work updater] scheduled GUI update check failed:', error)
     } finally {
       backgroundCheckPromise = null
       void scheduleNextBackgroundCheck()
@@ -421,7 +414,7 @@ async function checkManualUpdate(
     const res = await fetch(url, {
       headers: {
         Accept: 'application/x-yaml,text/yaml,text/plain,*/*',
-        'User-Agent': `kun/${currentVersion}`
+        'User-Agent': `mimo-work/${currentVersion}`
       }
     })
     if (!res.ok) {
@@ -491,9 +484,9 @@ export function initializeGuiUpdater(
   }
 
   autoUpdater.logger = {
-    info: (message?: unknown) => console.info('[kun-gui updater]', message),
-    warn: (message?: unknown) => console.warn('[kun-gui updater]', message),
-    error: (message?: unknown) => console.error('[kun-gui updater]', message)
+    info: (message?: unknown) => console.info('[mimo-work updater]', message),
+    warn: (message?: unknown) => console.warn('[mimo-work updater]', message),
+    error: (message?: unknown) => console.error('[mimo-work updater]', message)
   }
 
   autoUpdater.on('checking-for-update', () => {
@@ -532,7 +525,7 @@ export function initializeGuiUpdater(
 
   nativeAutoUpdater?.on?.('before-quit-for-update', () => {
     void runBeforeInstallUpdate().catch((error) => {
-      console.warn('[kun-gui updater] failed to stop runtimes before update quit:', error)
+      console.warn('[mimo-work updater] failed to stop runtimes before update quit:', error)
     })
   })
 

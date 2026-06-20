@@ -1,5 +1,5 @@
 import type { FormEvent, MouseEvent as ReactMouseEvent, ReactElement } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Archive,
@@ -27,7 +27,7 @@ import { isEmptySddAssistantThreadCandidate } from '../../sdd/sdd-thread-registr
 import { useSddDraftStore, type SddDraft } from '../../sdd/sdd-draft-store'
 import {
   isClawWorkspacePath,
-  isInternalDeepSeekGuiWorkspace,
+  isInternalMimoWorkWorkspace,
   isInternalTemporaryWorkspace,
   normalizeWorkspaceRoot,
   workspaceRootIdentityKey
@@ -45,6 +45,7 @@ type SidebarProjectsSectionProps = {
   runtimeReady: boolean
   searchQuery: string
   showArchived: boolean
+  searchToggleSignal?: number
   workspaceRoot: string
   workspaceRoots: string[]
   busy: boolean
@@ -86,7 +87,7 @@ function isSidebarProjectWorkspacePath(workspacePath: string): boolean {
   const normalized = normalizeWorkspaceRoot(workspacePath)
   if (!normalized) return false
   if (isInternalTemporaryWorkspace(normalized)) return false
-  if (isInternalDeepSeekGuiWorkspace(normalized)) return false
+  if (isInternalMimoWorkWorkspace(normalized)) return false
   if (isClawWorkspacePath(normalized)) return false
   return true
 }
@@ -102,6 +103,33 @@ function compareWorkspacePathsByActive(a: string, b: string, selectedWorkspace: 
 
 function sortWorkspacePathsByActive(workspacePaths: string[], selectedWorkspace: string): string[] {
   return [...workspacePaths].sort((a, b) => compareWorkspacePathsByActive(a, b, selectedWorkspace))
+}
+
+function isSidebarChatThread(thread: NormalizedThread): boolean {
+  const workspace = normalizeWorkspaceRoot(thread.workspace)
+  if (isInternalTemporaryWorkspace(workspace)) return false
+  if (isClawWorkspacePath(workspace)) return false
+  return !workspace || workspaceRootIdentityKey(workspace) === '~/mimo work/default_workspace'
+}
+
+export function buildSidebarChatThreads(options: {
+  threads: NormalizedThread[]
+  searchQuery: string
+  showArchived: boolean
+}): NormalizedThread[] {
+  const query = options.searchQuery.trim().toLowerCase()
+  return options.threads
+    .filter((thread) => isSidebarChatThread(thread))
+    .filter((thread) => (thread.archived === true) === options.showArchived)
+    .filter((thread) => {
+      if (!query) return true
+      const haystack = [thread.title, thread.preview, thread.workspace]
+        .filter(Boolean)
+        .join('\n')
+        .toLowerCase()
+      return haystack.includes(query)
+    })
+    .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
 }
 
 export function buildSidebarWorkspaceGroups(options: {
@@ -133,7 +161,7 @@ export function buildSidebarWorkspaceGroups(options: {
 
   for (const th of options.threads) {
     if (isInternalTemporaryWorkspace(th.workspace)) continue
-    if (isInternalDeepSeekGuiWorkspace(th.workspace)) continue
+    if (isInternalMimoWorkWorkspace(th.workspace)) continue
     if (isClawWorkspacePath(th.workspace)) continue
     if ((th.archived === true) !== options.showArchived) continue
     const key = normalizeWorkspaceRoot(th.workspace)
@@ -148,7 +176,7 @@ export function buildSidebarWorkspaceGroups(options: {
     upsertWorkspace(key, [th])
   }
 
-  if (selectedWorkspace && !map.has(selectedWorkspaceKey)) {
+  if (isSidebarProjectWorkspacePath(selectedWorkspace) && !map.has(selectedWorkspaceKey)) {
     upsertWorkspace(selectedWorkspace)
   }
   if (!query && !options.showArchived) {
@@ -156,7 +184,7 @@ export function buildSidebarWorkspaceGroups(options: {
       const key = normalizeWorkspaceRoot(workspacePath)
       if (!key || map.has(workspaceRootIdentityKey(key))) continue
       if (isInternalTemporaryWorkspace(key)) continue
-      if (isInternalDeepSeekGuiWorkspace(key)) continue
+      if (isInternalMimoWorkWorkspace(key)) continue
       if (isClawWorkspacePath(key)) continue
       upsertWorkspace(key)
     }
@@ -294,6 +322,7 @@ export function SidebarProjectsSection({
   runtimeReady,
   searchQuery,
   showArchived,
+  searchToggleSignal,
   workspaceRoot,
   workspaceRoots,
   busy,
@@ -315,11 +344,13 @@ export function SidebarProjectsSection({
 }: SidebarProjectsSectionProps): ReactElement {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [expandedWorkspaces, setExpandedWorkspaces] = useState<Record<string, boolean>>({})
+  const [chatsExpanded, setChatsExpanded] = useState(false)
   const [deletingThreadIds, setDeletingThreadIds] = useState<Record<string, boolean>>({})
   const [deletingDraftIds, setDeletingDraftIds] = useState<Record<string, boolean>>({})
   const [draftHistoryErrors, setDraftHistoryErrors] = useState<Record<string, string>>({})
   const [draftHistoryRefreshVersion, setDraftHistoryRefreshVersion] = useState(0)
   const [searchOpen, setSearchOpen] = useState(false)
+  const previousSearchToggleSignal = useRef(searchToggleSignal)
   const [threadContextMenu, setThreadContextMenu] = useState<ThreadContextMenuState | null>(null)
   const [renameThreadDialog, setRenameThreadDialog] = useState<RenameThreadDialogState | null>(null)
   const [draftHistoryByWorkspace, setDraftHistoryByWorkspace] = useState<Record<string, SddDraftHistoryItem[]>>({})
@@ -334,6 +365,14 @@ export function SidebarProjectsSection({
       workspaceRoots
     })
   }, [searchQuery, showArchived, threads, workspaceRoot, workspaceRoots])
+
+  const chatThreads = useMemo(() => {
+    return buildSidebarChatThreads({
+      threads,
+      searchQuery,
+      showArchived
+    })
+  }, [searchQuery, showArchived, threads])
 
   const draftHistoryWorkspacePaths = useMemo(() => {
     return buildSidebarDraftWorkspacePaths({
@@ -365,6 +404,15 @@ export function SidebarProjectsSection({
   const searchVisible = searchOpen || searchQuery.trim().length > 0
   const allGroupsCollapsed = displayGroups.length > 0 && displayGroups.every(([workspacePath]) => collapsed[workspacePath] === true)
   const workspaceHistoryKey = draftHistoryWorkspacePaths.join('\n')
+  const visibleChatThreads = chatsExpanded ? chatThreads : chatThreads.slice(0, 5)
+  const chatOverflowCount = Math.max(0, chatThreads.length - visibleChatThreads.length)
+
+  useEffect(() => {
+    if (searchToggleSignal === undefined) return
+    if (previousSearchToggleSignal.current === searchToggleSignal) return
+    previousSearchToggleSignal.current = searchToggleSignal
+    setSearchOpen(true)
+  }, [searchToggleSignal])
 
   useEffect(() => {
     if (
@@ -641,13 +689,62 @@ export function SidebarProjectsSection({
       ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-1 pb-2 pt-0.5">
-        {displayGroups.length === 0 ? (
+        {chatThreads.length === 0 && displayGroups.length === 0 ? (
           <SidebarEmpty
             runtimeReady={runtimeReady}
             hasWorkspace={!!workspaceRoot}
             onPickWorkspace={onPickWorkspace}
             t={t}
           />
+        ) : null}
+
+        {chatThreads.length > 0 || searchQuery.trim() || showArchived ? (
+          <div className="mb-3">
+            <div className="space-y-[3px] pl-4">
+              {visibleChatThreads.length === 0 ? (
+                <div className="px-2.5 py-1.5 text-[12.5px] leading-5 text-ds-faint">
+                  {searchQuery.trim()
+                    ? t('sidebarSearchEmpty')
+                    : showArchived
+                      ? t('sidebarArchiveEmpty')
+                      : t('sidebarChatsEmpty')}
+                </div>
+              ) : visibleChatThreads.map((thread) => (
+                <ThreadRow
+                  key={thread.id}
+                  thread={thread}
+                  active={(activeView === 'chat' || activeView === 'write') && activeThreadId === thread.id}
+                  deleting={deletingThreadIds[thread.id] === true}
+                  locale={locale}
+                  showRunning={
+                    thread.status?.trim().toLowerCase() === 'running' ||
+                    (activeThreadId === thread.id && busy) ||
+                    watchTurnCompletion[thread.id] === true
+                  }
+                  showUnread={
+                    unreadThreadIds[thread.id] === true && activeThreadId !== thread.id
+                  }
+                  onSelect={() => onSelectThread(thread.id)}
+                  onContextMenu={(event) => openThreadContextMenu(event, thread)}
+                  onRename={() => openRenameThreadDialog(thread)}
+                  onArchive={() => void handleArchiveThread(thread)}
+                  onDelete={() => void handleDeleteThread(thread)}
+                  onRestore={() => void handleRestoreThread(thread)}
+                />
+              ))}
+              {chatOverflowCount > 0 || chatsExpanded ? (
+                <button
+                  type="button"
+                  onClick={() => setChatsExpanded((expanded) => !expanded)}
+                  className="ml-1 mt-1 rounded-md px-2.5 py-1.5 text-[12.5px] text-ds-faint transition hover:bg-[var(--ds-sidebar-row-hover)] hover:text-ds-ink"
+                >
+                  {chatsExpanded
+                    ? t('sidebarChatsShowLess')
+                    : t('sidebarChatsShowMore', { count: chatOverflowCount })}
+                </button>
+              ) : null}
+            </div>
+          </div>
         ) : null}
 
         {displayGroups.map(([workspacePath, list]) => {
@@ -1107,17 +1204,17 @@ export function ThreadRenameDialog({
       role="dialog"
       aria-modal="true"
       aria-labelledby="thread-rename-dialog-title"
-      className="ds-no-drag fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/18 px-4 backdrop-blur-[2px] dark:bg-black/35"
+      className="ds-no-drag fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(31,35,41,0.18)] px-4 backdrop-blur-[2px] dark:bg-black/35"
       onMouseDown={onClose}
     >
       <form
         onSubmit={onSubmit}
         onMouseDown={(event) => event.stopPropagation()}
-        className="w-full max-w-sm rounded-[24px] border border-ds-border bg-ds-card p-5 shadow-[0_24px_72px_rgba(20,47,95,0.22)]"
+        className="w-full max-w-sm rounded-[8px] border border-ds-border bg-ds-card p-5 shadow-[0_24px_72px_rgba(31,35,41,0.18)]"
       >
         <h2
           id="thread-rename-dialog-title"
-          className="text-[18px] font-semibold tracking-[-0.035em] text-ds-ink"
+          className="text-[18px] font-semibold tracking-[0] text-ds-ink"
         >
           {t('sidebarThreadRename')}
         </h2>
@@ -1184,7 +1281,7 @@ function ThreadContextMenu({
     <div
       role="menu"
       aria-label={state.thread.title}
-      className="ds-thread-context-menu ds-no-drag fixed z-50 min-w-[168px] rounded-lg border border-ds-border bg-ds-card/98 p-1 text-[13px] text-ds-ink shadow-[0_16px_42px_rgba(20,47,95,0.16)] backdrop-blur-xl dark:bg-ds-card"
+      className="ds-thread-context-menu ds-no-drag fixed z-50 min-w-[168px] rounded-lg border border-ds-border bg-ds-card/98 p-1 text-[13px] text-ds-ink shadow-[0_16px_42px_rgba(31,35,41,0.16)] backdrop-blur-xl dark:bg-ds-card"
       style={{ left: state.x, top: state.y }}
       onPointerDown={(event) => event.stopPropagation()}
     >

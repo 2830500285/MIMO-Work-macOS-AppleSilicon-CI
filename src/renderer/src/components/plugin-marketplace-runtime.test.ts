@@ -13,7 +13,7 @@ describe('buildMcpMarketplaceOverlay', () => {
         capabilities: {
           contractVersion: 1,
           model: {
-            id: 'deepseek-chat',
+            id: 'mimo-chat',
             inputModalities: ['text'],
             outputModalities: ['text'],
             supportsToolCalling: true,
@@ -118,7 +118,7 @@ describe('buildMcpMarketplaceOverlay', () => {
         capabilities: {
           contractVersion: 1,
           model: {
-            id: 'deepseek-chat',
+            id: 'mimo-chat',
             inputModalities: ['text'],
             outputModalities: ['text'],
             supportsToolCalling: true,

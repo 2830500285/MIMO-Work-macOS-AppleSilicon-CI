@@ -20,7 +20,7 @@ function channel(overrides: Partial<ClawImChannelV1> = {}): ClawImChannelV1 {
     enabled: true,
     model: 'auto',
     threadId: 'thr-codewhale-channel',
-    workspaceRoot: '/Users/zxy/.deepseekgui/claw/agent01',
+    workspaceRoot: '/Users/zxy/.mimo-work/claw/agent01',
     agentProfile: {
       name: '',
       description: '',
@@ -38,7 +38,7 @@ function channel(overrides: Partial<ClawImChannelV1> = {}): ClawImChannelV1 {
         senderId: 'sender-1',
         senderName: 'Alex',
         localThreadId: 'thr-codewhale-conversation',
-        workspaceRoot: '/Users/zxy/.deepseekgui/claw/agent01/conversations/chat-1',
+        workspaceRoot: '/Users/zxy/.mimo-work/claw/agent01/conversations/chat-1',
         createdAt: now,
         updatedAt: now
       }
@@ -56,7 +56,7 @@ function thread(id: string, title: string, updatedAt = '2026-06-01T00:00:00.000Z
     updatedAt,
     model: 'reasonix',
     mode: 'agent',
-    workspace: '/Users/zxy/.deepseekgui/default_workspace'
+    workspace: '/Users/zxy/.mimo-work/default_workspace'
   }
 }
 
@@ -77,7 +77,7 @@ describe('chat-store Claw actions helpers', () => {
     const recovered = findRecoverableClawThread(
       [
         thread('empty-claw-thread', '[Claw:Feishu Agent01]', '2026-06-01T00:02:00.000Z'),
-        thread('old-content-thread', `${CLAW_MANAGED_INSTRUCTIONS_HEADING} DeepSeek GUI scheduled-task tools`, '2026-06-01T00:01:00.000Z')
+        thread('old-content-thread', `${CLAW_MANAGED_INSTRUCTIONS_HEADING} MIMO Work scheduled-task tools`, '2026-06-01T00:01:00.000Z')
       ],
       [item],
       item

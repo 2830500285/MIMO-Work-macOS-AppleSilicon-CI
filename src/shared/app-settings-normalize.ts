@@ -14,27 +14,22 @@ import {
   defaultKunRuntimeSettings,
   getKunRuntimeSettings,
   kunSettingsEnvelope,
-  mergeKunRuntimeSettings,
-  migrateLegacyAppSettings
+  mergeKunRuntimeSettings
 } from './app-settings-kun'
-import {
-  defaultMiniMaxMediaGenerationKunPatch,
-  normalizeModelProviderSettings
-} from './app-settings-provider'
-import { normalizeDeepseekBaseUrl } from './app-settings-normalizers'
+import { normalizeModelProviderSettings } from './app-settings-provider'
+import { normalizeEnvironmentProjects, normalizeLogRetentionDays, normalizeMimoBaseUrl } from './app-settings-normalizers'
 import { normalizeClawSettings } from './app-settings-claw'
 import { normalizeScheduleSettings } from './app-settings-schedule'
 import { normalizeWriteSettings } from './app-settings-write'
 
 export function normalizeAppSettings(settings: AppSettingsV1): AppSettingsV1 {
-  const migrated = shouldMigrateLegacySettings(settings)
-    ? migrateLegacyAppSettings(settings as Parameters<typeof migrateLegacyAppSettings>[0])
-    : settings
+  const migrated = settings
   const maybeSettings = migrated as AppSettingsV1 & {
     appBehavior?: Partial<AppBehaviorConfigV1>
     keyboardShortcuts?: Partial<KeyboardShortcutsConfigV1>
     notifications?: Partial<NotificationConfigV1>
     provider?: Parameters<typeof normalizeModelProviderSettings>[0]
+    environmentProjects?: unknown
     write?: WriteSettingsPatchV1
     claw?: ClawSettingsPatchV1
     schedule?: ScheduleSettingsPatchV1
@@ -42,17 +37,6 @@ export function normalizeAppSettings(settings: AppSettingsV1): AppSettingsV1 {
   }
   const providerSettings = normalizeModelProviderSettings(maybeSettings.provider)
   const runtime = getKunRuntimeSettings(maybeSettings)
-  const rawKun = maybeSettings.agents?.kun
-  const rawMediaPatch: Parameters<typeof defaultMiniMaxMediaGenerationKunPatch>[0]['kunPatch'] = {
-    ...(rawKun?.textToSpeech !== undefined ? { textToSpeech: rawKun.textToSpeech } : {}),
-    ...(rawKun?.musicGeneration !== undefined ? { musicGeneration: rawKun.musicGeneration } : {}),
-    ...(rawKun?.videoGeneration !== undefined ? { videoGeneration: rawKun.videoGeneration } : {})
-  }
-  const miniMaxMediaDefaults = defaultMiniMaxMediaGenerationKunPatch({
-    providers: providerSettings.providers,
-    currentKun: runtime,
-    kunPatch: rawMediaPatch
-  })
   return {
     ...migrated,
     version: 1,
@@ -70,13 +54,13 @@ export function normalizeAppSettings(settings: AppSettingsV1): AppSettingsV1 {
     provider: providerSettings,
     agents: kunSettingsEnvelope(mergeKunRuntimeSettings(defaultKunRuntimeSettings(), {
       ...runtime,
-      baseUrl: runtime.baseUrl.trim() ? normalizeDeepseekBaseUrl(runtime.baseUrl) : '',
-      ...(miniMaxMediaDefaults ?? {})
+      baseUrl: runtime.baseUrl.trim() ? normalizeMimoBaseUrl(runtime.baseUrl) : ''
     })),
     workspaceRoot: typeof maybeSettings.workspaceRoot === 'string' ? maybeSettings.workspaceRoot : '',
+    environmentProjects: normalizeEnvironmentProjects(maybeSettings.environmentProjects),
     log: {
       enabled: maybeSettings.log?.enabled !== false,
-      retentionDays: typeof maybeSettings.log?.retentionDays === 'number' ? maybeSettings.log.retentionDays : 2
+      retentionDays: normalizeLogRetentionDays(maybeSettings.log?.retentionDays)
     },
     notifications: {
       turnComplete: maybeSettings.notifications?.turnComplete !== false
@@ -113,23 +97,4 @@ export function normalizeAppBehaviorSettings(
     startMinimized: openAtLogin && settings?.startMinimized === true,
     closeToTray: settings?.closeToTray === true
   }
-}
-
-function shouldMigrateLegacySettings(settings: AppSettingsV1): boolean {
-  const raw = settings as AppSettingsV1 & {
-    agentProvider?: unknown
-    deepseek?: unknown
-    agents?: {
-      kun?: Partial<ReturnType<typeof defaultKunRuntimeSettings>>
-      codewhale?: unknown
-      reasonix?: unknown
-    }
-  }
-  if (!raw.agents?.kun) return true
-  if ('agentProvider' in raw || 'deepseek' in raw) return true
-  if (raw.agents.codewhale || raw.agents.reasonix) return true
-  const dataDir = typeof raw.agents.kun.dataDir === 'string'
-    ? raw.agents.kun.dataDir.replace(/\\/g, '/').toLowerCase()
-    : ''
-  return dataDir === '~/.deepseekgui/coreagent' || dataDir.endsWith('/.deepseekgui/coreagent')
 }

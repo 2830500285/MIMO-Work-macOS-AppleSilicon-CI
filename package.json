@@ -1,20 +1,22 @@
 {
-  "name": "kun-gui",
-  "productName": "Kun",
+  "name": "mimo-work",
+  "productName": "MIMO Work",
   "version": "0.1.0",
-  "description": "Electron workbench for the Kun runtime (HTTP/SSE)",
+  "description": "Electron workbench for MIMO Work with a MiMo-Code core",
   "main": "./out/main/index.js",
   "type": "module",
   "scripts": {
-    "dev": "npm run build:kun && electron-vite dev",
-    "build": "npm run build:kun && electron-vite build",
-    "build:kun": "node ./scripts/ensure-kun-install.cjs && npm --prefix kun run build",
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
     "dist": "npm run build && npx --yes electron-builder@26.8.1 --config electron-builder.config.cjs --publish never",
-    "dist:mac": "rm -f dist/Kun-*-mac-* dist/DeepSeek-GUI-*-mac-* dist/latest-mac.yml && npm run build && npm run dist:mac:x64:dmg && npm run dist:mac:x64:zip && npm run dist:mac:arm64:dmg && npm run dist:mac:arm64:zip && node ./scripts/generate-mac-latest.cjs dist",
-    "dist:mac:signed": "rm -f dist/Kun-*-mac-* dist/DeepSeek-GUI-*-mac-* dist/latest-mac.yml && MAC_SIGN=1 npm run dist:mac:x64 && MAC_SIGN=1 npm run dist:mac:arm64 && node ./scripts/generate-mac-latest.cjs dist",
+    "prepare:mimo-runtime:mac-arm64": "node ./scripts/prepare-mimo-runtime-mac-arm64.cjs",
+    "dist:mac:dir": "npm run prepare:mimo-runtime:mac-arm64 && npm run build && MIMO_WORK_CORE_DIR=\"$PWD/work/mimo-runtime-core/MIMO-Work-Core\" MIMO_WORK_TARGET_ARCH=arm64 npx --yes electron-builder@26.8.1 --config electron-builder.config.cjs --publish never --mac --arm64 --dir",
+    "smoke:mac:arm64": "node ./scripts/smoke-mac-arm64-app.cjs",
+    "dist:mac": "rm -f dist/MIMO-Work-*-mac-* dist/latest-mac.yml && npm run build && npm run dist:mac:x64:dmg && npm run dist:mac:x64:zip && npm run dist:mac:arm64:dmg && npm run dist:mac:arm64:zip && node ./scripts/generate-mac-latest.cjs dist",
+    "dist:mac:signed": "rm -f dist/MIMO-Work-*-mac-* dist/latest-mac.yml && MAC_SIGN=1 npm run dist:mac:x64 && MAC_SIGN=1 npm run dist:mac:arm64 && node ./scripts/generate-mac-latest.cjs dist",
     "dist:mac:arm64": "npm run build && npm run dist:mac:arm64:dmg && npm run dist:mac:arm64:zip",
     "dist:mac:x64": "npm run build && npm run dist:mac:x64:dmg && npm run dist:mac:x64:zip",
     "dist:mac:arm64:dmg": "npx --yes electron-builder@26.8.1 --config electron-builder.config.cjs --publish never --mac dmg --arm64",
@@ -93,11 +95,11 @@
     "vite": "^6.2.0",
     "vitest": "^4.1.7"
   },
-  "author": "Kun Contributors",
+  "author": "MIMO Work Contributors",
   "license": "PolyForm-Noncommercial-1.0.0",
-  "homepage": "https://github.com/KunAgent/Kun",
+  "homepage": "https://github.com/MIMO-Work/MIMO-Work",
   "repository": {
     "type": "git",
-    "url": "https://github.com/KunAgent/Kun.git"
+    "url": "https://github.com/MIMO-Work/MIMO-Work.git"
   }
 }

@@ -32,7 +32,7 @@ import {
   clawImInstallPollPayloadSchema,
   confirmDialogPayloadSchema,
   clawTaskFromTextPayloadSchema,
-  deepseekConfigContentSchema,
+  mimoWorkConfigContentSchema,
   desktopCommandSchema,
   defaultPathSchema,
   gitBranchPayloadSchema,
@@ -52,12 +52,12 @@ import {
   worktreePathSchema,
   runtimeRequestPayloadSchema,
   scheduleTaskFromTextPayloadSchema,
+  recommendedSkillInstallPayloadSchema,
   shellOpenExternalUrlSchema,
   skillListPayloadSchema,
   skillSaveFilePayloadSchema,
   settingsPatchSchema,
   streamIdSchema,
-  uiPluginIdPayloadSchema,
   workspaceDirectoryCreatePayloadSchema,
   workspaceClipboardImageSavePayloadSchema,
   workspaceDirectoryTargetPayloadSchema,
@@ -98,13 +98,6 @@ import {
   syncWorktreeFromMain
 } from '../services/worktree-service'
 import {
-  installUiPluginFromDirectory,
-  listUiPlugins,
-  loadUiPluginFigures,
-  removeUiPlugin
-} from '../services/ui-plugin-service'
-import { ensureBundledUiPlugins } from '../ui-plugin-bundled'
-import {
   createWorkspaceDirectory,
   createWorkspaceFile,
   deleteWorkspaceEntry,
@@ -135,6 +128,7 @@ import { authorizePrototypePath } from '../services/prototype-embed-registry'
 import { requestSpeechTranscription } from '../services/speech-to-text-service'
 import { copyWriteDocumentAsRichText, exportWriteDocument } from '../services/write-export-service'
 import { listGuiSkillRoots, listGuiSkills } from '../services/skill-service'
+import { installRecommendedSkillPackage } from '../services/recommended-skill-install-service'
 
 type GuiUpdaterModule = typeof import('../gui-updater')
 
@@ -656,6 +650,15 @@ export function registerAppIpcHandlers(options: RegisterAppIpcHandlersOptions): 
     }
   )
 
+  ipcMain.handle('skill:install-recommended', async (_, payload: unknown) => {
+    const request = parseIpcPayload(
+      'skill:install-recommended',
+      recommendedSkillInstallPayloadSchema,
+      payload
+    )
+    return installRecommendedSkillPackage(request.id)
+  })
+
   ipcMain.handle('skill:list', async (_, payload: unknown) => {
     const request = parseIpcPayload('skill:list', skillListPayloadSchema, payload)
     const settings = await store.load()
@@ -685,44 +688,6 @@ export function registerAppIpcHandlers(options: RegisterAppIpcHandlersOptions): 
     }
   })
 
-  ipcMain.handle('ui-plugin:list', async () => {
-    const kunHomeDir = join(homedir(), '.kun')
-    await ensureBundledUiPlugins(kunHomeDir)
-    return { plugins: await listUiPlugins(kunHomeDir) }
-  })
-
-  ipcMain.handle('ui-plugin:install', async () => {
-    const mainWindow = getMainWindow()
-    const options: Electron.OpenDialogOptions = {
-      title: 'Select a UI plugin folder',
-      properties: ['openDirectory', 'dontAddToRecent']
-    }
-    const picked = mainWindow
-      ? await dialog.showOpenDialog(mainWindow, options)
-      : await dialog.showOpenDialog(options)
-    const sourceDir = picked.filePaths[0]
-    if (picked.canceled || !sourceDir) {
-      return { canceled: true as const }
-    }
-    const result = await installUiPluginFromDirectory(join(homedir(), '.kun'), sourceDir)
-    if (!result.ok) {
-      return { canceled: false as const, ok: false as const, errors: result.errors }
-    }
-    return { canceled: false as const, ok: true as const, plugin: result.plugin }
-  })
-
-  ipcMain.handle('ui-plugin:remove', async (_, payload: unknown) => {
-    const request = parseIpcPayload('ui-plugin:remove', uiPluginIdPayloadSchema, payload)
-    return { ok: await removeUiPlugin(join(homedir(), '.kun'), request.id) }
-  })
-
-  ipcMain.handle('ui-plugin:load', async (_, payload: unknown) => {
-    const request = parseIpcPayload('ui-plugin:load', uiPluginIdPayloadSchema, payload)
-    const kunHomeDir = join(homedir(), '.kun')
-    await ensureBundledUiPlugins(kunHomeDir)
-    return loadUiPluginFigures(kunHomeDir, request.id)
-  })
-
   ipcMain.handle('kun:config:read', async () => {
     const path = resolveKunConfigPath()
     try {
@@ -739,7 +704,7 @@ export function registerAppIpcHandlers(options: RegisterAppIpcHandlersOptions): 
   ipcMain.handle('kun:config:write', async (_, content: unknown) => {
     const validatedContent = parseIpcPayload(
       'kun:config:write',
-      deepseekConfigContentSchema,
+      mimoWorkConfigContentSchema,
       content
     )
     const path = resolveKunConfigPath()

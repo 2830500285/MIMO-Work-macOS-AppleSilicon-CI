@@ -14,8 +14,8 @@ export function DevPreviewLaunchCard({
 }): ReactElement {
   const { t } = useTranslation('common')
   return (
-    <div className="flex min-h-[72px] w-full items-center gap-3 rounded-[18px] border border-ds-border-muted bg-white/[0.78] px-4 py-3 shadow-[0_12px_34px_rgba(20,47,95,0.07)] backdrop-blur-xl dark:border-white/[0.09] dark:bg-white/[0.045] dark:shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-sky-400/20 bg-sky-500/10 text-sky-500 dark:border-sky-300/20 dark:bg-sky-300/10 dark:text-sky-300">
+    <div className="flex min-h-[72px] w-full items-center gap-3 rounded-[8px] border border-ds-border-muted bg-white/[0.78] px-4 py-3 shadow-[0_12px_34px_rgba(31,35,41,0.07)] backdrop-blur-xl dark:border-white/[0.09] dark:bg-white/[0.045] dark:shadow-[0_18px_48px_rgba(0,0,0,0.18)]">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px] border border-[rgba(251,129,71,0.24)] bg-[var(--ds-accent-soft)] text-ds-ink dark:border-[rgba(251,129,71,0.28)] dark:bg-[rgba(251,129,71,0.16)] dark:text-[#ffad7f]">
         <Globe2 className="h-5 w-5" strokeWidth={1.9} />
       </div>
       <div className="min-w-0 flex-1">
@@ -41,7 +41,7 @@ export function DevPreviewLaunchCard({
         <button
           type="button"
           onClick={onOpen}
-          className="inline-flex h-9 shrink-0 items-center justify-center rounded-full bg-accent px-4 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(59,130,216,0.22)] transition hover:brightness-110"
+          className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg bg-black px-4 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(31,35,41,0.18)] transition hover:bg-[#1f2329] dark:bg-[var(--ds-mimo-orange)] dark:text-black"
           title={t('devPreviewCardOpen')}
         >
           {t('devPreviewCardOpen')}

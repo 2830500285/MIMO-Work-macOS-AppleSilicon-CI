@@ -244,14 +244,25 @@ export function buildScheduleRuntimePrompt(
 
 export const CODE_MANAGED_INSTRUCTIONS_HEADING = '[Code managed instructions]'
 export const CODE_CURRENT_USER_REQUEST_HEADING = '[Current user request]'
+export const CODE_MIMO_WORK_EXECUTION_GUARDRAILS = [
+  'MIMO Work execution guardrails:',
+  '- Keep visible progress moving: before long file or document generation, briefly state the current step.',
+  '- For artifacts such as .docx, .pdf, charts, datasets, or large scripts, prefer bash/python/node to create and verify files atomically. Do not use the write tool for large generated files or scripts.',
+  '- Do not install large system runtimes or global packages such as Homebrew packages, .NET, or Pandoc just to generate documents. Use Python stdlib plus existing/small pip packages such as python-docx, matplotlib, numpy, pandas, and scipy.',
+  '- If a write/file tool call would have empty arguments, do not call it. Switch to bash and create the file there.',
+  '- The bash tool does not support workdir/cwd fields. Put `cd "<workspace>" && ...` inside the command string or use absolute paths.',
+  '- Current user request and current-turn answers override old memories, checkpoint files, and previous sessions. Do not treat prior memory/checkpoint content as confirmation for missing requirements.',
+  '- If the user asked you to confirm missing requirements, ask once; after the answer, continue the original task without repeating the same question.'
+].join('\n')
 
 export function buildCodeRuntimePrompt(
   settings: Pick<AppSettingsV1, 'codePromptPrefix'>,
   prompt: string
 ): string {
   const prefix = (settings.codePromptPrefix ?? '').trim()
-  if (!prefix) return prompt
-  return `${CODE_MANAGED_INSTRUCTIONS_HEADING}\n\n${prefix}\n\n---\n${CODE_CURRENT_USER_REQUEST_HEADING}\n${prompt}`
+  const instructions = [CODE_MIMO_WORK_EXECUTION_GUARDRAILS]
+  if (prefix) instructions.push(prefix)
+  return `${CODE_MANAGED_INSTRUCTIONS_HEADING}\n\n${instructions.join('\n\n')}\n\n---\n${CODE_CURRENT_USER_REQUEST_HEADING}\n${prompt}`
 }
 
 export function unwrapClawRuntimePromptForDisplay(text: string): string {

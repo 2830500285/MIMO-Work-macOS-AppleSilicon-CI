@@ -238,7 +238,7 @@ function verifyP12Certificate(p12Path, p12Password, expectedCnPrefix) {
 
 function verifyP12Import(p12Path, p12Password, expectedCnPrefix, tempRoot) {
   const keychainPath = join(tempRoot, 'verify-signing.keychain-db')
-  const keychainPassword = 'deepseek-gui-verify'
+  const keychainPassword = 'mimo-work-verify'
 
   try {
     run('security', ['create-keychain', '-p', keychainPassword, keychainPath])
@@ -325,7 +325,7 @@ function main() {
   const shouldCheckNotary = args['check-notary'] === 'true'
   ;[p12Base64, p12Password, p8Base64, keyId, issuer].forEach(rememberSensitiveValue)
 
-  const tempRoot = mkdtempSync(join(tmpdir(), 'deepseek-gui-verify-'))
+  const tempRoot = mkdtempSync(join(tmpdir(), 'mimo-work-verify-'))
   let p8Path = p8PathArg
 
   try {

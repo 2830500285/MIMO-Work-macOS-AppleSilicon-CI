@@ -101,7 +101,7 @@ function createRequest(): WriteInlineCompletionRequest {
       local: 'This is',
       documentTail: '# Draft This is'
     },
-    model: 'deepseek-v4-flash'
+    model: 'mimo-v4-flash'
   }
 }
 
@@ -112,7 +112,7 @@ afterEach(() => {
 })
 
 describe('requestWriteInlineCompletion', () => {
-  it('calls DeepSeek FIM completions directly instead of chat completions', async () => {
+  it('calls MIMO FIM completions directly instead of chat completions', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ choices: [{ text: ' only a test' }] }), {
         status: 200,
@@ -130,19 +130,19 @@ describe('requestWriteInlineCompletion', () => {
         kind: 'short',
         text: ' only a test'
       },
-      model: 'deepseek-v4-flash',
+      model: 'mimo-v4-flash',
       mode: 'short'
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe('https://api.deepseek.com/beta/completions')
+    expect(url).toBe('https://api.mimo.com/beta/completions')
     expect(url).not.toContain('/chat/completions')
     expect(init.headers).toMatchObject({
       Authorization: 'Bearer sk-test'
     })
     const body = JSON.parse(String(init.body)) as { prompt: string; suffix: string; max_tokens: number }
     expect(body).toMatchObject({
-      model: 'deepseek-v4-flash',
+      model: 'mimo-v4-flash',
       suffix: ' a test.',
       max_tokens: 64
     })
@@ -158,11 +158,11 @@ describe('requestWriteInlineCompletion', () => {
       ok: true,
       completion: ' only a test',
       mode: 'short',
-      model: 'deepseek-v4-flash'
+      model: 'mimo-v4-flash'
     })
   })
 
-  it('does not route lookalike DeepSeek hosts to FIM completions', async () => {
+  it('does not route lookalike MIMO hosts to FIM completions', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({
         choices: [{
@@ -178,7 +178,7 @@ describe('requestWriteInlineCompletion', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     const result = await requestWriteInlineCompletion(
-      createSettings({ baseUrl: 'https://deepseek.com.evil.test/beta' }),
+      createSettings({ baseUrl: 'https://mimo.com.evil.test/beta' }),
       createRequest()
     )
 
@@ -187,7 +187,7 @@ describe('requestWriteInlineCompletion', () => {
       completion: ' from chat'
     })
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe('https://deepseek.com.evil.test/v1/chat/completions')
+    expect(url).toBe('https://mimo.com.evil.test/v1/chat/completions')
     const body = JSON.parse(String(init.body)) as { messages?: unknown[]; prompt?: string }
     expect(body.messages).toBeDefined()
     expect(body.prompt).toBeUndefined()
@@ -245,17 +245,17 @@ describe('requestWriteInlineCompletion', () => {
 
     const request = {
       ...createRequest(),
-      model: 'deepseek-v4-pro'
+      model: 'mimo-v4-pro'
     }
     const result = await requestWriteInlineCompletion(createSettings(), request)
 
     expect(result).toMatchObject({
       ok: true,
-      model: 'deepseek-v4-pro'
+      model: 'mimo-v4-pro'
     })
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(JSON.parse(String(init.body))).toMatchObject({
-      model: 'deepseek-v4-pro'
+      model: 'mimo-v4-pro'
     })
   })
 
@@ -270,9 +270,9 @@ describe('requestWriteInlineCompletion', () => {
 
     const settings = createSettings()
     settings.provider.baseUrl = 'https://general.example/v1'
-    settings.agents.kun.model = 'deepseek-chat'
-    settings.write.inlineCompletion.baseUrl = 'https://api.deepseek.com/beta'
-    settings.write.inlineCompletion.model = 'deepseek-v4-flash'
+    settings.agents.kun.model = 'mimo-chat'
+    settings.write.inlineCompletion.baseUrl = 'https://api.mimo.com/beta'
+    settings.write.inlineCompletion.model = 'mimo-v4-flash'
 
     const result = await requestWriteInlineCompletion(settings, {
       ...createRequest(),
@@ -281,13 +281,13 @@ describe('requestWriteInlineCompletion', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      model: 'deepseek-chat'
+      model: 'mimo-chat'
     })
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toContain('https://general.example')
     expect(url).toContain('/completions')
     expect(JSON.parse(String(init.body))).toMatchObject({
-      model: 'deepseek-chat'
+      model: 'mimo-chat'
     })
   })
 
@@ -361,10 +361,10 @@ describe('requestWriteInlineCompletion', () => {
 
     const settings = createSettings({
       inheritModel: false,
-      model: 'deepseek-v4-flash'
+      model: 'mimo-v4-flash'
     })
     settings.provider.baseUrl = 'https://general.example/v1'
-    settings.agents.kun.model = 'deepseek-chat'
+    settings.agents.kun.model = 'mimo-chat'
 
     const result = await requestWriteInlineCompletion(settings, {
       ...createRequest(),
@@ -373,12 +373,12 @@ describe('requestWriteInlineCompletion', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      model: 'deepseek-v4-flash'
+      model: 'mimo-v4-flash'
     })
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toContain('https://general.example')
     expect(JSON.parse(String(init.body))).toMatchObject({
-      model: 'deepseek-v4-flash'
+      model: 'mimo-v4-flash'
     })
   })
 
@@ -527,7 +527,7 @@ describe('requestWriteInlineCompletion', () => {
         startColumn: 1,
         endLine: 3,
         endColumn: 38,
-        original: 'DeepSeek GUI keeps text editing local.'
+        original: 'MIMO Work keeps text editing local.'
       },
       recentEdits: [{
         source: 'user' as const,
@@ -535,7 +535,7 @@ describe('requestWriteInlineCompletion', () => {
         filePath: '/tmp/workspace/draft.md',
         from: 9,
         to: 21,
-        deletedText: 'DeepSeek GUI',
+        deletedText: 'MIMO Work',
         insertedText: 'Write mode',
         beforeContext: '',
         afterContext: ' keeps text editing local.'
@@ -552,12 +552,12 @@ describe('requestWriteInlineCompletion', () => {
         replacement: 'Write mode keeps text editing local.',
         from: 9,
         to: 47,
-        original: 'DeepSeek GUI keeps text editing local.',
+        original: 'MIMO Work keeps text editing local.',
         scopeKind: 'paragraph'
       }
     })
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe('https://api.deepseek.com/v1/chat/completions')
+    expect(url).toBe('https://api.mimo.com/v1/chat/completions')
     const body = JSON.parse(String(init.body)) as {
       messages: Array<{ role: string; content: string }>
       prompt?: string
@@ -600,7 +600,7 @@ describe('requestWriteInlineCompletion', () => {
         startColumn: 1,
         endLine: 3,
         endColumn: 38,
-        original: 'DeepSeek GUI keeps text editing local.'
+        original: 'MIMO Work keeps text editing local.'
       }
     }
 
@@ -612,7 +612,7 @@ describe('requestWriteInlineCompletion', () => {
       completion: 'Write mode keeps text editing local.'
     })
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe('https://api.deepseek.com/v1/chat/completions')
+    expect(url).toBe('https://api.mimo.com/v1/chat/completions')
     const body = JSON.parse(String(init.body)) as {
       messages: Array<{ role: string; content: string }>
       suffix?: string
@@ -625,7 +625,7 @@ describe('requestWriteInlineCompletion', () => {
     expect(body.messages[1].content).toContain('<<<SUFFIX')
   })
 
-  it('does not send DeepSeek thinking controls for custom chat completion models', async () => {
+  it('does not send MIMO thinking controls for custom chat completion models', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({
         choices: [{
@@ -652,7 +652,7 @@ describe('requestWriteInlineCompletion', () => {
         startColumn: 1,
         endLine: 3,
         endColumn: 38,
-        original: 'DeepSeek GUI keeps text editing local.'
+        original: 'MIMO Work keeps text editing local.'
       }
     }
 
@@ -695,7 +695,7 @@ describe('parseWriteInlineAction', () => {
       editTarget: {
         from: 9,
         to: 21,
-        original: 'DeepSeek GUI',
+        original: 'MIMO Work',
         scopeKind: 'selection'
       }
     })).toEqual({
@@ -703,7 +703,7 @@ describe('parseWriteInlineAction', () => {
       replacement: 'Write mode',
       from: 9,
       to: 21,
-      original: 'DeepSeek GUI',
+      original: 'MIMO Work',
       scopeKind: 'selection'
     })
   })

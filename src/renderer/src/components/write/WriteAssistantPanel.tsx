@@ -217,7 +217,7 @@ export function WriteAssistantPanel({
                 onClick={() => setAssistantPrompt(t('writeAssistantSummarizePrompt', { file: activeFileLabel }))}
                 className="flex items-center gap-3 rounded-2xl border border-ds-border bg-ds-card px-3 py-3 text-left transition hover:border-accent/25 hover:bg-ds-hover"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--ds-accent-soft)] text-ds-ink dark:bg-[rgba(251,129,71,0.16)] dark:text-[#ffad7f]">
                   <FileText className="h-4 w-4" strokeWidth={1.9} />
                 </span>
                 <span className="min-w-0">

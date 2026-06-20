@@ -16,11 +16,11 @@ describe('buildInlineCompletionRequestContext', () => {
     const doc = [
       '# Draft',
       '',
-      'Hi! Let me introduce a new feature in DeepSeek gui. It includes text completion and writing tools.'
+      'Hi! Let me introduce a new feature in MIMO Work. It includes text completion and writing tools.'
     ].join('\n')
 
     const context = buildInlineCompletionRequestContext(
-      stateAt(doc, 'DeepSeek gui'),
+      stateAt(doc, 'MIMO Work'),
       { filePath: '/tmp/workspace/draft.md' }
     )
 
@@ -35,10 +35,10 @@ describe('buildInlineCompletionRequestContext', () => {
   })
 
   it('uses the previous word when the cursor has advanced past trailing whitespace', () => {
-    const doc = 'DeepSeek tui can write papers '
+    const doc = 'MIMO tui can write papers '
 
     const context = buildInlineCompletionRequestContext(
-      stateAt(doc, 'DeepSeek tui can write papers '),
+      stateAt(doc, 'MIMO tui can write papers '),
       { filePath: '/tmp/workspace/draft.md' }
     )
 

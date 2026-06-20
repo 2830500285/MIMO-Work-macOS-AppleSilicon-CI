@@ -27,9 +27,8 @@ export const PROVIDER_MODEL_REASONING_EFFORT_CHOICES: ModelReasoningEffort[] =
   ['off', 'low', 'medium', 'high', 'max']
 
 export const PROVIDER_MODEL_REASONING_PROTOCOLS: ModelReasoningRequestProtocol[] = [
-  'deepseek-chat-completions',
-  'glm-chat-completions',
   'mimo-chat-completions',
+  'glm-chat-completions',
   'openai-responses',
   'anthropic-thinking',
   'none'
@@ -42,7 +41,7 @@ export type ProviderModelForm = {
   /** Empty when adding; the edited model id otherwise (rename removes this entry). */
   originalModelId: string
   modelId: string
-  /** null means "not specified" — Kun falls back to its built-in default. */
+  /** null means "not specified" — MIMO Work falls back to its built-in default. */
   contextWindowTokens: number | null
   visionInput: boolean
   supportsToolCalling: boolean
@@ -82,7 +81,7 @@ export function defaultReasoningProtocolForProvider(
     host.includes('z.ai')
   ) return 'glm-chat-completions'
   if (provider.id.startsWith('xiaomi') || host.includes('xiaomimimo')) return 'mimo-chat-completions'
-  return 'deepseek-chat-completions'
+  return 'mimo-chat-completions'
 }
 
 export function newProviderModelForm(

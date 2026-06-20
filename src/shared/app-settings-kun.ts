@@ -1,10 +1,11 @@
 import {
   DEFAULT_APPROVAL_POLICY,
-  DEFAULT_DEEPSEEK_BASE_URL,
   DEFAULT_IMAGE_GENERATION_PROTOCOL,
   DEFAULT_KUN_DATA_DIR,
   DEFAULT_KUN_MODEL,
   DEFAULT_KUN_PORT,
+  DEFAULT_MIMO_BASE_URL,
+  MANAGED_RUNTIME_IDS,
   DEFAULT_MUSIC_GENERATION_PROTOCOL,
   DEFAULT_MODEL_ENDPOINT_FORMAT,
   DEFAULT_SANDBOX_MODE,
@@ -37,6 +38,8 @@ import {
   type ModelProviderModelProfileV1,
   type ModelProviderReasoningCapabilityV1,
   type ModelProviderSettingsV1,
+  type MimoCredentialSettingsV1,
+  type ManagedRuntimeId,
   type SpeechToTextProtocol,
   type TextToSpeechProtocol,
   type VideoGenerationProtocol,
@@ -44,12 +47,15 @@ import {
   type SandboxMode
 } from './app-settings-types'
 import {
+  defaultMimoCredentialSettings,
+  normalizeMimoCredentialSettings
+} from './mimo-credentials'
+import { compactStrings } from './app-settings-normalizers'
+import {
   normalizeModelProviderSettings,
   resolveKunRuntimeSettings
 } from './app-settings-provider'
 
-const LEGACY_COREAGENT_DATA_DIR = '~/.deepseekgui/coreagent'
-const LEGACY_KUN_DEFAULT_MODEL = 'deepseek-chat'
 const LEGACY_LOCAL_HTTP_DEFAULT_PORT = 7878
 
 type LegacyLocalHttpRuntimeSettingsV1 = {
@@ -78,9 +84,8 @@ type LegacyReasoningRuntimeSettingsV1 = {
 }
 
 /**
- * Kun runtime settings. Mirrors the `kun serve` CLI
- * options. It is the only active agent settings object the GUI
- * stores after legacy settings have been migrated.
+ * MIMO Work runtime settings. The exported names remain stable for
+ * the desktop shell ABI while the managed runtime is MiMo-Code.
  */
 function legacyLocalHttpRuntimeDefaults(port = 7878): LegacyLocalHttpRuntimeSettingsV1 {
   return {
@@ -88,7 +93,7 @@ function legacyLocalHttpRuntimeDefaults(port = 7878): LegacyLocalHttpRuntimeSett
     port,
     autoStart: true,
     apiKey: '',
-    baseUrl: DEFAULT_DEEPSEEK_BASE_URL,
+    baseUrl: DEFAULT_MIMO_BASE_URL,
     runtimeToken: '',
     extraCorsOrigins: ['http://localhost:5173', 'http://127.0.0.1:5173'],
     approvalPolicy: DEFAULT_APPROVAL_POLICY,
@@ -101,8 +106,8 @@ function legacyReasoningRuntimeDefaults(): LegacyReasoningRuntimeSettingsV1 {
     binaryPath: '',
     autoStart: true,
     apiKey: '',
-    baseUrl: DEFAULT_DEEPSEEK_BASE_URL,
-    model: LEGACY_KUN_DEFAULT_MODEL,
+    baseUrl: DEFAULT_MIMO_BASE_URL,
+    model: DEFAULT_KUN_MODEL,
     reasoningEffort: 'medium',
     editMode: 'auto'
   }
@@ -112,6 +117,7 @@ export function defaultKunRuntimeSettings(
   port = DEFAULT_KUN_PORT
 ): KunRuntimeSettingsV1 {
   return {
+    runtimeEngine: 'mimo-work',
     binaryPath: '',
     port,
     autoStart: true,
@@ -137,13 +143,15 @@ export function defaultKunRuntimeSettings(
     musicGeneration: defaultKunMusicGenerationSettings(),
     videoGeneration: defaultKunVideoGenerationSettings(),
     modelProfiles: {},
-    memoryEnabled: false
+    memoryEnabled: false,
+    knowledgeBaseDirs: [],
+    mimo: defaultMimoCredentialSettings()
   }
 }
 
 export function defaultKunImageGenerationSettings(): KunImageGenerationSettingsV1 {
   return {
-    enabled: false,
+    enabled: true,
     providerId: '',
     protocol: DEFAULT_IMAGE_GENERATION_PROTOCOL,
     baseUrl: '',
@@ -156,7 +164,7 @@ export function defaultKunImageGenerationSettings(): KunImageGenerationSettingsV
 
 export function defaultKunSpeechToTextSettings(): KunSpeechToTextSettingsV1 {
   return {
-    enabled: false,
+    enabled: true,
     providerId: '',
     protocol: DEFAULT_SPEECH_TO_TEXT_PROTOCOL,
     baseUrl: '',
@@ -169,7 +177,7 @@ export function defaultKunSpeechToTextSettings(): KunSpeechToTextSettingsV1 {
 
 export function defaultKunTextToSpeechSettings(): KunTextToSpeechSettingsV1 {
   return {
-    enabled: false,
+    enabled: true,
     providerId: '',
     protocol: DEFAULT_TEXT_TO_SPEECH_PROTOCOL,
     baseUrl: '',
@@ -183,7 +191,7 @@ export function defaultKunTextToSpeechSettings(): KunTextToSpeechSettingsV1 {
 
 export function defaultKunMusicGenerationSettings(): KunMusicGenerationSettingsV1 {
   return {
-    enabled: false,
+    enabled: true,
     providerId: '',
     protocol: DEFAULT_MUSIC_GENERATION_PROTOCOL,
     baseUrl: '',
@@ -196,7 +204,7 @@ export function defaultKunMusicGenerationSettings(): KunMusicGenerationSettingsV
 
 export function defaultKunVideoGenerationSettings(): KunVideoGenerationSettingsV1 {
   return {
-    enabled: false,
+    enabled: true,
     providerId: '',
     protocol: DEFAULT_VIDEO_GENERATION_PROTOCOL,
     baseUrl: '',
@@ -373,9 +381,14 @@ export function mergeKunRuntimeSettings(
       : {})
   })
   const nextModelProfiles = normalizeKunModelProfiles(current.modelProfiles, patch?.modelProfiles)
+  const nextMimo = normalizeMimoCredentialSettings({
+    ...current.mimo,
+    ...(patch?.mimo ?? {})
+  } as Partial<MimoCredentialSettingsV1>)
   return {
     ...current,
     ...(patch ?? {}),
+    runtimeEngine: normalizeManagedRuntimeId(patch?.runtimeEngine ?? current.runtimeEngine),
     tokenEconomyMode: nextTokenEconomy.enabled,
     tokenEconomy: nextTokenEconomy,
     mcpSearch: nextMcpSearch,
@@ -388,8 +401,16 @@ export function mergeKunRuntimeSettings(
     musicGeneration: nextMusicGeneration,
     videoGeneration: nextVideoGeneration,
     modelProfiles: nextModelProfiles,
-    memoryEnabled: patch?.memoryEnabled ?? current.memoryEnabled ?? false
+    memoryEnabled: patch?.memoryEnabled ?? current.memoryEnabled ?? false,
+    knowledgeBaseDirs: compactStrings(patch?.knowledgeBaseDirs ?? current.knowledgeBaseDirs),
+    mimo: nextMimo
   }
+}
+
+function normalizeManagedRuntimeId(value: unknown): ManagedRuntimeId {
+  return MANAGED_RUNTIME_IDS.includes(value as ManagedRuntimeId)
+    ? value as ManagedRuntimeId
+    : 'mimo-work'
 }
 
 function normalizeKunImageGenerationSettings(
@@ -398,7 +419,7 @@ function normalizeKunImageGenerationSettings(
   const defaults = defaultKunImageGenerationSettings()
   const defaultSize = typeof input?.defaultSize === 'string' ? input.defaultSize.trim() : ''
   return {
-    enabled: input?.enabled === true,
+    enabled: true,
     providerId: typeof input?.providerId === 'string' ? input.providerId.trim() : defaults.providerId,
     protocol: normalizeKunImageGenerationProtocol(input?.protocol),
     baseUrl: typeof input?.baseUrl === 'string' ? input.baseUrl.trim() : defaults.baseUrl,
@@ -410,7 +431,8 @@ function normalizeKunImageGenerationSettings(
 }
 
 function normalizeKunImageGenerationProtocol(value: unknown): ImageGenerationProtocol {
-  return value === 'minimax-image' ? 'minimax-image' : DEFAULT_IMAGE_GENERATION_PROTOCOL
+  void value
+  return DEFAULT_IMAGE_GENERATION_PROTOCOL
 }
 
 function normalizeKunSpeechToTextSettings(
@@ -418,7 +440,7 @@ function normalizeKunSpeechToTextSettings(
 ): KunSpeechToTextSettingsV1 {
   const defaults = defaultKunSpeechToTextSettings()
   return {
-    enabled: input?.enabled === true,
+    enabled: true,
     providerId: typeof input?.providerId === 'string' ? input.providerId.trim() : defaults.providerId,
     protocol: normalizeKunSpeechToTextProtocol(input?.protocol),
     baseUrl: typeof input?.baseUrl === 'string' ? input.baseUrl.trim() : defaults.baseUrl,
@@ -438,7 +460,7 @@ function normalizeKunTextToSpeechSettings(
 ): KunTextToSpeechSettingsV1 {
   const defaults = defaultKunTextToSpeechSettings()
   return {
-    enabled: input?.enabled === true,
+    enabled: true,
     providerId: typeof input?.providerId === 'string' ? input.providerId.trim() : defaults.providerId,
     protocol: normalizeKunTextToSpeechProtocol(input?.protocol),
     baseUrl: typeof input?.baseUrl === 'string' ? input.baseUrl.trim() : defaults.baseUrl,
@@ -451,7 +473,7 @@ function normalizeKunTextToSpeechSettings(
 }
 
 function normalizeKunTextToSpeechProtocol(value: unknown): TextToSpeechProtocol {
-  return value === 'minimax-t2a' || value === 'mimo-tts'
+  return value === 'mimo-tts'
     ? value
     : DEFAULT_TEXT_TO_SPEECH_PROTOCOL
 }
@@ -461,7 +483,7 @@ function normalizeKunMusicGenerationSettings(
 ): KunMusicGenerationSettingsV1 {
   const defaults = defaultKunMusicGenerationSettings()
   return {
-    enabled: input?.enabled === true,
+    enabled: true,
     providerId: typeof input?.providerId === 'string' ? input.providerId.trim() : defaults.providerId,
     protocol: normalizeKunMusicGenerationProtocol(input?.protocol),
     baseUrl: typeof input?.baseUrl === 'string' ? input.baseUrl.trim() : defaults.baseUrl,
@@ -473,7 +495,7 @@ function normalizeKunMusicGenerationSettings(
 }
 
 function normalizeKunMusicGenerationProtocol(value: unknown): MusicGenerationProtocol {
-  return value === 'minimax-music' ? 'minimax-music' : DEFAULT_MUSIC_GENERATION_PROTOCOL
+  return value === 'custom-music' ? 'custom-music' : DEFAULT_MUSIC_GENERATION_PROTOCOL
 }
 
 function normalizeKunVideoGenerationSettings(
@@ -481,7 +503,7 @@ function normalizeKunVideoGenerationSettings(
 ): KunVideoGenerationSettingsV1 {
   const defaults = defaultKunVideoGenerationSettings()
   return {
-    enabled: input?.enabled === true,
+    enabled: true,
     providerId: typeof input?.providerId === 'string' ? input.providerId.trim() : defaults.providerId,
     protocol: normalizeKunVideoGenerationProtocol(input?.protocol),
     baseUrl: typeof input?.baseUrl === 'string' ? input.baseUrl.trim() : defaults.baseUrl,
@@ -497,7 +519,7 @@ function normalizeKunVideoGenerationSettings(
 }
 
 function normalizeKunVideoGenerationProtocol(value: unknown): VideoGenerationProtocol {
-  return value === 'minimax-video' ? 'minimax-video' : DEFAULT_VIDEO_GENERATION_PROTOCOL
+  return value === 'custom-video' ? 'custom-video' : DEFAULT_VIDEO_GENERATION_PROTOCOL
 }
 
 function normalizeAudioFormat(value: unknown, fallback: string): string {
@@ -816,7 +838,6 @@ type LegacyAgentsSettingsShape = {
 type LegacyAppSettingsShape = Partial<Omit<AppSettingsV1, 'agents' | 'provider'>> & {
   agents?: LegacyAgentsSettingsShape
   provider?: Partial<ModelProviderSettingsV1>
-  deepseek?: Partial<LegacyLocalHttpRuntimeSettingsV1>
   /** Legacy single-provider discriminator. Read only inside migration. */
   agentProvider?: unknown
 }
@@ -828,12 +849,7 @@ function nonEmptyStringOrFallback(value: unknown, fallback: string): string {
 function upgradeLegacyKunDefaultDataDir(value: unknown): string {
   if (typeof value !== 'string') return DEFAULT_KUN_DATA_DIR
   const trimmed = value.trim()
-  const normalized = trimmed.replace(/\\/g, '/').toLowerCase()
-  if (
-    !trimmed ||
-    normalized === LEGACY_COREAGENT_DATA_DIR ||
-    normalized.endsWith('/.deepseekgui/coreagent')
-  ) {
+  if (!trimmed) {
     return DEFAULT_KUN_DATA_DIR
   }
   return trimmed
@@ -841,7 +857,7 @@ function upgradeLegacyKunDefaultDataDir(value: unknown): string {
 
 function upgradeLegacyKunDefaultModel(value: unknown, fallback: string): string {
   const model = nonEmptyStringOrFallback(value, fallback).trim()
-  return model === LEGACY_KUN_DEFAULT_MODEL ? DEFAULT_KUN_MODEL : model
+  return model || DEFAULT_KUN_MODEL
 }
 
 function upgradeLegacyKunDefaultPort(value: unknown, fallback: number): number {
@@ -854,11 +870,9 @@ export function migrateLegacyAppSettings(parsed: LegacyAppSettingsShape): Partia
   const hasProviderSettings = typeof parsed.provider === 'object' && parsed.provider !== null
   const defaults = legacyLocalHttpRuntimeDefaults()
   const kunDefaults = defaultKunRuntimeSettings()
-  const legacyDeepseek = parsed.deepseek ?? {}
   const legacyLocalHttp = {
     ...defaults,
-    ...(parsed.agents?.codewhale ?? {}),
-    ...legacyDeepseek
+    ...(parsed.agents?.codewhale ?? {})
   }
   const legacyReasoning = {
     ...legacyReasoningRuntimeDefaults(),
@@ -916,12 +930,8 @@ export function migrateLegacyAppSettings(parsed: LegacyAppSettingsShape): Partia
     musicGeneration: normalizeKunMusicGenerationSettings(explicitKun.musicGeneration),
     videoGeneration: normalizeKunVideoGenerationSettings(explicitKun.videoGeneration)
   }
-  // Strip the legacy `agentProvider` discriminator and the legacy
-  // per-provider settings from the surfaced migration result. The
-  // runtime now has a single agent (Kun) and we no longer
-  // round-trip the legacy value into the new settings shape.
-  const { deepseek: _legacyDeepseek, agents: _agents, agentProvider: _agentProvider, ...rest } = parsed
-  void _legacyDeepseek
+  // Strip old multi-agent discriminators from the surfaced settings.
+  const { agents: _agents, agentProvider: _agentProvider, ...rest } = parsed
   void _agents
   void _agentProvider
   return {

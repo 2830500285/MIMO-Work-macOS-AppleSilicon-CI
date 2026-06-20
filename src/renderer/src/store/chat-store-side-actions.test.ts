@@ -66,7 +66,7 @@ class FakeProvider implements AgentProvider {
       id: `side_${threadId}`,
       title: options?.title ?? `${threadId} · side`,
       updatedAt: '2026-06-02T00:00:00.000Z',
-      model: 'deepseek-chat',
+      model: 'mimo-chat',
       mode: 'agent',
       workspace: '/tmp',
       status: 'idle',
@@ -116,7 +116,7 @@ function buildHarness(overrides: Partial<ChatState> = {}): Harness {
         id: 'thr_main',
         title: 'Parent',
         updatedAt: '2026-06-02T00:00:00.000Z',
-        model: 'deepseek-chat',
+        model: 'mimo-chat',
         mode: 'agent',
         status: 'idle'
       }
@@ -139,8 +139,8 @@ function buildHarness(overrides: Partial<ChatState> = {}): Harness {
     turnReasoningFirstAtByUserId: {},
     turnReasoningLastAtByUserId: {},
     inspectorSelectedId: null,
-    composerModel: 'deepseek-chat',
-    composerPickList: ['deepseek-chat'],
+    composerModel: 'mimo-chat',
+    composerPickList: ['mimo-chat'],
     queuedMessages: [],
     watchTurnCompletion: {},
     unreadThreadIds: {},
@@ -281,7 +281,7 @@ describe('chat-store-side-actions', () => {
     expect(provider.sendMock).toHaveBeenCalledWith(
       'side_thr_main',
       'what is the dependency tree?',
-      expect.objectContaining({ model: 'deepseek-chat', reasoningEffort: 'max' })
+      expect.objectContaining({ model: 'mimo-chat', reasoningEffort: 'max' })
     )
     const side = state.sideConversations[id!]
     expect(side.busy).toBe(true)
@@ -302,7 +302,7 @@ describe('chat-store-side-actions', () => {
       id,
       'use less reasoning',
       expect.objectContaining({
-        model: 'deepseek-chat',
+        model: 'mimo-chat',
         reasoningEffort: 'low'
       })
     )

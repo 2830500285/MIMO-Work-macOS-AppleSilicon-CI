@@ -28,7 +28,6 @@ import {
   MODEL_ENDPOINT_FORMATS,
   MODEL_PROVIDER_PRESETS,
   TOKEN_PLAN_PROVIDER_ID_SUFFIX,
-  defaultMiniMaxMediaGenerationKunPatch,
   defaultModelProviderSettings,
   getModelProviderPreset,
   modelProviderPresetProfile,
@@ -74,8 +73,7 @@ const MODEL_ENDPOINT_FORMAT_LABEL_KEYS: Record<ModelEndpointFormat, string> = {
 }
 
 const IMAGE_GENERATION_PROTOCOL_LABEL_KEYS: Record<ImageGenerationProtocol, string> = {
-  'openai-images': 'imageGenProtocolOpenAi',
-  'minimax-image': 'imageGenProtocolMiniMax'
+  'openai-images': 'imageGenProtocolOpenAi'
 }
 
 const SPEECH_TO_TEXT_PROTOCOL_LABEL_KEYS: Record<SpeechToTextProtocol, string> = {
@@ -85,16 +83,15 @@ const SPEECH_TO_TEXT_PROTOCOL_LABEL_KEYS: Record<SpeechToTextProtocol, string> =
 
 const TEXT_TO_SPEECH_PROTOCOL_LABEL_KEYS: Record<TextToSpeechProtocol, string> = {
   'openai-speech': 'textToSpeechProtocolOpenAi',
-  'minimax-t2a': 'textToSpeechProtocolMiniMax',
   'mimo-tts': 'textToSpeechProtocolMimo'
 }
 
 const MUSIC_GENERATION_PROTOCOL_LABEL_KEYS: Record<MusicGenerationProtocol, string> = {
-  'minimax-music': 'musicGenerationProtocolMiniMax'
+  'custom-music': 'musicGenerationProtocolCustom'
 }
 
 const VIDEO_GENERATION_PROTOCOL_LABEL_KEYS: Record<VideoGenerationProtocol, string> = {
-  'minimax-video': 'videoGenerationProtocolMiniMax'
+  'custom-video': 'videoGenerationProtocolCustom'
 }
 
 export function modelProvidersSettingsPatch(input: {
@@ -104,25 +101,16 @@ export function modelProvidersSettingsPatch(input: {
   currentKun?: Partial<KunRuntimeSettingsV1>
 }): AppSettingsPatch {
   const defaultProvider = input.providers.find((item) => item.id === DEFAULT_MODEL_PROVIDER_ID)
-  const miniMaxMediaDefaults = defaultMiniMaxMediaGenerationKunPatch({
-    providers: input.providers,
-    currentKun: input.currentKun,
-    kunPatch: input.kun
-  })
   const baseKunPatch = input.kun?.providerId?.trim()
     ? { ...input.kun, apiKey: '', baseUrl: '' }
     : input.kun ?? {}
-  const kunPatch = {
-    ...baseKunPatch,
-    ...(miniMaxMediaDefaults ?? {})
-  }
   return {
     provider: {
       apiKey: defaultProvider?.apiKey ?? input.provider.apiKey,
       baseUrl: defaultProvider?.baseUrl ?? input.provider.baseUrl,
       providers: input.providers
     },
-    ...(Object.keys(kunPatch).length > 0 ? { agents: { kun: kunPatch } } : {})
+    ...(Object.keys(baseKunPatch).length > 0 ? { agents: { kun: baseKunPatch } } : {})
   }
 }
 
@@ -912,6 +900,9 @@ export function ProvidersSettingsSection({ ctx }: { ctx: Record<string, any> }):
   const activeTokenPlanRegions = activeProvider
     ? tokenPlanPresetForProfileId(activeProvider.id)?.tokenPlan?.regions ?? []
     : []
+  const canRemoveActiveProvider = Boolean(
+    activeProvider && !isDraftActive && activeProvider.id !== DEFAULT_MODEL_PROVIDER_ID
+  )
   return (
     <SettingsCard title={t('providers')}>
       <SettingRow
@@ -919,8 +910,8 @@ export function ProvidersSettingsSection({ ctx }: { ctx: Record<string, any> }):
         description={t('providersDesc')}
         wideControl
         control={
-          <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-            <div className="flex flex-col gap-2">
+          <div className="grid gap-4">
+            <div className="flex flex-wrap gap-2">
               {displayProviders.map((item) => {
                 const selected = activeProvider?.id === item.id
                 const isDraft = draftProvider?.id === item.id
@@ -932,7 +923,7 @@ export function ProvidersSettingsSection({ ctx }: { ctx: Record<string, any> }):
                     type="button"
                     aria-pressed={selected}
                     onClick={() => setSelectedProviderId(item.id)}
-                    className={`w-full rounded-xl border px-3 py-2.5 text-left transition ${
+                    className={`min-h-[72px] min-w-[220px] flex-1 basis-[220px] rounded-xl border px-3 py-2.5 text-left transition ${
                       selected
                         ? 'border-accent/60 bg-ds-main/45 ring-1 ring-accent/30'
                         : 'border-ds-border bg-ds-card hover:bg-ds-hover'
@@ -963,13 +954,13 @@ export function ProvidersSettingsSection({ ctx }: { ctx: Record<string, any> }):
                   </button>
                 )
               })}
-              <div className="relative">
+              <div className="relative min-w-[220px] flex-1 basis-[220px] sm:max-w-[260px]">
                 <button
                   type="button"
                   aria-haspopup="menu"
                   aria-expanded={addMenuOpen}
                   onClick={() => setAddMenuOpen((value) => !value)}
-                  className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-full border border-ds-border bg-ds-card px-3 text-[12.5px] font-medium text-ds-muted shadow-sm transition hover:bg-ds-hover hover:text-ds-ink"
+                  className="inline-flex min-h-[72px] w-full items-center justify-center gap-2 rounded-xl border border-ds-border bg-ds-card px-3 text-[12.5px] font-medium text-ds-muted shadow-sm transition hover:bg-ds-hover hover:text-ds-ink"
                 >
                   <Plus className="h-3.5 w-3.5" strokeWidth={1.9} />
                   {t('modelProviderAdd')}
@@ -1051,17 +1042,29 @@ export function ProvidersSettingsSection({ ctx }: { ctx: Record<string, any> }):
                       </span>
                     ) : null}
                   </div>
-                  <button
-                    type="button"
-                    disabled={probeBusy}
-                    onClick={() => void runProbe(activeProvider, 'test')}
-                    className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ds-border bg-ds-card px-3 text-[12px] font-medium text-ds-muted shadow-sm transition hover:bg-ds-hover hover:text-ds-ink disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {probeBusy && activeProbe?.mode === 'test'
-                      ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.9} />
-                      : <PlugZap className="h-3.5 w-3.5" strokeWidth={1.9} />}
-                    {t('modelProviderTestConnection')}
-                  </button>
+                  <div className="flex flex-wrap items-center gap-2">
+                    {canRemoveActiveProvider ? (
+                      <button
+                        type="button"
+                        onClick={() => void removeModelProvider(activeProvider.id)}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-full border border-red-200/70 bg-red-50 px-3 text-[12px] font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/70 dark:bg-red-950/25 dark:text-red-200 dark:hover:bg-red-950/40"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.9} />
+                        {t('modelProviderRemove')}
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      disabled={probeBusy}
+                      onClick={() => void runProbe(activeProvider, 'test')}
+                      className="inline-flex h-8 items-center gap-1.5 rounded-full border border-ds-border bg-ds-card px-3 text-[12px] font-medium text-ds-muted shadow-sm transition hover:bg-ds-hover hover:text-ds-ink disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {probeBusy && activeProbe?.mode === 'test'
+                        ? <Loader2 className="h-3.5 w-3.5 animate-spin" strokeWidth={1.9} />
+                        : <PlugZap className="h-3.5 w-3.5" strokeWidth={1.9} />}
+                      {t('modelProviderTestConnection')}
+                    </button>
+                  </div>
                 </div>
                 {probeNotice ? <InlineNoticeView notice={probeNotice} /> : null}
                 <DetailSection title={t('modelProviderSectionBasics')}>
@@ -1552,20 +1555,6 @@ export function ProvidersSettingsSection({ ctx }: { ctx: Record<string, any> }):
                           ? t('modelProviderDraftHintReady')
                           : t('modelProviderDraftHintNoKey')}
                       </span>
-                    </div>
-                  </DetailSection>
-                ) : activeProvider.id !== DEFAULT_MODEL_PROVIDER_ID ? (
-                  <DetailSection title={t('modelProviderSectionDanger')}>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => void removeModelProvider(activeProvider.id)}
-                        className="inline-flex h-9 w-fit items-center gap-2 rounded-full border border-red-200/70 bg-red-50 px-3 text-[12.5px] font-medium text-red-700 transition hover:bg-red-100 dark:border-red-900/70 dark:bg-red-950/25 dark:text-red-200 dark:hover:bg-red-950/40"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" strokeWidth={1.9} />
-                        {t('modelProviderRemove')}
-                      </button>
-                      <span className="text-[12px] text-ds-faint">{t('modelProviderDangerHint')}</span>
                     </div>
                   </DetailSection>
                 ) : null}

@@ -35,7 +35,7 @@ export function ReviewPlanCard({
   return (
     <div
       title={relativePath}
-      className="flex min-h-[64px] w-full items-center gap-3 rounded-[18px] border border-ds-border-muted bg-white/[0.78] px-4 py-3 shadow-[0_12px_34px_rgba(20,47,95,0.07)] backdrop-blur-xl dark:border-white/[0.09] dark:bg-white/[0.045]"
+      className="flex min-h-[64px] w-full items-center gap-3 rounded-[18px] border border-ds-border-muted bg-white/[0.78] px-4 py-3 shadow-[0_12px_34px_rgba(31,35,41,0.07)] backdrop-blur-xl dark:border-white/[0.09] dark:bg-white/[0.045]"
     >
       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-accent">
         <ListTodo className="h-5 w-5" strokeWidth={1.9} />
@@ -59,7 +59,7 @@ export function ReviewPlanCard({
           type="button"
           onClick={onBuild}
           disabled={busy}
-          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(59,130,216,0.22)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-accent px-4 text-[13px] font-semibold text-white shadow-[0_10px_24px_rgba(251,129,71,0.22)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Hammer className="h-3.5 w-3.5" strokeWidth={1.9} />
           {t('planBuild')}
@@ -92,7 +92,7 @@ export function ReviewSummaryCard({ review }: { review: ReviewBlock }): ReactEle
         : t('reviewCardFindings', { count: findings.length })
 
   return (
-    <section className="overflow-hidden rounded-[20px] border border-ds-border bg-ds-card/80 shadow-[0_16px_40px_rgba(86,103,136,0.08)] backdrop-blur-xl">
+    <section className="overflow-hidden rounded-[20px] border border-ds-border bg-ds-card/80 shadow-[0_16px_40px_rgba(31,35,41,0.08)] backdrop-blur-xl">
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}
@@ -211,7 +211,7 @@ export function TurnChangeSummary({
   })
 
   return (
-    <section className="ds-card-strong overflow-hidden rounded-[24px] border border-ds-border shadow-[0_16px_40px_rgba(86,103,136,0.08)]">
+    <section className="ds-card-strong overflow-hidden rounded-[24px] border border-ds-border shadow-[0_16px_40px_rgba(31,35,41,0.08)]">
       <button
         type="button"
         onClick={() => setExpanded((value) => !value)}

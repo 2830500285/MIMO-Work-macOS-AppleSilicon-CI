@@ -1,7 +1,8 @@
 const SECRET_KEY_PATTERN = /(api[-_]?key|authorization|bearer|client[-_]?secret|password|secret|token)/i
 const SECRET_TEXT_PATTERNS = [
   /\b(authorization|api[-_]?key|client[-_]?secret|password|token)\s*[:=]\s*((?:Bearer\s+)?[^\s,;]+)/gi,
-  /\bbearer\s+([^\s,;]+)/gi
+  /\bbearer\s+([^\s,;]+)/gi,
+  /\btp-[A-Za-z0-9]{20,}\b/g
 ]
 
 export const REDACTED_SECRET = '<redacted>'
@@ -29,7 +30,9 @@ function redact(value: unknown, key = ''): unknown {
 export function redactSecretText(value: string): string {
   return SECRET_TEXT_PATTERNS.reduce((current, pattern) =>
     current.replace(pattern, (match, key) =>
-      match.toLowerCase().startsWith('bearer ')
+      match.startsWith('tp-')
+        ? REDACTED_SECRET
+        : match.toLowerCase().startsWith('bearer ')
         ? `Bearer ${REDACTED_SECRET}`
         : `${key}=${REDACTED_SECRET}`
     ), value)

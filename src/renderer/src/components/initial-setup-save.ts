@@ -21,7 +21,7 @@ export type InitialSetupDraft = {
   baseUrl: string
 }
 
-/** Keyed by provider profile id (deepseek, xiaomi, xiaomi-token-plan, ...). */
+/** Keyed by provider profile id (xiaomi, xiaomi-token-plan, custom profiles, ...). */
 export type InitialSetupDrafts = Record<string, InitialSetupDraft>
 
 export type InitialSetupSelection = {
@@ -29,7 +29,8 @@ export type InitialSetupSelection = {
   mode: InitialSetupAccessMode
 }
 
-const INITIAL_SETUP_PROVIDER_PRESET_IDS = new Set(['xiaomi', 'minimax'])
+const DEFAULT_INITIAL_SETUP_PRESET_ID = 'xiaomi'
+const INITIAL_SETUP_PROVIDER_PRESET_IDS = new Set([DEFAULT_INITIAL_SETUP_PRESET_ID])
 
 export const INITIAL_SETUP_PROVIDER_PRESETS = MODEL_PROVIDER_PRESETS.filter(
   (preset) => INITIAL_SETUP_PROVIDER_PRESET_IDS.has(preset.id)
@@ -64,7 +65,7 @@ export function initialSetupDrafts(settings: AppSettingsV1): InitialSetupDrafts 
   return drafts
 }
 
-/** Card and mode to preselect: the active provider when it is one of ours, DeepSeek otherwise. */
+/** Card and mode to preselect: the active MIMO provider, Token Plan by default. */
 export function initialSetupSelection(settings: AppSettingsV1): InitialSetupSelection {
   const activeId = getKunRuntimeSettings(settings).providerId.trim()
   for (const preset of INITIAL_SETUP_PROVIDER_PRESETS) {
@@ -73,7 +74,7 @@ export function initialSetupSelection(settings: AppSettingsV1): InitialSetupSele
       return { presetId: preset.id, mode: 'token-plan' }
     }
   }
-  return { presetId: DEFAULT_MODEL_PROVIDER_ID, mode: 'api' }
+  return { presetId: DEFAULT_INITIAL_SETUP_PRESET_ID, mode: 'token-plan' }
 }
 
 export type InitialSetupAutoWirePlan = {
@@ -92,8 +93,16 @@ export function initialSetupAutoWirePlan(
   drafts: InitialSetupDrafts
 ): InitialSetupAutoWirePlan {
   const runtime = getKunRuntimeSettings(settings)
-  const speechUnconfigured = !runtime.speechToText.enabled && !runtime.speechToText.providerId.trim()
-  const imageUnconfigured = !runtime.imageGeneration.enabled && !runtime.imageGeneration.providerId.trim()
+  const speechUnconfigured =
+    !runtime.speechToText.providerId.trim() &&
+    !runtime.speechToText.baseUrl.trim() &&
+    !runtime.speechToText.apiKey.trim() &&
+    !runtime.speechToText.model.trim()
+  const imageUnconfigured =
+    !runtime.imageGeneration.providerId.trim() &&
+    !runtime.imageGeneration.baseUrl.trim() &&
+    !runtime.imageGeneration.apiKey.trim() &&
+    !runtime.imageGeneration.model.trim()
   const plan: InitialSetupAutoWirePlan = { speechProviderId: '', imageProviderId: '' }
   for (const preset of INITIAL_SETUP_PROVIDER_PRESETS) {
     const apiKeyFilled = Boolean(drafts[preset.id]?.apiKey.trim())
@@ -131,9 +140,9 @@ export function buildInitialSetupSettings(
   const provider = getModelProviderSettings(settings)
   const profiles = new Map(provider.providers.map((profile) => [profile.id, profile]))
 
-  const deepseekDraft = drafts[DEFAULT_MODEL_PROVIDER_ID]
-  const nextApiKey = deepseekDraft ? deepseekDraft.apiKey.trim() : provider.apiKey
-  const nextBaseUrl = deepseekDraft?.baseUrl.trim() ? deepseekDraft.baseUrl.trim() : provider.baseUrl
+  const defaultDraft = drafts[DEFAULT_MODEL_PROVIDER_ID]
+  const nextApiKey = defaultDraft ? defaultDraft.apiKey.trim() : provider.apiKey
+  const nextBaseUrl = defaultDraft?.baseUrl.trim() ? defaultDraft.baseUrl.trim() : provider.baseUrl
   const defaultProfile = profiles.get(DEFAULT_MODEL_PROVIDER_ID)
   if (defaultProfile) {
     profiles.set(DEFAULT_MODEL_PROVIDER_ID, {

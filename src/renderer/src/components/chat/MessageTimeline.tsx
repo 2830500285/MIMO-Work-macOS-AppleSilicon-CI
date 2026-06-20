@@ -3,7 +3,7 @@ import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ChatBlock, RuntimeConnectionStatus } from '../../agent/types'
 import { useChatStore } from '../../store/chat-store'
-import { threadHasPendingRuntimeWork } from '../../store/chat-store-runtime-helpers'
+import { threadHasActiveRuntimeWork } from '../../store/chat-store-runtime-helpers'
 import { useTimelineStores } from './use-timeline-stores'
 import { useTimelineScroll } from './use-timeline-scroll'
 import { deriveTurnSections } from './derive-turn-sections'
@@ -12,12 +12,10 @@ import { GeneratedFilesPanel, MessageBubble } from './message-timeline-bubbles'
 import { ReviewPlanCard, ReviewSummaryCard, TurnChangeSummary, WorkMetaRow } from './message-timeline-cards'
 import { ProcessSectionRow, groupProcessSections } from './message-timeline-process'
 import {
-  AnimatedWorkLogo,
-  IKUN_WORK_LOGO_VARIANT_LABEL_KEYS,
   WORK_LOGO_SWIM_MODE_LABEL_KEYS,
-  useIkunWorkLogoVariant,
   useWorkLogoSwimMode
-} from './AnimatedWorkLogo'
+} from './work-progress-mode'
+import { MimoWorkMiniMark } from './MimoWorkWordmarkHero'
 import type { UiPluginLabelKey } from '@shared/ui-plugin'
 import { useUiPluginWorkLabel } from '../../store/ui-plugin-store'
 import {
@@ -104,6 +102,98 @@ function processBlockHasError(block: ChatBlock): boolean {
   )
 }
 
+function isRequestUserInputToolBlock(block: ChatBlock): boolean {
+  if (block.kind !== 'tool') return false
+  const toolName = typeof block.meta?.toolName === 'string' ? block.meta.toolName.trim() : ''
+  return (
+    toolName === 'request_user_input' ||
+    toolName === 'user_input' ||
+    /^request_user_input\s*:/i.test(block.summary.trim())
+  )
+}
+
+function processBlockNeedsVisibleFollowUp(block: ChatBlock): boolean {
+  if (block.kind === 'user_input') return true
+  if (block.kind === 'approval' && block.status !== 'allowed') return true
+  if (block.kind === 'tool') {
+    return block.status === 'running' || isRequestUserInputToolBlock(block)
+  }
+  if (block.kind === 'compaction' || block.kind === 'review') {
+    return block.status === 'running'
+  }
+  return false
+}
+
+function shouldExpandWorkByDefault({
+  isProcessing,
+  processBlocks,
+  assistantContentBlocks
+}: {
+  isProcessing: boolean
+  processBlocks: ChatBlock[]
+  assistantContentBlocks: ChatBlock[]
+}): boolean {
+  if (isProcessing) return true
+  if (processBlocks.some(processBlockNeedsVisibleFollowUp)) return true
+  return processBlocks.length > 0 && assistantContentBlocks.length === 0
+}
+
+function blockCreatedAtMs(block: ChatBlock | undefined): number | undefined {
+  if (!block?.createdAt) return undefined
+  const parsed = Date.parse(block.createdAt)
+  return Number.isFinite(parsed) ? parsed : undefined
+}
+
+function blockEndAtMs(block: ChatBlock | undefined): number | undefined {
+  const start = blockCreatedAtMs(block)
+  if (typeof start !== 'number') return undefined
+  if (block?.kind !== 'tool') return start
+  const durationMs = block.meta?.duration_ms
+  return typeof durationMs === 'number' && Number.isFinite(durationMs) && durationMs > 0
+    ? start + durationMs
+    : start
+}
+
+function completedTurnDurationFromBlocks(turn: Turn): number | undefined {
+  const fallbackStart = turn.blocks.map(blockCreatedAtMs).find((value): value is number => typeof value === 'number')
+  const start = blockCreatedAtMs(turn.user) ?? fallbackStart
+  if (typeof start !== 'number') return undefined
+
+  const ends = [blockEndAtMs(turn.user), ...turn.blocks.map(blockEndAtMs)]
+    .filter((value): value is number => typeof value === 'number')
+  if (ends.length === 0) return undefined
+  const end = Math.max(...ends)
+  return end >= start ? end - start : undefined
+}
+
+function completedTurnDurationMs(turn: Turn, recordedDuration: number | undefined): number | undefined {
+  const timelineDuration = completedTurnDurationFromBlocks(turn)
+  if (typeof timelineDuration !== 'number') return recordedDuration
+  if (typeof recordedDuration !== 'number') return timelineDuration
+  return Math.max(timelineDuration, recordedDuration)
+}
+
+function turnDurationMs({
+  turn,
+  isProcessing,
+  isLive,
+  startedAt,
+  recordedDuration,
+  now
+}: {
+  turn: Turn
+  isProcessing: boolean
+  isLive: boolean
+  startedAt?: number
+  recordedDuration?: number
+  now: number
+}): number | undefined {
+  if (!isProcessing) return completedTurnDurationMs(turn, recordedDuration)
+  if (typeof recordedDuration === 'number') return recordedDuration
+  if (!isLive || typeof startedAt !== 'number') return undefined
+  return Math.max(0, now - startedAt)
+}
+
 export function MessageTimeline({
   blocks,
   liveReasoning,
@@ -136,7 +226,7 @@ export function MessageTimeline({
     activeThread
   } = useTimelineStores(activeThreadId)
 
-  const heroRoute: 'chat' | 'claw' = route === 'claw' ? 'claw' : 'chat'
+  const heroRoute: 'chat' | 'claw' = route === 'claw' && activeClawChannel ? 'claw' : 'chat'
   const hasContent = blocks.length > 0 || live || liveReasoning
   const endRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -177,7 +267,7 @@ export function MessageTimeline({
   )
   const visibleTurnAnchors = useMemo(
     () => {
-      const anchors: { key: string; label: string; title: string }[] = []
+      const anchors: { key: string; title: string }[] = []
       let questionIndex = turns
         .slice(0, hiddenTurnCount)
         .filter((turn) => turn.user)
@@ -190,7 +280,6 @@ export function MessageTimeline({
         const key = stableTurnKey(turn, absoluteTurnIndex)
         anchors.push({
           key,
-          label: String(questionIndex),
           title: turnPreview(turn, t('timelineJumpTurn', { index: questionIndex }))
         })
       })
@@ -221,7 +310,7 @@ export function MessageTimeline({
 
   return (
     <div ref={containerRef} className="ds-no-drag relative flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
-      {visibleTurnAnchors.length > 2 ? (
+      {visibleTurnAnchors.length > 1 ? (
         <nav
           aria-label={t('timelineJumpRailLabel')}
           className="timeline-jump-rail"
@@ -231,11 +320,11 @@ export function MessageTimeline({
               key={anchor.key}
               type="button"
               className="timeline-jump-rail-button"
-              title={anchor.title}
               aria-label={anchor.title}
               onClick={() => jumpToTurn(anchor.key)}
             >
-              {anchor.label}
+              <span className="timeline-jump-rail-dot" aria-hidden="true" />
+              <span className="timeline-jump-rail-tooltip">{anchor.title}</span>
             </button>
           ))}
         </nav>
@@ -280,20 +369,24 @@ export function MessageTimeline({
           const isLive = !!(userId && currentTurnUserId === userId)
           const startedAt = userId ? turnStartedAtByUserId[userId] : undefined
           const recordedDuration = userId ? turnDurationByUserId[userId] : undefined
-          const durationMs =
-            recordedDuration ??
-            (isLive && typeof startedAt === 'number'
-              ? Math.max(0, tickNow - startedAt)
-              : undefined)
+          const turnPending = threadHasActiveRuntimeWork(turn.blocks)
+          const isLatestTurn = index === visibleTurns.length - 1
+          const hasLiveStream = isLatestTurn && !!(liveReasoning.trim() || live.trim())
+          const isProcessing = (busy && isLatestTurn) || turnPending || hasLiveStream
+          const durationMs = turnDurationMs({
+            turn,
+            isProcessing,
+            isLive,
+            startedAt,
+            recordedDuration,
+            now: tickNow
+          })
           const reasoningFirst = userId ? turnReasoningFirstAtByUserId[userId] : undefined
           const reasoningLast = userId ? turnReasoningLastAtByUserId[userId] : undefined
           const reasoningDurationMs =
             typeof reasoningFirst === 'number' && typeof reasoningLast === 'number'
               ? Math.max(0, reasoningLast - reasoningFirst)
               : undefined
-          const turnPending = threadHasPendingRuntimeWork(turn.blocks)
-          const isLatestTurn = index === visibleTurns.length - 1
-          const hasLiveStream = isLatestTurn && !!(liveReasoning.trim() || live.trim())
           const showForkPoint =
             forkBoundaryTurnCount !== undefined && absoluteTurnIndex === forkBoundaryTurnCount
           const turnKey = stableTurnKey(turn, absoluteTurnIndex)
@@ -312,7 +405,7 @@ export function MessageTimeline({
               {showForkPoint ? <ThreadForkPoint parentTitle={forkedFromTitle} /> : null}
               <MemoMessageTurn
                 turn={turn}
-                isProcessing={(busy && isLatestTurn) || turnPending || hasLiveStream}
+                isProcessing={isProcessing}
                 liveReasoning={isLatestTurn ? liveReasoning : ''}
                 live={isLatestTurn ? live : ''}
                 durationMs={durationMs}
@@ -431,7 +524,13 @@ function MessageTurn({
     [turn, isProcessing, liveProcessText, liveContent, workspaceRoot]
   )
   const hasProcessError = processBlocks.some(processBlockHasError)
-  const workExpanded = hasProcessError || (workExpandedOverride ?? isProcessing)
+  const forceWorkExpanded = hasProcessError && (isProcessing || assistantContentBlocks.length === 0)
+  const workExpandedDefault = shouldExpandWorkByDefault({
+    isProcessing,
+    processBlocks,
+    assistantContentBlocks
+  })
+  const workExpanded = forceWorkExpanded || (workExpandedOverride ?? workExpandedDefault)
   const reviewBlocks = useMemo(
     () => turn.blocks.filter((block) => block.kind === 'review'),
     [turn.blocks]
@@ -447,8 +546,8 @@ function MessageTurn({
   )
   const showLiveAssistant = !isProcessing && !!liveContent.trim()
 
-  // Keep completed reasoning/tool work tucked away, but make the active turn's
-  // work visible unless the user explicitly collapses it.
+  // Keep ordinary completed work tucked away, but surface turns that still need
+  // user attention or would otherwise show no visible assistant response.
 
   const hasProcess = isProcessing || processBlocks.length > 0
 
@@ -464,8 +563,8 @@ function MessageTurn({
             durationMs={durationMs}
             reasoningDurationMs={reasoningDurationMs}
             expanded={workExpanded}
-            collapsible={!hasProcessError}
-            onToggle={() => setWorkExpandedOverride((value) => !(value ?? isProcessing))}
+            collapsible={!forceWorkExpanded}
+            onToggle={() => setWorkExpandedOverride((value) => !(value ?? workExpandedDefault))}
           />
           {workExpanded && processSections.length > 0 ? (
             <div className="flex flex-col gap-1">
@@ -522,27 +621,18 @@ function MessageTurn({
 function LiveTurnProgressRow({ hasActiveGoal }: { hasActiveGoal: boolean }): ReactElement {
   const { t, i18n } = useTranslation('common')
   const swimMode = useWorkLogoSwimMode(true)
-  const ikunVariant = useIkunWorkLogoVariant(true)
-  // iKun 模式是全局 html 属性;进行行每个回合重新挂载,挂载时读取即可
-  const [ikunModeOn] = useState(
-    () =>
-      typeof document !== 'undefined' &&
-      document.documentElement.getAttribute('data-ikun-mode') === 'on'
-  )
   const swimLabelKey = WORK_LOGO_SWIM_MODE_LABEL_KEYS[swimMode]
   // UI 插件可声明自己的进行中文案(按泳姿键、按语言),未声明则用默认文案
   const pluginLabel = useUiPluginWorkLabel(
     swimLabelKey as UiPluginLabelKey,
     i18n.language ?? 'zh'
   )
-  const label = ikunModeOn
-    ? t(IKUN_WORK_LOGO_VARIANT_LABEL_KEYS[ikunVariant])
-    : pluginLabel ?? t(swimLabelKey)
+  const label = pluginLabel ?? t(swimLabelKey)
 
   return (
     <div className={liveTurnProgressClass(hasActiveGoal)}>
       <span className="ds-work-logo-slot ds-work-logo-slot-sm mr-0.5">
-        <AnimatedWorkLogo active ikunVariant={ikunVariant} mode={swimMode} phase="trail" size="sm" />
+        <MimoWorkMiniMark active />
       </span>
       <span className="ds-shiny-text">{label}</span>
     </div>

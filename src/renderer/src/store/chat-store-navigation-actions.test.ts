@@ -18,7 +18,7 @@ function thread(overrides: Partial<NormalizedThread> & Pick<NormalizedThread, 'i
     id: overrides.id,
     title: overrides.title ?? overrides.id,
     updatedAt: overrides.updatedAt ?? '2026-06-12T00:00:00.000Z',
-    model: overrides.model ?? 'deepseek-v4-pro',
+    model: overrides.model ?? 'mimo-v4-pro',
     mode: overrides.mode ?? 'agent',
     workspace: overrides.workspace,
     ...(overrides.status ? { status: overrides.status } : {}),

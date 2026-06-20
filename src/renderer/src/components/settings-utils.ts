@@ -9,6 +9,8 @@ import {
   mergeModelProviderSettings,
   mergeScheduleSettings,
   mergeWriteSettings,
+  normalizeEnvironmentProjects,
+  normalizeLogRetentionDays,
   normalizeAppBehaviorSettings,
   normalizeClawSettings,
   normalizeGuiUpdateChannel,
@@ -24,7 +26,7 @@ import type { GuiUpdateInfo } from '@shared/gui-update'
 type RendererSettingsShape = AppSettingsPatch
 type SettingsPatch = AppSettingsPatch
 
-export const DEFAULT_WORKSPACE_ROOT = '~/.kun/default_workspace'
+export const DEFAULT_WORKSPACE_ROOT = '~/MIMO Work/default_workspace'
 
 export function splitSettingsList(raw: string): string[] {
   return raw
@@ -95,9 +97,10 @@ export function coerceRendererSettings(settings: AppSettingsV1): AppSettingsV1 {
     provider: normalizeModelProviderSettings(raw.provider),
     agents: kunSettingsEnvelope(mergeKunRuntimeSettings(defaultKunRuntimeSettings(), getKunRuntimeSettings(settings))),
     workspaceRoot: typeof raw.workspaceRoot === 'string' ? raw.workspaceRoot : DEFAULT_WORKSPACE_ROOT,
+    environmentProjects: normalizeEnvironmentProjects(raw.environmentProjects),
     log: {
       enabled: raw.log?.enabled !== false,
-      retentionDays: typeof raw.log?.retentionDays === 'number' ? raw.log.retentionDays : 2
+      retentionDays: normalizeLogRetentionDays(raw.log?.retentionDays)
     },
     notifications: {
       turnComplete: raw.notifications?.turnComplete !== false

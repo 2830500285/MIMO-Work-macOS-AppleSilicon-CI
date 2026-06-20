@@ -1,0 +1,77 @@
+name: macOS Apple Silicon Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - codex/mimo-work-macos-arm64-ci
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Build and smoke on macOS arm64
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      MIMO_WORK_MIMO_API_KEY: ${{ secrets.MIMO_WORK_MIMO_API_KEY }}
+
+    steps:
+      - name: Check runner architecture
+        run: |
+          uname -a
+          sysctl -n machdep.cpu.brand_string || true
+
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run packaging and runtime tests
+        run: >
+          npx vitest run
+          src/main/packaging-config.test.ts
+          src/main/app-identity.test.ts
+          src/main/runtime/mimo-work-adapter.test.ts
+          src/main/kun-health.test.ts
+
+      - name: Build macOS arm64 dir app
+        run: MIMO_WORK_DIST_DIR="$PWD/dist/macos-arm64-dir-script" npm run dist:mac:dir
+
+      - name: Static smoke packaged app
+        run: >
+          npm run smoke:mac:arm64 --
+          --app "dist/macos-arm64-dir-script/mac-arm64/MIMO Work.app"
+          --static-only
+
+      - name: Verify smoke secret is present
+        run: |
+          if [[ -z "${MIMO_WORK_MIMO_API_KEY:-}" ]]; then
+            echo "::error::MIMO_WORK_MIMO_API_KEY secret is required for health and prompt smoke."
+            exit 1
+          fi
+
+      - name: Full smoke packaged app
+        run: >
+          npm run smoke:mac:arm64 --
+          --app "dist/macos-arm64-dir-script/mac-arm64/MIMO Work.app"
+
+      - name: Upload packaged app
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mimo-work-macos-arm64-dir
+          if-no-files-found: warn
+          retention-days: 7
+          path: dist/macos-arm64-dir-script/mac-arm64/MIMO Work.app

@@ -270,8 +270,8 @@ describe('create_plan tool mapping', () => {
       output: {
         plan_id: 'plan_login',
         workspace_root: '/tmp/ws',
-        relative_path: '.deepseekgui/plan/login.md',
-        absolute_path: '/tmp/ws/.deepseekgui/plan/login.md',
+        relative_path: '.mimo-work/plan/login.md',
+        absolute_path: '/tmp/ws/.mimo-work/plan/login.md',
         operation: 'draft',
         saved_at: '2024-01-01T00:00:01.000Z',
         content_hash: 'deadbeefcafef00d',
@@ -288,7 +288,7 @@ describe('create_plan tool mapping', () => {
       expect(block.meta?.plan).toMatchObject({
         plan_id: 'plan_login',
         workspace_root: '/tmp/ws',
-        relative_path: '.deepseekgui/plan/login.md',
+        relative_path: '.mimo-work/plan/login.md',
         operation: 'draft',
         byte_size: 42
       })
@@ -307,7 +307,7 @@ describe('create_plan tool mapping', () => {
       toolName: 'create_plan',
       callId: 'call_plan_err',
       isError: true,
-      output: { error: 'plan_relative_path must be a direct Markdown file under .deepseekgui/plan' }
+      output: { error: 'plan_relative_path must be a direct Markdown file under .mimo-work/plan' }
     }
     const block = chatBlockFromItem(item)
     if (block && block.kind === 'tool') {
@@ -330,7 +330,7 @@ describe('create_plan tool mapping', () => {
       toolName: 'generate_image',
       callId: 'call_img_1',
       output: {
-        files: [{ relativePath: '.deepseekgui-images/img-1.png' }],
+        files: [{ relativePath: '.mimo-work-images/img-1.png' }],
         attachments: [
           { id: 'att_abc', name: 'img-1.png', mimeType: 'image/png', width: 1024, height: 576 },
           { id: '   ' },
@@ -347,7 +347,7 @@ describe('create_plan tool mapping', () => {
         { id: 'att_abc', name: 'img-1.png', mimeType: 'image/png', width: 1024, height: 576 }
       ])
       expect(block.meta?.generatedFiles).toEqual([
-        { relativePath: '.deepseekgui-images/img-1.png' }
+        { relativePath: '.mimo-work-images/img-1.png' }
       ])
     } else {
       throw new Error('expected tool block')
@@ -367,8 +367,8 @@ describe('create_plan tool mapping', () => {
       callId: 'call_speech_1',
       output: {
         files: [{
-          relativePath: '.deepseekgui-audio/speech.mp3',
-          absolutePath: '/tmp/project/.deepseekgui-audio/speech.mp3',
+          relativePath: '.mimo-work-audio/speech.mp3',
+          absolutePath: '/tmp/project/.mimo-work-audio/speech.mp3',
           mimeType: 'audio/mpeg',
           byteSize: 128
         }]
@@ -378,8 +378,8 @@ describe('create_plan tool mapping', () => {
     expect(block).not.toBeNull()
     if (block && block.kind === 'tool') {
       expect(block.meta?.generatedFiles).toEqual([{
-        relativePath: '.deepseekgui-audio/speech.mp3',
-        absolutePath: '/tmp/project/.deepseekgui-audio/speech.mp3',
+        relativePath: '.mimo-work-audio/speech.mp3',
+        absolutePath: '/tmp/project/.mimo-work-audio/speech.mp3',
         mimeType: 'audio/mpeg',
         byteSize: 128
       }])
@@ -433,7 +433,7 @@ describe('create_plan tool mapping', () => {
         output: {
           plan_id: 'plan_x',
           workspace_root: '/tmp/ws',
-          relative_path: '.deepseekgui/plan/x.md',
+          relative_path: '.mimo-work/plan/x.md',
           operation: 'refine',
           saved_at: '2024-01-01T00:00:01.000Z'
         }

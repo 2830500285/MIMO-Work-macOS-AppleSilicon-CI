@@ -27,6 +27,9 @@ type Harness = {
     setThreadGoal: ReturnType<typeof vi.fn>
     clearThreadGoal: ReturnType<typeof vi.fn>
     interruptTurn: ReturnType<typeof vi.fn>
+    submitUserInputResponse: ReturnType<typeof vi.fn>
+    subscribeThreadEvents: ReturnType<typeof vi.fn>
+    getThreadDetail: ReturnType<typeof vi.fn>
   }
   recoverActiveTurn: ReturnType<typeof vi.fn>
   refreshThreads: ReturnType<typeof vi.fn>
@@ -39,9 +42,9 @@ function thread(id: string, goal: ThreadGoal | null = null): NormalizedThread {
     id,
     title: id,
     updatedAt: '2026-06-04T00:00:00.000Z',
-    model: 'deepseek-v4-pro',
+    model: 'mimo-v4-pro',
     mode: 'agent',
-    workspace: '/workspace/deepseek-gui',
+    workspace: '/workspace/mimo-work',
     status: 'idle',
     goal
   }
@@ -83,7 +86,13 @@ function buildHarness(options: {
       )
     ),
     clearThreadGoal: vi.fn(async () => true),
-    interruptTurn: vi.fn(async () => undefined)
+    interruptTurn: vi.fn(async () => undefined),
+    submitUserInputResponse: vi.fn(async () => undefined),
+    subscribeThreadEvents: vi.fn(async () => undefined),
+    getThreadDetail: vi.fn(async () => ({
+      ...thread(state.activeThreadId ?? 'thr_existing'),
+      turns: []
+    }))
   }
   registryMock.getProvider.mockReturnValue(provider)
 
@@ -239,6 +248,54 @@ describe('chat-store-maintenance-actions goal actions', () => {
     expect(provider.clearThreadGoal).toHaveBeenCalledWith('thr_existing')
     expect(state.activeThreadGoal).toBeNull()
     expect(state.threads[0]?.goal).toBeNull()
+    expect(refreshThreads).toHaveBeenCalledTimes(1)
+  })
+
+  it('restarts the runtime event stream after submitting user input', async () => {
+    const { actions, provider, refreshThreads, state } = buildHarness()
+    Object.assign(state, {
+      blocks: [{
+        kind: 'user_input',
+        id: 'input-block',
+        requestId: 'synthetic_question_1',
+        questions: [{
+          id: 'topic',
+          header: '论文主题',
+          question: '请选择题目',
+          options: [{ label: '传染病传播预测', description: '' }]
+        }],
+        status: 'pending'
+      }],
+      busy: false,
+      currentTurnId: null,
+      currentTurnUserId: null,
+      error: null,
+      lastSeq: 42,
+      watchTurnCompletion: {}
+    })
+
+    await actions.resolveUserInput('input-block', {
+      kind: 'submit',
+      answers: [{ id: 'topic', label: '传染病传播预测', value: '传染病传播预测' }]
+    })
+
+    expect(provider.submitUserInputResponse).toHaveBeenCalledWith(
+      'synthetic_question_1',
+      [{ id: 'topic', label: '传染病传播预测', value: '传染病传播预测' }]
+    )
+    expect(provider.subscribeThreadEvents).toHaveBeenCalledTimes(1)
+    expect(provider.subscribeThreadEvents).toHaveBeenCalledWith(
+      'thr_existing',
+      42,
+      expect.any(Object),
+      expect.any(AbortSignal)
+    )
+    expect(state.busy).toBe(true)
+    expect(state.blocks[0]).toMatchObject({
+      kind: 'user_input',
+      status: 'submitted',
+      answers: [{ id: 'topic', label: '传染病传播预测', value: '传染病传播预测' }]
+    })
     expect(refreshThreads).toHaveBeenCalledTimes(1)
   })
 

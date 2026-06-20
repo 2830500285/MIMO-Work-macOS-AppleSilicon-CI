@@ -60,10 +60,10 @@ afterEach(() => {
 })
 
 describe('KunRuntimeProvider', () => {
-  it('reports the kun id and Kun display name', () => {
+  it('reports the kun id and MIMO Work display name', () => {
     const provider = new KunRuntimeProvider()
     expect(provider.id).toBe('kun')
-    expect(provider.displayName).toBe('Kun')
+    expect(provider.displayName).toBe('MIMO Work')
   })
 
   it('exposes the local HTTP/SSE capabilities', () => {
@@ -98,7 +98,7 @@ describe('KunRuntimeProvider', () => {
           id: 'thr_1',
           title: 'Demo',
           workspace: '/tmp',
-          model: 'deepseek-chat',
+          model: 'mimo-chat',
           mode: 'agent',
           status: 'idle',
           createdAt: 't0',
@@ -155,7 +155,7 @@ describe('KunRuntimeProvider', () => {
           id: 'thr_1',
           title: 'Demo',
           workspace: '/tmp',
-          model: 'deepseek-chat',
+          model: 'mimo-chat',
           mode: 'agent',
           status: 'idle',
           createdAt: 't0',
@@ -294,9 +294,9 @@ describe('KunRuntimeProvider', () => {
       displayText: 'Generate implementation plan',
       guiPlan: {
         operation: 'refine',
-        workspaceRoot: '/workspace/deepseek-gui',
+        workspaceRoot: '/workspace/mimo-work',
         relativePath: '.kunsdd/plan/auth.md',
-        planId: '/workspace/deepseek-gui:.kunsdd/plan/auth.md',
+        planId: '/workspace/mimo-work:.kunsdd/plan/auth.md',
         sourceRequest: 'Add auth',
         title: 'auth'
       }
@@ -313,9 +313,9 @@ describe('KunRuntimeProvider', () => {
         mode: 'plan',
         guiPlan: {
           operation: 'refine',
-          workspaceRoot: '/workspace/deepseek-gui',
+          workspaceRoot: '/workspace/mimo-work',
           relativePath: '.kunsdd/plan/auth.md',
-          planId: '/workspace/deepseek-gui:.kunsdd/plan/auth.md',
+          planId: '/workspace/mimo-work:.kunsdd/plan/auth.md',
           sourceRequest: 'Add auth',
           title: 'auth'
         }
@@ -355,7 +355,7 @@ describe('KunRuntimeProvider', () => {
             capabilities: {
               contractVersion: 1,
               model: {
-                id: 'deepseek-chat',
+                id: 'mimo-chat',
                 inputModalities: ['text', 'image'],
                 outputModalities: ['text'],
                 supportsToolCalling: true,
@@ -582,7 +582,7 @@ describe('KunRuntimeProvider', () => {
             id: 'thr_fork',
             title: 'Forked',
             workspace: '/tmp/workspace',
-            model: 'deepseek-chat',
+            model: 'mimo-chat',
             mode: 'agent',
             status: 'idle',
             forkedFromThreadId: 'thr_parent',
@@ -686,6 +686,50 @@ describe('KunRuntimeProvider', () => {
     await provider.subscribeThreadEvents('thr_1', 2, sink, ac.signal)
     expect(sink.onSeq).toHaveBeenCalledWith(3)
     expect(sink.onDeltas).toHaveBeenCalledWith([{ text: 'he', kind: 'agent_message', seq: 3 }])
+  })
+
+  it('surfaces terminated SSE streams as visible runtime errors', async () => {
+    let onErr: ((payload: { streamId: string; message?: string; status?: number }) => void) | null = null
+    const sink: ThreadEventSink = {
+      onSeq: vi.fn(),
+      onDeltas: vi.fn(),
+      onUserMessage: vi.fn(),
+      onTool: vi.fn(),
+      onCompaction: vi.fn(),
+      onApproval: vi.fn(),
+      onUserInput: vi.fn(),
+      onUserInputStatus: vi.fn(),
+      onGoal: vi.fn(),
+      onTodos: vi.fn(),
+      onTurnComplete: vi.fn(),
+      onRuntimeError: vi.fn(),
+      onError: vi.fn()
+    }
+    installDsGui({
+      onSseError: vi.fn((handler) => {
+        onErr = handler
+        return () => undefined
+      }),
+      startSse: vi.fn(async (_threadId, _sinceSeq, streamId) => {
+        queueMicrotask(() => {
+          onErr?.({ streamId: streamId ?? 'stream-1', message: 'terminated' })
+        })
+        return { streamId: streamId ?? 'stream-1' }
+      })
+    })
+
+    const provider = new KunRuntimeProvider()
+    await provider.subscribeThreadEvents('thr_1', 2, sink, new AbortController().signal)
+
+    expect(sink.onRuntimeError).toHaveBeenCalledWith(expect.objectContaining({
+      code: 'runtime_sse_terminated',
+      message: expect.stringContaining('事件流已中断'),
+      severity: 'error'
+    }))
+    expect(sink.onError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: expect.stringContaining('事件流已中断') }),
+      { terminal: true }
+    )
   })
 
   it('auto-approves approval requests when policy is auto', async () => {

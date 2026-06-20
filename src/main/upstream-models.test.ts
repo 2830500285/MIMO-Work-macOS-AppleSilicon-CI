@@ -60,7 +60,7 @@ function settings(dataDir: string, model = 'settings-model'): AppSettingsV1 {
 
 describe('upstream model picker list', () => {
   it('includes Kun config model profiles, aliases, and the configured agent model', async () => {
-    const dataDir = mkdtempSync(join(tmpdir(), 'deepseek-gui-models-'))
+    const dataDir = mkdtempSync(join(tmpdir(), 'mimo-work-models-'))
     await mkdir(dataDir, { recursive: true })
     await writeFile(
       join(dataDir, 'config.json'),
@@ -84,8 +84,8 @@ describe('upstream model picker list', () => {
     const ids = await readConfiguredKunModelIds(settings(dataDir))
 
     expect(ids).toEqual(expect.arrayContaining([
-      'deepseek-v4-pro',
-      'deepseek-v4-flash',
+      'mimo-v2.5-pro',
+      'mimo-v2-flash',
       'settings-model',
       'legacy-model',
       'custom-model',
@@ -95,15 +95,15 @@ describe('upstream model picker list', () => {
   })
 
   it('falls back to configured model ids when upstream cannot be queried', async () => {
-    const dataDir = mkdtempSync(join(tmpdir(), 'deepseek-gui-models-'))
+    const dataDir = mkdtempSync(join(tmpdir(), 'mimo-work-models-'))
     await mkdir(dataDir, { recursive: true })
     await writeFile(
       join(dataDir, 'config.json'),
       JSON.stringify({
         models: {
           profiles: {
-            'deepseek-v4-flash': {
-              aliases: ['deepseek-chat', 'deepseek-reasoner']
+            'mimo-v2-flash': {
+              aliases: ['mimo-chat', 'mimo-reasoner']
             }
           }
         }
@@ -116,29 +116,30 @@ describe('upstream model picker list', () => {
     if (result.ok) {
       expect(result.modelIds).toContain('local-only-model')
       expect(result.modelIds).toContain('custom-provider-model')
-      expect(result.modelIds).toContain('deepseek-chat')
+      expect(result.modelIds).toContain('mimo-chat')
       expect(result.modelIds).not.toContain('auto')
       expect(result.defaultModelId).toBe('local-only-model')
+      expect(result.defaultProviderId).toBe('custom-provider')
       expect(result.modelGroups).toEqual(expect.arrayContaining([
         expect.objectContaining({
           providerId: 'custom-provider',
           label: 'Custom Provider',
-          modelIds: expect.arrayContaining(['custom-provider-model'])
+          modelIds: expect.arrayContaining(['custom-provider-model', 'local-only-model'])
         }),
         expect.objectContaining({
-          providerId: 'deepseek',
-          label: 'DeepSeek',
-          modelIds: expect.arrayContaining(['deepseek-v4-flash'])
+          providerId: 'xiaomi-token-plan',
+          label: 'MIMO',
+          modelIds: expect.arrayContaining(['mimo-v2-flash'])
         })
       ]))
-      const deepseekGroup = result.modelGroups?.find((group) => group.providerId === 'deepseek')
-      expect(deepseekGroup?.modelIds).not.toContain('deepseek-chat')
-      expect(deepseekGroup?.modelIds).not.toContain('deepseek-reasoner')
+      const mimoGroup = result.modelGroups?.find((group) => group.providerId === 'xiaomi-token-plan')
+      expect(mimoGroup?.modelIds).not.toContain('mimo-chat')
+      expect(mimoGroup?.modelIds).not.toContain('mimo-reasoner')
     }
   })
 
   it('filters speech-only upstream models out of the composer picker', async () => {
-    const dataDir = mkdtempSync(join(tmpdir(), 'deepseek-gui-models-'))
+    const dataDir = mkdtempSync(join(tmpdir(), 'mimo-work-models-'))
     await mkdir(dataDir, { recursive: true })
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
@@ -163,10 +164,11 @@ describe('upstream model picker list', () => {
         expect(result.modelIds).not.toContain('whisper-1')
         expect(result.modelIds).not.toContain('auto')
         expect(result.defaultModelId).toBe('settings-model')
+        expect(result.defaultProviderId).toBe('custom-provider')
         expect(result.modelGroups).toEqual(expect.arrayContaining([
           expect.objectContaining({
             providerId: 'custom-provider',
-            modelIds: expect.arrayContaining(['chat-capable-model'])
+            modelIds: expect.arrayContaining(['chat-capable-model', 'settings-model'])
           })
         ]))
       }
@@ -176,7 +178,7 @@ describe('upstream model picker list', () => {
   })
 
   it('uses configured model ids without fetching models for custom full endpoint providers', async () => {
-    const dataDir = mkdtempSync(join(tmpdir(), 'deepseek-gui-models-'))
+    const dataDir = mkdtempSync(join(tmpdir(), 'mimo-work-models-'))
     await mkdir(dataDir, { recursive: true })
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
@@ -194,6 +196,7 @@ describe('upstream model picker list', () => {
       if (result.ok) {
         expect(result.modelIds).toContain('custom-provider-model')
         expect(result.defaultModelId).toBe('custom-provider-model')
+        expect(result.defaultProviderId).toBe('custom-provider')
       }
       expect(fetchMock).not.toHaveBeenCalled()
     } finally {
@@ -202,7 +205,7 @@ describe('upstream model picker list', () => {
   })
 
   it('filters image-generation and other non-text models out of the composer picker', async () => {
-    const dataDir = mkdtempSync(join(tmpdir(), 'deepseek-gui-models-'))
+    const dataDir = mkdtempSync(join(tmpdir(), 'mimo-work-models-'))
     await mkdir(dataDir, { recursive: true })
     const base = settings(dataDir)
     const imageCapableSettings: AppSettingsV1 = {

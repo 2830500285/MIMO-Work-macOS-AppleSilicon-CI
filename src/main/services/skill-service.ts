@@ -84,6 +84,9 @@ export async function guiSkillRootsForRuntime(
   const projectCommon = candidates.filter((c) => c.source === 'common' && c.scope === 'project')
   const globalCommon = candidates.filter((c) => c.source === 'common' && c.scope === 'global')
   const extra = candidates.filter((c) => c.source === 'extra')
+  const builtinRoots = discoverMimoWorkBuiltinSkillRoots()
+    .filter((root) => existsSync(root))
+    .map((path) => ({ path, scope: 'global' as const }))
   const pluginRoots = (await discoverCodexPluginSkillRoots())
     .filter((root) => existsSync(root))
     .map((path) => ({ path, scope: 'global' as const }))
@@ -91,6 +94,7 @@ export async function guiSkillRootsForRuntime(
   return uniqueSkillRoots([
     ...projectCommon.map(toGuiSkillRoot),
     ...globalCommon.map(toGuiSkillRoot),
+    ...builtinRoots,
     ...pluginRoots,
     ...extra.map(toGuiSkillRoot)
   ])
@@ -300,6 +304,15 @@ async function discoverCodexPluginSkillRoots(): Promise<string[]> {
   return roots
 }
 
+export function discoverMimoWorkBuiltinSkillRoots(): string[] {
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath
+  return uniqueStrings([
+    process.env.MIMO_WORK_BUILTIN_SKILL_DIR?.trim(),
+    resourcesPath ? join(resourcesPath, 'MIMO-Work-Skills') : '',
+    join(process.cwd(), 'resources', 'skills')
+  ].map(normalizeSkillRootPath).filter(Boolean))
+}
+
 async function collectSkillRoots(root: string, roots: string[], depth: number, maxDepth: number): Promise<void> {
   if (depth > maxDepth || !existsSync(root)) return
   if (basename(root) === 'skills' && skillRootHasPackages(root)) {
@@ -326,18 +339,25 @@ function skillRootHasPackages(root: string): boolean {
 
 async function packageCandidates(root: string): Promise<string[]> {
   const candidates = new Set<string>()
+  await collectSkillPackageCandidates(root, candidates, 0, 5)
+  return [...candidates]
+}
+
+async function collectSkillPackageCandidates(
+  root: string,
+  candidates: Set<string>,
+  depth: number,
+  maxDepth: number
+): Promise<void> {
+  if (depth > maxDepth) return
   if (existsSync(join(root, 'skill.json')) || existsSync(join(root, 'SKILL.md'))) {
     candidates.add(root)
+    return
   }
   const entries = await readdir(root, { withFileTypes: true })
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue
-    const dir = join(root, entry.name)
-    if (existsSync(join(dir, 'skill.json')) || existsSync(join(dir, 'SKILL.md'))) {
-      candidates.add(dir)
-    }
-  }
-  return [...candidates]
+  await Promise.all(entries
+    .filter((entry) => entry.isDirectory() && (entry.name !== 'node_modules'))
+    .map((entry) => collectSkillPackageCandidates(join(root, entry.name), candidates, depth + 1, maxDepth)))
 }
 
 async function loadSkillSummary(root: string, scope: GuiSkillScope): Promise<GuiSkillSummary | null> {

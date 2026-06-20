@@ -15,11 +15,20 @@ describe('PluginMarketplaceView MCP config helpers', () => {
     expect(recommendedMarketplaceItemIds()).not.toContain('filesystem')
   })
 
+  it('recommends public source packages for Skill and MCP installs', () => {
+    expect(recommendedMarketplaceItemIds()).toEqual(expect.arrayContaining([
+      'hermes-software-development',
+      'hermes-research',
+      'memory',
+      'sequential-thinking'
+    ]))
+  })
+
   it('merges recommended MCP servers into JSON config without dropping existing fields', () => {
     const existing = JSON.stringify({
       timeouts: { read_timeout: 120 },
       servers: {
-        gui_schedule: { command: '/Applications/DeepSeek GUI.app' }
+        gui_schedule: { command: '/Applications/MIMO Work.app' }
       }
     })
 
@@ -31,7 +40,7 @@ describe('PluginMarketplaceView MCP config helpers', () => {
 
     expect(merged.alreadyExists).toBe(false)
     expect(parsed.timeouts).toEqual({ read_timeout: 120 })
-    expect(parsed.servers.gui_schedule).toEqual({ command: '/Applications/DeepSeek GUI.app' })
+    expect(parsed.servers.gui_schedule).toEqual({ command: '/Applications/MIMO Work.app' })
     expect(parsed.servers.playwright).toMatchObject({
       enabled: true,
       transport: 'stdio',

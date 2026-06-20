@@ -66,7 +66,7 @@ export function formatClawInstallError(
     (/OpenClaw Gateway/i.test(value) &&
     (/unavailable/i.test(value) ||
       /not configured/i.test(value) ||
-      /DEEPSEEK_GUI_OPENCLAW_GATEWAY_URL/.test(value) ||
+      /MIMO_WORK_OPENCLAW_GATEWAY_URL/.test(value) ||
       /requires/i.test(value))) ||
     /^not found$/i.test(value) ||
     /fetch failed/i.test(value) ||
@@ -82,7 +82,7 @@ export const CLAW_ADD_PROVIDER_OPTIONS: ClawAddProviderOption[] = [
   {
     id: 'feishu',
     label: 'Feishu / Lark',
-    toneClass: 'bg-sky-500/12 text-sky-700 dark:bg-sky-400/15 dark:text-sky-200',
+    toneClass: 'bg-[var(--ds-accent-soft)] text-ds-ink dark:bg-[rgba(251,129,71,0.16)] dark:text-[#ffad7f]',
     connectionMode: 'official-install-qr',
     credentialHints: ['feishu.appId', 'feishu.appSecret'],
     guideStepKeys: [
@@ -137,7 +137,7 @@ export const CLAW_AGENT_TABS: Array<{
   }
 ]
 
-export const DEFAULT_CLAW_WORKSPACE_ROOT = '~/.kun/claw'
+export const DEFAULT_CLAW_WORKSPACE_ROOT = '~/MIMO Work/claw'
 
 export const CLAW_DIALOG_STEPS: Array<{
   id: ClawDialogStep

@@ -63,7 +63,7 @@ type CodeProps = DetailedHTMLProps<HTMLAttributes<HTMLElement>, HTMLElement> & {
 }
 
 export const writeMarkdownHardenOptions = {
-  defaultOrigin: 'https://kun.local',
+  defaultOrigin: 'https://mimo-work.local',
   allowedLinkPrefixes: ['*'],
   allowedImagePrefixes: ['*']
 }

@@ -126,7 +126,7 @@ function TodoRow({
 }): ReactElement {
   const { t } = useTranslation('common')
   return (
-    <div className="rounded-lg border border-ds-border-muted bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(20,47,95,0.04)] dark:bg-ds-card">
+    <div className="rounded-lg border border-ds-border-muted bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(31,35,41,0.04)] dark:bg-ds-card">
       <div className="flex items-start gap-2.5">
         <button
           type="button"

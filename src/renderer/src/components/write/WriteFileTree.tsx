@@ -50,7 +50,7 @@ function relativeDisplayPath(root: string, target: string): string {
 }
 
 function isAssistantInternalDirectory(entry: WorkspaceEntry): boolean {
-  return entry.type === 'directory' && entry.name === '.deepseek'
+  return entry.type === 'directory' && entry.name === '.mimo-work'
 }
 
 function isWriteDocument(entry: WorkspaceEntry): boolean {

@@ -726,14 +726,42 @@ export function createMaintenanceActions(
           }
           throw fallbackErr
         }
-        if (get().busy) armBusyWatchdog(set, get)
+        resetBusyRecoveryAttempts()
+        armBusyWatchdog(set, get)
+        const activeThreadId = state.activeThreadId
+        const seqAtSubmit = state.lastSeq
         set((s) => ({
+          busy: true,
+          error: null,
           blocks: s.blocks.map((b) =>
             b.id === blockId && b.kind === 'user_input'
               ? { ...b, status: 'submitted' as const, answers: action.answers }
               : b
-          )
+          ),
+          threads: s.activeThreadId
+            ? s.threads.map((thread) =>
+                thread.id === s.activeThreadId
+                  ? { ...thread, status: 'running' as const, updatedAt: new Date().toISOString() }
+                  : thread
+              )
+            : s.threads
         }))
+        if (activeThreadId) {
+          sseAbortRef.current?.abort()
+          const ac = new AbortController()
+          sseAbortRef.current = ac
+          const sink = buildThreadEventSink(set, get, { threadId: activeThreadId, signal: ac.signal, sinceSeq: seqAtSubmit })
+          void p.subscribeThreadEvents(activeThreadId, seqAtSubmit, sink, ac.signal)
+            .catch(() => undefined)
+            .then(() => {
+              if (ac.signal.aborted) return
+              const snapshot = get()
+              if (snapshot.activeThreadId !== activeThreadId || !snapshot.busy) return
+              void snapshot.recoverActiveTurn()
+            })
+        }
+        syncTurnCompletionPoll(set, get)
+        void get().refreshThreads()
         return
       }
 

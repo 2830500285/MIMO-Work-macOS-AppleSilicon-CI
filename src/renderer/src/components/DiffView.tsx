@@ -18,14 +18,14 @@ type ParsedDiff = {
 }
 
 const LANG_BADGES: Array<{ test: RegExp; label: string; tone: string }> = [
-  { test: /\.tsx?$/i, label: 'TS', tone: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300' },
+  { test: /\.tsx?$/i, label: 'TS', tone: 'bg-[var(--ds-accent-soft)] text-ds-ink dark:bg-[rgba(251,129,71,0.16)] dark:text-[#ffad7f]' },
   { test: /\.jsx?$/i, label: 'JS', tone: 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300' },
   { test: /\.json$/i, label: 'JSON', tone: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300' },
   { test: /\.(css|scss|less)$/i, label: 'CSS', tone: 'bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-300' },
-  { test: /\.md$/i, label: 'MD', tone: 'bg-slate-100 text-slate-700 dark:bg-slate-500/15 dark:text-slate-300' },
+  { test: /\.md$/i, label: 'MD', tone: 'bg-ds-subtle text-ds-muted' },
   { test: /\.py$/i, label: 'PY', tone: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' },
   { test: /\.html?$/i, label: 'HTML', tone: 'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300' },
-  { test: /\.ya?ml$/i, label: 'YML', tone: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300' },
+  { test: /\.ya?ml$/i, label: 'YML', tone: 'bg-ds-skill-soft text-ds-skill' },
   { test: /\.sh$/i, label: 'SH', tone: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-500/15 dark:text-zinc-300' }
 ]
 

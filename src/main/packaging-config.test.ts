@@ -8,6 +8,9 @@ const require = createRequire(import.meta.url)
 const builderConfig = require('../../electron-builder.config.cjs')
 const afterPack = require('../../scripts/after-pack.cjs')
 const macNotarize = require('../../scripts/mac-notarize.cjs')
+const packageJson = require('../../package.json')
+const prepareMimoRuntime = require('../../scripts/prepare-mimo-runtime-mac-arm64.cjs')
+const macArm64Smoke = require('../../scripts/smoke-mac-arm64-app.cjs')
 
 const tempRoots: string[] = []
 
@@ -60,7 +63,7 @@ function createMacPackContext(root: string): {
     electronPlatformName: 'darwin',
     packager: {
       appInfo: {
-        productFilename: 'Kun'
+        productFilename: 'MIMO Work'
       }
     }
   }
@@ -73,50 +76,136 @@ afterEach(() => {
   }
 })
 
-describe('electron-builder Kun packaging', () => {
-  it('includes Kun runtime dependencies in the packaged app', () => {
-    expect(builderConfig.files).toEqual(expect.arrayContaining([
-      'kun/dist/**/*',
-      'kun/package.json',
-      'kun/package-lock.json',
-      'kun/node_modules/**/*'
+describe('electron-builder MIMO Work packaging', () => {
+  it('prepares the macOS dir build with the darwin arm64 MiMo runtime', () => {
+    expect(packageJson.scripts['prepare:mimo-runtime:mac-arm64']).toBe(
+      'node ./scripts/prepare-mimo-runtime-mac-arm64.cjs'
+    )
+    expect(packageJson.scripts['dist:mac:dir']).toContain('npm run prepare:mimo-runtime:mac-arm64')
+    expect(packageJson.scripts['dist:mac:dir']).toContain('MIMO_WORK_TARGET_ARCH=arm64')
+    expect(prepareMimoRuntime.RUNTIME_PACKAGE_NAME).toBe('@mimo-ai/mimocode-darwin-arm64')
+    expect(prepareMimoRuntime.RUNTIME_RELATIVE_BINARY).toBe(
+      'packages/opencode/dist/mimocode-darwin-arm64/bin/mimo'
+    )
+    expect(prepareMimoRuntime._internals.runtimePackageSpec()).toBe(
+      '@mimo-ai/mimocode-darwin-arm64@0.1.1'
+    )
+  })
+
+  it('wires Apple Silicon smoke checks to the packaged MIMO Work app', () => {
+    expect(packageJson.scripts['smoke:mac:arm64']).toBe(
+      'node ./scripts/smoke-mac-arm64-app.cjs'
+    )
+    expect(macArm64Smoke.EXPECTED_PRODUCT_NAME).toBe('MIMO Work')
+    expect(macArm64Smoke.EXPECTED_BUNDLE_ID).toBe('com.mimowork.desktop')
+    expect(macArm64Smoke.EXPECTED_RUNTIME_BINARY).toBe(
+      'Contents/Resources/MIMO-Work-Core/packages/opencode/dist/mimocode-darwin-arm64/bin/mimo'
+    )
+    expect(macArm64Smoke._internals.defaultAppCandidates('/repo')).toEqual(expect.arrayContaining([
+      '/repo/dist/mac-arm64/MIMO Work.app',
+      '/repo/dist/macos-arm64-dir-script/mac-arm64/MIMO Work.app'
+    ]))
+    expect(macArm64Smoke._internals.parseArgs(['--static-only'])).toMatchObject({
+      staticOnly: true,
+      port: 8899
+    })
+    expect(macArm64Smoke._internals.hostSupportsAppleSilicon({
+      platform: 'darwin',
+      arch: 'x64',
+      execFileSync: (command: string): string => command === 'sysctl' ? '1\n' : 'x86_64\n'
+    })).toBe(true)
+    expect(macArm64Smoke._internals.hostSupportsAppleSilicon({
+      platform: 'darwin',
+      arch: 'x64',
+      execFileSync: (): string => '0\n'
+    })).toBe(false)
+  })
+
+  it('reuses an already prepared arm64 MiMo runtime without fetching again', () => {
+    const root = tempRoot()
+    const targetCoreDir = join(root, 'prepared-core')
+    const targetBinary = join(
+      targetCoreDir,
+      prepareMimoRuntime.RUNTIME_RELATIVE_BINARY
+    )
+    touch(targetBinary)
+
+    const execFileSync = (command: string): string => {
+      if (command === 'lipo') return 'arm64\n'
+      throw new Error(`unexpected command: ${command}`)
+    }
+
+    expect(prepareMimoRuntime._internals.hasArm64Binary(targetBinary, execFileSync)).toBe(true)
+    expect(prepareMimoRuntime._internals.prepareMimoRuntime({
+      root,
+      targetCoreDir,
+      execFileSync
+    })).toEqual({
+      coreDir: targetCoreDir,
+      binary: targetBinary,
+      reused: true
+    })
+  })
+
+  it('includes MiMo-Core as an extra resource in the packaged app', () => {
+    expect(builderConfig.extraResources).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        to: 'MIMO-Work-Core',
+        filter: expect.arrayContaining([
+          'package.json',
+          'packages/opencode/dist/**/*'
+        ])
+      })
     ]))
     expect(builderConfig.asarUnpack).toEqual(expect.arrayContaining([
-      '**/kun/dist/**/*',
-      '**/kun/package*.json',
-      '**/kun/node_modules/**/*'
-    ]))
-    expect(builderConfig.asarUnpack).not.toEqual(expect.arrayContaining([
-      '**/node_modules/node-bin-darwin-*/*',
-      '**/node_modules/node-bin-linux-*/*',
-      '**/node_modules/node-bin-win-*/*',
-      '**/node_modules/openclaw/**/*',
-      '**/node_modules/@tencent-weixin/openclaw-weixin/**/*'
-    ]))
-    // The openclaw shim (vendor/openclaw-shim) must ship: the WeChat bridge
-    // imports the bundled plugin's dist at runtime to send media, and that
-    // import chain resolves openclaw/plugin-sdk/*.
-    expect(builderConfig.files).not.toEqual(expect.arrayContaining([
-      '!**/node_modules/openclaw/**/*'
+      '**/node_modules/better-sqlite3/**/*'
     ]))
   })
 
-  it('validates the unpacked Kun runtime before release artifacts are created', () => {
+  it('bundles only project-owned public skills, not local user skill directories', () => {
+    const serializedResources = JSON.stringify(builderConfig.extraResources)
+    const skillResource = builderConfig.extraResources.find((resource: { to?: string }) =>
+      resource.to === 'MIMO-Work-Skills'
+    )
+
+    expect(skillResource).toEqual(expect.objectContaining({
+      from: expect.stringMatching(/resources[\\/]skills$/),
+      to: 'MIMO-Work-Skills'
+    }))
+    expect(serializedResources).not.toContain('.agents/skills')
+    expect(serializedResources).not.toContain('.codex/skills')
+    expect(serializedResources).not.toContain('.claude/skills')
+    expect(serializedResources).not.toContain('.hermes/skills')
+    expect(serializedResources).not.toContain('.mimo-work/skills')
+  })
+
+  it('validates bundled MiMo-Core before release artifacts are created', () => {
     const root = tempRoot()
     const context = createMacPackContext(root)
-    const unpackedRoot = afterPack._internals.unpackedAppRoot(context)
+    const resourcesRoot = afterPack._internals.packedResourcesDir(context)
 
-    for (const relativePath of afterPack.KUN_RUNTIME_REQUIRED_PATHS) {
-      touch(join(unpackedRoot, relativePath))
+    for (const relativePath of afterPack.MIMO_CORE_REQUIRED_PATHS) {
+      const fullPath = join(resourcesRoot, relativePath)
+      if (relativePath.endsWith('/dist')) {
+        mkdirSync(fullPath, { recursive: true })
+      } else {
+        touch(fullPath)
+      }
     }
-    touch(join(unpackedRoot, 'node_modules/better-sqlite3/package.json'))
+    for (const relativePath of afterPack._internals.mimoRuntimeBinaryRelativePaths(context)) {
+      touch(join(resourcesRoot, relativePath))
+    }
+    touch(join(afterPack._internals.unpackedAppRoot(context), 'node_modules/better-sqlite3/package.json'))
 
-    expect(() => afterPack._internals.validateBundledKunRuntime(context)).not.toThrow()
+    expect(() => afterPack._internals.validateBundledMimoRuntime(context)).not.toThrow()
 
-    rmSync(join(unpackedRoot, 'kun/node_modules/zod'), { recursive: true, force: true })
+    rmSync(
+      join(resourcesRoot, 'MIMO-Work-Core/packages/opencode/dist/mimocode-darwin-arm64/bin/mimo'),
+      { force: true }
+    )
 
-    expect(() => afterPack._internals.validateBundledKunRuntime(context)).toThrow(
-      /kun\/node_modules\/zod\/package\.json/
+    expect(() => afterPack._internals.validateBundledMimoRuntime(context)).toThrow(
+      /arm64 MiMo-Code runtime binary/
     )
   })
 
@@ -131,8 +220,8 @@ describe('electron-builder Kun packaging', () => {
     })
   })
 
-  it('uses the rounded Kun icon for Windows installers and shortcuts', () => {
-    expect(builderConfig.win.icon).toBe('./src/asset/img/kun_mac.png')
+  it('uses the generated Windows icon for installers and shortcuts', () => {
+    expect(builderConfig.win.icon).toBe('./build/icon.ico')
   })
 
   it('requires Apple secure timestamps when Developer ID signing is enabled', () => {
@@ -148,8 +237,8 @@ describe('electron-builder Kun packaging', () => {
 
   it('checks timestamp candidates across nested macOS signed code', () => {
     const root = tempRoot()
-    const appBundle = join(root, 'Kun.app')
-    const mainExecutable = join(appBundle, 'Contents/MacOS/Kun')
+    const appBundle = join(root, 'MIMO Work.app')
+    const mainExecutable = join(appBundle, 'Contents/MacOS/MIMO Work')
     const framework = join(appBundle, 'Contents/Frameworks/Electron Framework.framework')
     const nativeAddon = join(
       appBundle,

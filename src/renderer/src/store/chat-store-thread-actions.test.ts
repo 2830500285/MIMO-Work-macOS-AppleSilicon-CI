@@ -18,9 +18,9 @@ function thread(id: string): NormalizedThread {
     id,
     title: id,
     updatedAt: '2026-06-09T00:00:00.000Z',
-    model: 'deepseek-v4-pro',
+    model: 'mimo-v4-pro',
     mode: 'agent',
-    workspace: '/workspace/deepseek-gui',
+    workspace: '/workspace/mimo-work',
     status: 'running'
   }
 }
@@ -84,7 +84,7 @@ describe('chat-store-thread-actions queued messages', () => {
     const { actions, state } = buildHarness()
     const guiPlan: GuiPlanMessageContext = {
       operation: 'draft',
-      workspaceRoot: '/workspace/deepseek-gui',
+      workspaceRoot: '/workspace/mimo-work',
       relativePath: '.kunsdd/plan/feature.md',
       planId: 'plan-1',
       sourceRequest: 'feature'
@@ -114,7 +114,7 @@ describe('chat-store-thread-actions queued messages', () => {
         mode: 'plan',
         guiPlan: {
           operation: 'draft',
-          workspaceRoot: '/workspace/deepseek-gui',
+          workspaceRoot: '/workspace/mimo-work',
           relativePath: '.kunsdd/plan/one.md',
           planId: 'plan-1'
         }
@@ -132,6 +132,49 @@ describe('chat-store-thread-actions queued messages', () => {
     expect(sendMessage).toHaveBeenCalledWith('normal follow-up', 'agent', {
       queued: expect.objectContaining({ id: 'q-user' })
     })
+  })
+
+  it('uses composer text as the answer when the active turn is waiting for user input', async () => {
+    const provider = {
+      sendUserMessage: vi.fn()
+    }
+    registryMock.getProvider.mockReturnValue(provider)
+    const { actions, state } = buildHarness()
+    const resolveUserInput = vi.fn(async () => undefined)
+    state.busy = false
+    state.resolveUserInput = resolveUserInput as unknown as ChatState['resolveUserInput']
+    state.blocks = [
+      { kind: 'user', id: 'user-1', text: '请完成一份数学建模论文' },
+      {
+        kind: 'user_input',
+        id: 'ui-1',
+        requestId: 'question-1',
+        status: 'pending',
+        questions: [
+          {
+            header: 'Question',
+            id: 'topic',
+            question: '请确认题目和具体要求',
+            options: []
+          }
+        ]
+      }
+    ]
+
+    await expect(actions.sendMessage('国赛，SIR 模型，生成 docx', 'agent')).resolves.toBe(true)
+
+    expect(resolveUserInput).toHaveBeenCalledWith('ui-1', {
+      kind: 'submit',
+      answers: [
+        {
+          id: 'topic',
+          label: '国赛，SIR 模型，生成 docx',
+          value: '国赛，SIR 模型，生成 docx'
+        }
+      ]
+    })
+    expect(provider.sendUserMessage).not.toHaveBeenCalled()
+    expect(state.queuedMessages).toEqual([])
   })
 
   it('applies the selected composer provider before sending a turn', async () => {
@@ -153,7 +196,7 @@ describe('chat-store-thread-actions queued messages', () => {
     vi.stubGlobal('window', {
       kunGui: {
         getSettings: vi.fn(async () => ({
-          agents: { kun: { providerId: 'minimax-token-plan', model: 'MiniMax-M2' } },
+          agents: { kun: { providerId: 'mimo-token-plan', model: 'MIMO-M2' } },
           codePromptPrefix: ''
         })),
         saveSettingsSilent,
@@ -192,14 +235,14 @@ describe('chat-store-thread-actions queued messages', () => {
     }
     registryMock.getProvider.mockReturnValue(provider)
     const saveSettingsSilent = vi.fn(async () => ({
-      agents: { kun: { providerId: 'minimax-token-plan', model: 'MiniMax-M3' } },
+      agents: { kun: { providerId: 'mimo-token-plan', model: 'MIMO-M3' } },
       codePromptPrefix: ''
     }))
     const restartRuntime = vi.fn(async () => undefined)
     vi.stubGlobal('window', {
       kunGui: {
         getSettings: vi.fn(async () => ({
-          agents: { kun: { providerId: 'deepseek', model: 'deepseek-v4-pro' } },
+          agents: { kun: { providerId: 'mimo', model: 'mimo-v4-pro' } },
           codePromptPrefix: ''
         })),
         saveSettingsSilent,
@@ -213,19 +256,19 @@ describe('chat-store-thread-actions queued messages', () => {
     state.ensureWriteThreadForWorkspace = vi.fn(async () => 'thr_existing') as never
 
     await expect(actions.sendMessage('make a prototype', 'agent', {
-      model: 'MiniMax-M3',
-      providerId: 'minimax-token-plan'
+      model: 'MIMO-M3',
+      providerId: 'mimo-token-plan'
     })).resolves.toBe(true)
 
     expect(saveSettingsSilent).toHaveBeenCalledWith({
-      agents: { kun: { providerId: 'minimax-token-plan', model: 'MiniMax-M3' } }
+      agents: { kun: { providerId: 'mimo-token-plan', model: 'MIMO-M3' } }
     })
     expect(restartRuntime).toHaveBeenCalledTimes(1)
     expect(provider.connect).toHaveBeenCalledTimes(1)
     expect(provider.sendUserMessage).toHaveBeenCalledWith(
       'thr_existing',
       'make a prototype',
-      expect.objectContaining({ model: 'MiniMax-M3' })
+      expect.objectContaining({ model: 'MIMO-M3' })
     )
   })
 })

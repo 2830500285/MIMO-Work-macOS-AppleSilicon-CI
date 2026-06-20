@@ -29,6 +29,9 @@ import {
 } from '../../shared/kun-endpoints'
 import {
   IMAGE_GENERATION_PROTOCOLS,
+  MANAGED_RUNTIME_IDS,
+  MIMO_CREDENTIAL_MODES,
+  MIMO_TOKENPLAN_REGIONS,
   MUSIC_GENERATION_PROTOCOLS,
   MODEL_ENDPOINT_FORMATS,
   MODEL_PROVIDER_INPUT_MODALITIES,
@@ -200,6 +203,9 @@ const writeInlineCompletionModelSchema = z.union([
   trimmedString(128)
 ])
 const modelEndpointFormatSchema = z.enum(MODEL_ENDPOINT_FORMATS)
+const managedRuntimeIdSchema = z.enum(MANAGED_RUNTIME_IDS)
+const mimoCredentialModeSchema = z.enum(MIMO_CREDENTIAL_MODES)
+const mimoTokenplanRegionSchema = z.enum(MIMO_TOKENPLAN_REGIONS)
 const imageGenerationProtocolSchema = z.enum(IMAGE_GENERATION_PROTOCOLS)
 const speechToTextProtocolSchema = z.enum(SPEECH_TO_TEXT_PROTOCOLS)
 const textToSpeechProtocolSchema = z.enum(TEXT_TO_SPEECH_PROTOCOLS)
@@ -278,6 +284,7 @@ const modelProviderPatchSchema = z.object({
 }).strict()
 
 const kunRuntimePatchSchema = z.object({
+  runtimeEngine: managedRuntimeIdSchema.optional(),
   binaryPath: defaultPathSchema,
   port: z.number().int().min(1).max(65_535).optional(),
   autoStart: z.boolean().optional(),
@@ -395,12 +402,21 @@ const kunRuntimePatchSchema = z.object({
     z.string().trim().min(1).max(128),
     modelProfilePatchSchema.nullable()
   ).optional(),
-  memoryEnabled: z.boolean().optional()
+  memoryEnabled: z.boolean().optional(),
+  knowledgeBaseDirs: z.array(trimmedString(MAX_PATH_LENGTH)).max(128).optional(),
+  mimo: z.object({
+    mode: mimoCredentialModeSchema.optional(),
+    apiKey: z.string().max(MAX_BODY_BYTES).optional(),
+    baseUrl: z.string().trim().max(MAX_URL_LENGTH).optional(),
+    region: mimoTokenplanRegionSchema.optional(),
+    model: z.string().trim().min(1).max(128).optional(),
+    metadata: z.record(z.string().trim().min(1).max(128), z.string().max(4_096)).optional()
+  }).strict().optional()
 }).strict()
 
 const logPatchSchema = z.object({
   enabled: z.boolean().optional(),
-  retentionDays: z.number().int().min(1).max(365).optional()
+  retentionDays: z.number().int().min(0).max(3650).optional()
 }).strict()
 
 const notificationsPatchSchema = z.object({
@@ -423,6 +439,11 @@ const keyboardShortcutsPatchSchema = z.object({
     z.enum(keyboardShortcutCommandIds),
     z.array(z.string().trim().max(64)).max(4)
   ).optional()
+}).strict()
+
+const environmentProjectPatchSchema = z.object({
+  path: trimmedString(MAX_PATH_LENGTH),
+  setupCommand: z.string().max(MAX_CHANNEL_TEXT_LENGTH).optional()
 }).strict()
 
 const writeInlineCompletionPatchSchema = z.object({
@@ -646,7 +667,6 @@ function stripLegacySettingsPatchKeys(payload: unknown): unknown {
   const next: Record<string, unknown> = { ...source }
 
   delete next.agentProvider
-  delete next.deepseek
   delete next.disabledSkillIds
   delete next.reasonix
   delete next.quickChat
@@ -672,6 +692,7 @@ const settingsPatchObjectSchema = z.object({
     kun: kunRuntimePatchSchema.optional()
   }).strict().optional(),
   workspaceRoot: defaultPathSchema,
+  environmentProjects: z.array(environmentProjectPatchSchema).max(256).optional(),
   log: logPatchSchema.optional(),
   notifications: notificationsPatchSchema.optional(),
   appBehavior: appBehaviorPatchSchema.optional(),
@@ -696,6 +717,12 @@ export const skillSaveFilePayloadSchema = z
   })
   .strict()
 
+export const recommendedSkillInstallPayloadSchema = z
+  .object({
+    id: trimmedString(128)
+  })
+  .strict()
+
 export const skillListPayloadSchema = z
   .object({
     workspaceRoot: z.string().trim().max(MAX_PATH_LENGTH).optional()
@@ -703,7 +730,7 @@ export const skillListPayloadSchema = z
   .strict()
 
 export const rootPathSchema = trimmedString(MAX_PATH_LENGTH)
-export const deepseekConfigContentSchema = z.string().max(MAX_CONFIG_FILE_BYTES)
+export const mimoWorkConfigContentSchema = z.string().max(MAX_CONFIG_FILE_BYTES)
 
 export const workspaceRootSchema = trimmedString(MAX_PATH_LENGTH)
 export const gitBranchPayloadSchema = z
@@ -1069,9 +1096,3 @@ export const sseStartPayloadSchema = z
   .strict()
 
 export const streamIdSchema = trimmedString(MAX_ID_LENGTH)
-
-export const uiPluginIdPayloadSchema = z
-  .object({
-    id: z.string().trim().regex(/^[a-z0-9][a-z0-9-]{1,39}$/)
-  })
-  .strict()

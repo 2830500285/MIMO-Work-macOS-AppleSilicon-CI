@@ -106,6 +106,14 @@ function sectionHasPendingApproval(section: ProcessSection): boolean {
   return section.blocks.some(isPendingApproval)
 }
 
+function isPendingUserInput(block: ChatBlock): boolean {
+  return block.kind === 'user_input' && block.status === 'pending'
+}
+
+function sectionHasPendingUserInput(section: ProcessSection): boolean {
+  return section.blocks.some(isPendingUserInput)
+}
+
 export function ProcessSectionRow({
   section,
   processing,
@@ -139,9 +147,10 @@ export function ProcessSectionRow({
   const defaultExpanded =
     hasError ||
     sectionHasPendingApproval(section) ||
-    (active && section.kind === 'reasoning') ||
-    (processing && section.kind === 'execution' && sectionHasRequestUserInput(section))
-  const forceExpanded = sectionHasPendingApproval(section)
+    sectionHasPendingUserInput(section) ||
+    section.kind === 'reasoning' ||
+    (section.kind === 'execution' && sectionHasRequestUserInput(section))
+  const forceExpanded = sectionHasPendingApproval(section) || sectionHasPendingUserInput(section)
   const expanded = hasDetails && (forceExpanded || (userExpanded ?? defaultExpanded))
   const title = describeProcessSection(section, t, {
     processing,
@@ -153,7 +162,7 @@ export function ProcessSectionRow({
   const showActiveError = active && hasError
   const { ref: deferredDetailRef, shouldRender: shouldRenderDetail } = useDeferredRender<HTMLDivElement>({
     enabled: expanded,
-    immediate: active || section.kind === 'execution',
+    immediate: active || section.kind === 'reasoning' || section.kind === 'execution',
     root: viewportRef
   })
 
@@ -247,17 +256,16 @@ function processBlockIsRunningTool(block: ChatBlock, processing: boolean): boole
 
 function processBlockIsAutoOpenPending(block: ChatBlock, processing: boolean): boolean {
   return (
-    processing &&
-    ((block.kind === 'compaction' && block.status === 'running') ||
-      (block.kind === 'approval' && block.status === 'pending') ||
-      (block.kind === 'user_input' && block.status === 'pending'))
+    (processing && block.kind === 'compaction' && block.status === 'running') ||
+    (block.kind === 'approval' && block.status === 'pending') ||
+    (block.kind === 'user_input' && block.status === 'pending')
   )
 }
 
 function processBlockIsActive(block: ChatBlock, processing: boolean): boolean {
   return (
     processBlockIsRunningTool(block, processing) ||
-    processBlockIsAutoOpenPending(block, processing) ||
+    (processing && block.kind === 'compaction' && block.status === 'running') ||
     (processing && block.kind === 'assistant' && block.id === 'live-assistant')
   )
 }
@@ -290,7 +298,7 @@ function ProcessStackRows({
         const detail = getProcessDetail(block, summary)
         const isRunningTool = processBlockIsRunningTool(block, processing)
         const canExpand = detail.kind !== 'none'
-        const autoOpenRequestInput = processing && isRequestUserInputTool(block)
+        const autoOpenRequestInput = isRequestUserInputTool(block)
         const autoOpenPending = processBlockIsAutoOpenPending(block, processing) || isPendingApproval(block)
         const isError = processBlockHasError(block)
         const defaultOpen = isError

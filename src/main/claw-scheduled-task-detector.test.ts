@@ -61,14 +61,14 @@ describe('detectClawScheduledTaskRequest endpoint formats', () => {
     await detectClawScheduledTaskRequest(
       settings('responses'),
       'remind me tomorrow to stretch',
-      'deepseek-v4-flash',
+      'mimo-v4-flash',
       new Date('2026-06-09T12:00:00+08:00')
     )
 
     expect(calls[0]).toMatchObject({
       url: 'https://model.example/v1/responses',
       body: {
-        model: 'deepseek-v4-flash',
+        model: 'mimo-v4-flash',
         input: 'remind me tomorrow to stretch',
         max_output_tokens: 300,
         text: { format: { type: 'json_object' } }

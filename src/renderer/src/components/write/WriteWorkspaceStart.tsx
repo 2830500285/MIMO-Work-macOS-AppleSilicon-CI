@@ -19,7 +19,7 @@ export function WriteWorkspaceStart({
 }): ReactElement {
   const { t } = useTranslation('common')
   return (
-    <div className="write-start-shell relative h-full min-h-[420px] overflow-auto rounded-[28px] bg-[linear-gradient(180deg,rgba(255,255,255,0.82),rgba(247,250,255,0.62))] px-5 py-5 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] sm:px-8 sm:py-8">
+    <div className="write-start-shell relative h-full min-h-[420px] overflow-auto rounded-[8px] bg-[linear-gradient(180deg,#ffffff,#fcfaf8)] px-5 py-5 dark:bg-[linear-gradient(180deg,rgba(255,246,237,0.07),rgba(255,246,237,0.025))] sm:px-8 sm:py-8">
       <div className="write-start-grid mx-auto grid min-h-full w-full max-w-6xl gap-6">
         <section className="write-start-hero min-w-0 py-4">
           <div className="inline-flex items-center gap-2 rounded-full border border-accent/15 bg-accent/10 px-3 py-1.5 text-[12px] font-semibold text-accent">
@@ -37,7 +37,7 @@ export function WriteWorkspaceStart({
             <button
               type="button"
               onClick={onCreateDraft}
-              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 text-[14px] font-semibold text-white shadow-[0_14px_30px_rgba(59,130,216,0.22)] transition hover:brightness-110"
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-black px-5 text-[14px] font-semibold text-white shadow-[0_14px_30px_rgba(31,35,41,0.18)] transition hover:bg-[#1f2329] dark:bg-[var(--ds-mimo-orange)] dark:text-black"
             >
               <FilePlus2 className="h-4 w-4" strokeWidth={1.9} />
               {t('writeStartNewDraft')}
@@ -56,9 +56,9 @@ export function WriteWorkspaceStart({
             <button
               type="button"
               onClick={onRefreshWorkspace}
-              className="group flex min-h-[82px] items-center gap-3 rounded-2xl border border-ds-border-muted bg-white/52 px-4 py-3 text-left transition hover:border-accent/25 hover:bg-white/78 dark:bg-white/[0.035] dark:hover:bg-white/[0.07]"
+              className="group flex min-h-[82px] items-center gap-3 rounded-2xl border border-ds-border-muted bg-white/70 px-4 py-3 text-left transition hover:border-[var(--ds-border-strong)] hover:bg-white dark:bg-white/[0.035] dark:hover:bg-white/[0.07]"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--ds-accent-soft)] text-ds-ink dark:bg-[rgba(251,129,71,0.16)] dark:text-[#ffad7f]">
                 <RefreshCw className="h-5 w-5" strokeWidth={1.9} />
               </span>
               <span className="min-w-0">
@@ -73,9 +73,9 @@ export function WriteWorkspaceStart({
             <button
               type="button"
               onClick={onPickWorkspace}
-              className="group flex min-h-[82px] items-center gap-3 rounded-2xl border border-ds-border-muted bg-white/52 px-4 py-3 text-left transition hover:border-accent/25 hover:bg-white/78 dark:bg-white/[0.035] dark:hover:bg-white/[0.07]"
+              className="group flex min-h-[82px] items-center gap-3 rounded-2xl border border-ds-border-muted bg-white/70 px-4 py-3 text-left transition hover:border-[var(--ds-border-strong)] hover:bg-white dark:bg-white/[0.035] dark:hover:bg-white/[0.07]"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-ds-skill-soft text-ds-skill">
                 <FolderOpen className="h-5 w-5" strokeWidth={1.9} />
               </span>
               <span className="min-w-0">
@@ -90,7 +90,7 @@ export function WriteWorkspaceStart({
           </div>
         </section>
 
-        <aside className="write-start-card min-w-0 rounded-[24px] border border-ds-border-muted bg-white/58 p-5 shadow-[0_18px_48px_rgba(20,47,95,0.07)] dark:bg-white/[0.04]">
+        <aside className="write-start-card min-w-0 rounded-[8px] border border-ds-border-muted bg-white/72 p-5 shadow-[0_18px_48px_rgba(31,35,41,0.07)] dark:bg-white/[0.04]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-[12px] font-semibold text-ds-faint">
@@ -105,7 +105,7 @@ export function WriteWorkspaceStart({
             </span>
           </div>
 
-          <div className="mt-5 rounded-[20px] border border-ds-border-muted bg-white/76 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.64)] dark:bg-white/[0.035] dark:shadow-none">
+          <div className="mt-5 rounded-[8px] border border-ds-border-muted bg-white/86 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.64)] dark:bg-white/[0.035] dark:shadow-none">
             <div className="flex items-center gap-3">
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-accent">
                 <FilePenLine className="h-5 w-5" strokeWidth={1.9} />

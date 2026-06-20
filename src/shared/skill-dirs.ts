@@ -34,7 +34,8 @@ export const COMMON_GLOBAL_SKILL_DIRS: readonly CommonSkillDir[] = [
   { id: 'global-agents', scope: 'global', relativePath: '.agents/skills', labelKey: 'pluginSkillRootGlobalAgents' },
   { id: 'global-claude', scope: 'global', relativePath: '.claude/skills', labelKey: 'pluginSkillRootGlobalClaude' },
   { id: 'global-codex', scope: 'global', relativePath: '.codex/skills', labelKey: 'pluginSkillRootGlobalCodex' },
-  { id: 'global-deepseek', scope: 'global', relativePath: '.kun/skills', labelKey: 'pluginSkillRootGlobalDeepseek' }
+  { id: 'global-hermes', scope: 'global', relativePath: '.hermes/skills', labelKey: 'pluginSkillRootGlobalHermes' },
+  { id: 'global-mimo-work', scope: 'global', relativePath: '.mimo-work/skills', labelKey: 'pluginSkillRootGlobalMimoWork' }
 ]
 
 /**

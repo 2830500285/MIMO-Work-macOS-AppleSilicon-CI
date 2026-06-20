@@ -1,5 +1,5 @@
 import {
-  DEFAULT_DEEPSEEK_BASE_URL,
+  DEFAULT_MIMO_BASE_URL,
   DEFAULT_IMAGE_GENERATION_PROTOCOL,
   DEFAULT_MUSIC_GENERATION_PROTOCOL,
   DEFAULT_MODEL_ENDPOINT_FORMAT,
@@ -47,9 +47,9 @@ import {
   type TextToSpeechProtocol,
   type VideoGenerationProtocol
 } from './app-settings-types'
-import { normalizeModelEndpointFormat } from '../../kun/src/contracts/model-endpoint-format.js'
+import { normalizeModelEndpointFormat } from './model-endpoint-format'
 import { getKunRuntimeSettings } from './app-settings-kun'
-import { normalizeDeepseekBaseUrl } from './app-settings-normalizers'
+import { normalizeMimoBaseUrl } from './app-settings-normalizers'
 import { DEFAULT_COMPOSER_MODEL_IDS } from './default-composer-models'
 import {
   TOKEN_PLAN_PROVIDER_ID_SUFFIX,
@@ -59,7 +59,7 @@ import {
   type ModelProviderPreset
 } from './model-provider-presets'
 
-const DEFAULT_MODEL_PROVIDER_NAME = 'DeepSeek'
+const DEFAULT_MODEL_PROVIDER_NAME = 'MIMO'
 const DEFAULT_PROVIDER_CONTEXT_WINDOW_TOKENS = 24_000
 const DEFAULT_TEXT_MODEL_PROFILE: ModelProviderModelProfileV1 = {
   inputModalities: ['text'],
@@ -83,7 +83,7 @@ const NON_TEXT_MODEL_PATTERN =
   /(^|[/_.:-])(embedding|embeddings|embed|bge|rerank|reranker|moderation|ocr|image|images|video|videos|music|song|audio|dall-e|dalle|flux|sdxl|cogview|cogvideo|wanx|kolors|imagen|seedream|seededit|seedance|sora|veo|kling|hailuo|t2i|i2i|t2v|i2v|s2v)([/_.:-]|$)|stable[-_.:/]?diffusion|text[-_.:/]?to[-_.:/]?image|text[-_.:/]?to[-_.:/]?video|image[-_.:/]?to[-_.:/]?video|text[-_.:/]?to[-_.:/]?music|music[-_.:/]?generation/i
 
 export function defaultModelProviderSettings(): ModelProviderSettingsV1 {
-  const defaultProvider = defaultModelProviderProfile('', DEFAULT_DEEPSEEK_BASE_URL)
+  const defaultProvider = defaultModelProviderProfile('', DEFAULT_MIMO_BASE_URL)
   return {
     apiKey: defaultProvider.apiKey,
     baseUrl: defaultProvider.baseUrl,
@@ -150,7 +150,7 @@ export function resolveModelProviderApiKey(settings: AppSettingsV1): string {
 }
 
 export function resolveModelProviderBaseUrl(settings: AppSettingsV1): string {
-  return normalizeDeepseekBaseUrl(getDefaultModelProviderProfile(settings).baseUrl)
+  return normalizeMimoBaseUrl(getDefaultModelProviderProfile(settings).baseUrl)
 }
 
 export function getDefaultModelProviderProfile(settings: AppSettingsV1): ModelProviderProfileV1 {
@@ -348,11 +348,6 @@ export function listVideoGenerationProviderProfiles(settings: AppSettingsV1): Mo
   return getModelProviderSettings(settings).providers.filter((provider) => Boolean(provider.video))
 }
 
-type MiniMaxMediaCapabilityKey = 'textToSpeech' | 'music' | 'video'
-type MiniMaxMediaCapability =
-  | ModelProviderTextToSpeechCapabilityV1
-  | ModelProviderMusicCapabilityV1
-  | ModelProviderVideoCapabilityV1
 type TokenPlanCapabilityKey = 'image' | 'speech' | 'textToSpeech' | 'music' | 'video'
 type ProviderCapabilityWithBaseUrl = {
   protocol: string
@@ -363,98 +358,6 @@ type TokenPlanCapabilityWithOptionalBaseUrl = {
   protocol: string
   baseUrl?: string
   models: readonly string[]
-}
-
-type KunMediaSettingCore = Partial<{
-  enabled: boolean
-  providerId: string
-  baseUrl: string
-  apiKey: string
-  model: string
-}>
-
-const MINIMAX_PROVIDER_ID = 'minimax'
-const MINIMAX_TOKEN_PLAN_PROVIDER_ID = `${MINIMAX_PROVIDER_ID}${TOKEN_PLAN_PROVIDER_ID_SUFFIX}`
-
-export function defaultMiniMaxMediaGenerationKunPatch(input: {
-  providers: readonly ModelProviderProfileV1[]
-  currentKun?: Partial<KunRuntimeSettingsV1>
-  kunPatch?: KunRuntimeSettingsPatchV1
-}): KunRuntimeSettingsPatchV1 | undefined {
-  const patch: KunRuntimeSettingsPatchV1 = {}
-  if (!input.kunPatch?.textToSpeech && isBlankKunMediaSetting(input.currentKun?.textToSpeech)) {
-    const match = configuredMiniMaxMediaCapability(input.providers, 'textToSpeech', input.currentKun?.providerId)
-    if (match) {
-      patch.textToSpeech = {
-        enabled: true,
-        providerId: match.provider.id,
-        protocol: match.capability.protocol as TextToSpeechProtocol,
-        baseUrl: '',
-        apiKey: '',
-        model: match.model
-      }
-    }
-  }
-  if (!input.kunPatch?.musicGeneration && isBlankKunMediaSetting(input.currentKun?.musicGeneration)) {
-    const match = configuredMiniMaxMediaCapability(input.providers, 'music', input.currentKun?.providerId)
-    if (match) {
-      patch.musicGeneration = {
-        enabled: true,
-        providerId: match.provider.id,
-        protocol: match.capability.protocol as MusicGenerationProtocol,
-        baseUrl: '',
-        apiKey: '',
-        model: match.model
-      }
-    }
-  }
-  if (!input.kunPatch?.videoGeneration && isBlankKunMediaSetting(input.currentKun?.videoGeneration)) {
-    const match = configuredMiniMaxMediaCapability(input.providers, 'video', input.currentKun?.providerId)
-    if (match) {
-      patch.videoGeneration = {
-        enabled: true,
-        providerId: match.provider.id,
-        protocol: match.capability.protocol as VideoGenerationProtocol,
-        baseUrl: '',
-        apiKey: '',
-        model: match.model
-      }
-    }
-  }
-  return Object.keys(patch).length > 0 ? patch : undefined
-}
-
-function isBlankKunMediaSetting(setting: KunMediaSettingCore | undefined): boolean {
-  return setting?.enabled !== true &&
-    !setting?.providerId?.trim() &&
-    !setting?.baseUrl?.trim() &&
-    !setting?.apiKey?.trim() &&
-    !setting?.model?.trim()
-}
-
-function configuredMiniMaxMediaCapability(
-  providers: readonly ModelProviderProfileV1[],
-  key: MiniMaxMediaCapabilityKey,
-  currentProviderId: string | undefined
-): { provider: ModelProviderProfileV1; capability: MiniMaxMediaCapability; model: string } | null {
-  const byId = new Map(providers.map((provider) => [provider.id, providerWithPresetCapabilities(provider)]))
-  for (const id of preferredMiniMaxMediaProviderIds(currentProviderId)) {
-    const provider = byId.get(id)
-    if (!provider?.apiKey.trim()) continue
-    const capability = provider[key]
-    const model = capability ? firstCapabilityModel(capability.models) : ''
-    if (!capability || !model) continue
-    return { provider, capability, model }
-  }
-  return null
-}
-
-function preferredMiniMaxMediaProviderIds(currentProviderId: string | undefined): string[] {
-  const normalized = normalizeModelProviderId(currentProviderId)
-  const ids = normalized === MINIMAX_PROVIDER_ID || normalized === MINIMAX_TOKEN_PLAN_PROVIDER_ID
-    ? [normalized, MINIMAX_PROVIDER_ID, MINIMAX_TOKEN_PLAN_PROVIDER_ID]
-    : [MINIMAX_PROVIDER_ID, MINIMAX_TOKEN_PLAN_PROVIDER_ID]
-  return ids.filter((id, index) => ids.indexOf(id) === index)
 }
 
 function providerWithPresetCapabilities(provider: ModelProviderProfileV1): ModelProviderProfileV1 {
@@ -497,6 +400,17 @@ function mergePresetCapability<T extends { baseUrl: string; models: string[] }>(
   }
 }
 
+function hasDirectCapabilityConfig(input: { baseUrl: string; apiKey: string; model: string }): boolean {
+  return Boolean(input.baseUrl.trim() || input.apiKey.trim() || input.model.trim())
+}
+
+function firstProviderWithCapability(
+  settings: AppSettingsV1,
+  capability: TokenPlanCapabilityKey
+): ModelProviderProfileV1 | null {
+  return getModelProviderSettings(settings).providers.find((provider) => Boolean(provider[capability])) ?? null
+}
+
 function firstCapabilityModel(models: readonly string[]): string {
   return models.map((model) => model.trim()).find(Boolean) ?? ''
 }
@@ -505,16 +419,20 @@ export function resolveKunSpeechToTextSettings(settings: AppSettingsV1): KunSpee
   const runtime = getKunRuntimeSettings(settings)
   const speechToText = runtime.speechToText
   const providerId = normalizeModelProviderId(speechToText.providerId)
-  if (!providerId || providerId === CUSTOM_SPEECH_TO_TEXT_PROVIDER_ID) {
+  if (providerId === CUSTOM_SPEECH_TO_TEXT_PROVIDER_ID) {
     return {
       ...speechToText,
       providerId,
       protocol: normalizeSpeechToTextProtocol(speechToText.protocol)
     }
   }
-  const provider = getModelProviderProfile(settings, providerId)
-  const speech = provider.speech
-  if (!speech) {
+  const provider = providerId
+    ? getModelProviderProfile(settings, providerId)
+    : speechToText.enabled && !hasDirectCapabilityConfig(speechToText)
+      ? firstProviderWithCapability(settings, 'speech')
+      : null
+  const speech = provider?.speech
+  if (!provider || !speech) {
     return {
       ...speechToText,
       providerId,
@@ -672,16 +590,20 @@ export function resolveKunTextToSpeechSettings(settings: AppSettingsV1): KunText
   const runtime = getKunRuntimeSettings(settings)
   const textToSpeech = runtime.textToSpeech
   const providerId = normalizeModelProviderId(textToSpeech.providerId)
-  if (!providerId || providerId === CUSTOM_TEXT_TO_SPEECH_PROVIDER_ID) {
+  if (providerId === CUSTOM_TEXT_TO_SPEECH_PROVIDER_ID) {
     return {
       ...textToSpeech,
       providerId,
       protocol: normalizeTextToSpeechProtocol(textToSpeech.protocol)
     }
   }
-  const provider = getModelProviderProfile(settings, providerId)
-  const capability = provider.textToSpeech
-  if (!capability) {
+  const provider = providerId
+    ? getModelProviderProfile(settings, providerId)
+    : textToSpeech.enabled && !hasDirectCapabilityConfig(textToSpeech)
+      ? firstProviderWithCapability(settings, 'textToSpeech')
+      : null
+  const capability = provider?.textToSpeech
+  if (!provider || !capability) {
     return {
       ...textToSpeech,
       providerId,
@@ -702,16 +624,20 @@ export function resolveKunMusicGenerationSettings(settings: AppSettingsV1): KunM
   const runtime = getKunRuntimeSettings(settings)
   const musicGeneration = runtime.musicGeneration
   const providerId = normalizeModelProviderId(musicGeneration.providerId)
-  if (!providerId || providerId === CUSTOM_MUSIC_GENERATION_PROVIDER_ID) {
+  if (providerId === CUSTOM_MUSIC_GENERATION_PROVIDER_ID) {
     return {
       ...musicGeneration,
       providerId,
       protocol: normalizeMusicGenerationProtocol(musicGeneration.protocol)
     }
   }
-  const provider = getModelProviderProfile(settings, providerId)
-  const capability = provider.music
-  if (!capability) {
+  const provider = providerId
+    ? getModelProviderProfile(settings, providerId)
+    : musicGeneration.enabled && !hasDirectCapabilityConfig(musicGeneration)
+      ? firstProviderWithCapability(settings, 'music')
+      : null
+  const capability = provider?.music
+  if (!provider || !capability) {
     return {
       ...musicGeneration,
       providerId,
@@ -732,16 +658,20 @@ export function resolveKunVideoGenerationSettings(settings: AppSettingsV1): KunV
   const runtime = getKunRuntimeSettings(settings)
   const videoGeneration = runtime.videoGeneration
   const providerId = normalizeModelProviderId(videoGeneration.providerId)
-  if (!providerId || providerId === CUSTOM_VIDEO_GENERATION_PROVIDER_ID) {
+  if (providerId === CUSTOM_VIDEO_GENERATION_PROVIDER_ID) {
     return {
       ...videoGeneration,
       providerId,
       protocol: normalizeVideoGenerationProtocol(videoGeneration.protocol)
     }
   }
-  const provider = getModelProviderProfile(settings, providerId)
-  const capability = provider.video
-  if (!capability) {
+  const provider = providerId
+    ? getModelProviderProfile(settings, providerId)
+    : videoGeneration.enabled && !hasDirectCapabilityConfig(videoGeneration)
+      ? firstProviderWithCapability(settings, 'video')
+      : null
+  const capability = provider?.video
+  if (!provider || !capability) {
     return {
       ...videoGeneration,
       providerId,
@@ -792,16 +722,20 @@ export function resolveKunImageGenerationSettings(settings: AppSettingsV1): KunI
   const runtime = getKunRuntimeSettings(settings)
   const imageGeneration = runtime.imageGeneration
   const providerId = normalizeModelProviderId(imageGeneration.providerId)
-  if (!providerId || providerId === CUSTOM_IMAGE_GENERATION_PROVIDER_ID) {
+  if (providerId === CUSTOM_IMAGE_GENERATION_PROVIDER_ID) {
     return {
       ...imageGeneration,
       providerId,
       protocol: normalizeImageGenerationProtocol(imageGeneration.protocol)
     }
   }
-  const provider = getModelProviderProfile(settings, providerId)
-  const image = provider.image
-  if (!image) {
+  const provider = providerId
+    ? getModelProviderProfile(settings, providerId)
+    : imageGeneration.enabled && !hasDirectCapabilityConfig(imageGeneration)
+      ? firstProviderWithCapability(settings, 'image')
+      : null
+  const image = provider?.image
+  if (!provider || !image) {
     return {
       ...imageGeneration,
       providerId,
@@ -824,16 +758,16 @@ export function resolveKunRuntimeSettings(settings: AppSettingsV1): KunRuntimeSe
   const providerId = normalizeModelProviderId(runtime.providerId)
   const runtimeApiKey = runtime.apiKey?.trim() ?? ''
   const runtimeBaseUrl = runtime.baseUrl?.trim() ?? ''
-  const providerBaseUrl = provider.baseUrl.trim() || DEFAULT_DEEPSEEK_BASE_URL
+  const providerBaseUrl = provider.baseUrl.trim() || DEFAULT_MIMO_BASE_URL
   const useProviderCredentials = Boolean(providerId)
 
   return {
     ...runtime,
     apiKey: useProviderCredentials ? provider.apiKey.trim() : runtimeApiKey || provider.apiKey.trim(),
     baseUrl:
-      !useProviderCredentials && runtimeBaseUrl && runtimeBaseUrl !== DEFAULT_DEEPSEEK_BASE_URL
-        ? normalizeDeepseekBaseUrl(runtimeBaseUrl)
-        : normalizeDeepseekBaseUrl(providerBaseUrl),
+      !useProviderCredentials && runtimeBaseUrl && runtimeBaseUrl !== DEFAULT_MIMO_BASE_URL
+        ? normalizeMimoBaseUrl(runtimeBaseUrl)
+        : normalizeMimoBaseUrl(providerBaseUrl),
     endpointFormat: provider.endpointFormat,
     imageGeneration: resolveKunImageGenerationSettings(settings),
     speechToText: resolveKunSpeechToTextSettings(settings),
@@ -846,20 +780,32 @@ export function resolveKunRuntimeSettings(settings: AppSettingsV1): KunRuntimeSe
 }
 
 function defaultModelProviderProfile(apiKey: string, baseUrl: string): ModelProviderProfileV1 {
+  const xiaomiPreset = getModelProviderPreset('xiaomi')
+  const normalizedBaseUrl = baseUrl.trim()
+    ? normalizeModelProviderBaseUrl(baseUrl, DEFAULT_MIMO_BASE_URL)
+    : DEFAULT_MIMO_BASE_URL
+  const tokenPlanProfile = xiaomiPreset
+    ? modelProviderTokenPlanProfile(xiaomiPreset, apiKey, normalizedBaseUrl)
+    : null
+  if (tokenPlanProfile) {
+    return {
+      ...tokenPlanProfile,
+      id: DEFAULT_MODEL_PROVIDER_ID,
+      name: DEFAULT_MODEL_PROVIDER_NAME,
+      apiKey: apiKey.trim(),
+      baseUrl: normalizedBaseUrl
+    }
+  }
   return {
     id: DEFAULT_MODEL_PROVIDER_ID,
     name: DEFAULT_MODEL_PROVIDER_NAME,
     apiKey: apiKey.trim(),
-    baseUrl: normalizeModelProviderBaseUrl(baseUrl),
+    baseUrl: normalizedBaseUrl,
     endpointFormat: DEFAULT_MODEL_ENDPOINT_FORMAT,
     models: [...DEFAULT_COMPOSER_MODEL_IDS],
-    modelProfiles: {
-      'deepseek-v4-pro': deepseekTextModelProfile(),
-      'deepseek-v4-flash': {
-        ...deepseekTextModelProfile(),
-        aliases: ['deepseek-chat', 'deepseek-reasoner']
-      }
-    }
+    modelProfiles: Object.fromEntries(
+      DEFAULT_COMPOSER_MODEL_IDS.map((model) => [model, mimoTextModelProfile()])
+    )
   }
 }
 
@@ -897,14 +843,14 @@ function normalizeModelProviderProfile(
   })
 }
 
-function deepseekTextModelProfile(): ModelProviderModelProfileV1 {
+function mimoTextModelProfile(): ModelProviderModelProfileV1 {
   return {
     ...DEFAULT_TEXT_MODEL_PROFILE,
     contextWindowTokens: 1_000_000,
     reasoning: {
-      supportedEfforts: ['off', 'high', 'max'],
-      defaultEffort: 'max',
-      requestProtocol: 'deepseek-chat-completions'
+      supportedEfforts: ['off', 'low', 'medium', 'high'],
+      defaultEffort: 'high',
+      requestProtocol: 'mimo-chat-completions'
     }
   }
 }
@@ -1073,7 +1019,7 @@ function normalizeModelProviderImageCapability(
 ): ModelProviderImageCapabilityV1 | undefined {
   if (!input || typeof input !== 'object') return undefined
   const baseUrl = typeof input.baseUrl === 'string' && input.baseUrl.trim()
-    ? normalizeDeepseekBaseUrl(input.baseUrl)
+    ? normalizeMimoBaseUrl(input.baseUrl)
     : ''
   const models = normalizeProviderModels(input.models)
   if (!baseUrl && models.length === 0) return undefined
@@ -1085,7 +1031,8 @@ function normalizeModelProviderImageCapability(
 }
 
 export function normalizeImageGenerationProtocol(value: unknown): ImageGenerationProtocol {
-  return value === 'minimax-image' ? 'minimax-image' : DEFAULT_IMAGE_GENERATION_PROTOCOL
+  void value
+  return DEFAULT_IMAGE_GENERATION_PROTOCOL
 }
 
 function normalizeModelProviderSpeechCapability(
@@ -1093,7 +1040,7 @@ function normalizeModelProviderSpeechCapability(
 ): ModelProviderSpeechCapabilityV1 | undefined {
   if (!input || typeof input !== 'object') return undefined
   const baseUrl = typeof input.baseUrl === 'string' && input.baseUrl.trim()
-    ? normalizeDeepseekBaseUrl(input.baseUrl)
+    ? normalizeMimoBaseUrl(input.baseUrl)
     : ''
   const models = normalizeProviderModels(input.models)
   if (!baseUrl && models.length === 0) return undefined
@@ -1113,7 +1060,7 @@ function normalizeModelProviderTextToSpeechCapability(
 ): ModelProviderTextToSpeechCapabilityV1 | undefined {
   if (!input || typeof input !== 'object') return undefined
   const baseUrl = typeof input.baseUrl === 'string' && input.baseUrl.trim()
-    ? normalizeDeepseekBaseUrl(input.baseUrl)
+    ? normalizeMimoBaseUrl(input.baseUrl)
     : ''
   const models = normalizeProviderModels(input.models)
   if (!baseUrl && models.length === 0) return undefined
@@ -1125,7 +1072,7 @@ function normalizeModelProviderTextToSpeechCapability(
 }
 
 export function normalizeTextToSpeechProtocol(value: unknown): TextToSpeechProtocol {
-  return value === 'minimax-t2a' || value === 'mimo-tts'
+  return value === 'mimo-tts'
     ? value
     : DEFAULT_TEXT_TO_SPEECH_PROTOCOL
 }
@@ -1135,7 +1082,7 @@ function normalizeModelProviderMusicCapability(
 ): ModelProviderMusicCapabilityV1 | undefined {
   if (!input || typeof input !== 'object') return undefined
   const baseUrl = typeof input.baseUrl === 'string' && input.baseUrl.trim()
-    ? normalizeDeepseekBaseUrl(input.baseUrl)
+    ? normalizeMimoBaseUrl(input.baseUrl)
     : ''
   const models = normalizeProviderModels(input.models)
   if (!baseUrl && models.length === 0) return undefined
@@ -1147,7 +1094,7 @@ function normalizeModelProviderMusicCapability(
 }
 
 export function normalizeMusicGenerationProtocol(value: unknown): MusicGenerationProtocol {
-  return value === 'minimax-music' ? 'minimax-music' : DEFAULT_MUSIC_GENERATION_PROTOCOL
+  return value === 'custom-music' ? 'custom-music' : DEFAULT_MUSIC_GENERATION_PROTOCOL
 }
 
 function normalizeModelProviderVideoCapability(
@@ -1155,7 +1102,7 @@ function normalizeModelProviderVideoCapability(
 ): ModelProviderVideoCapabilityV1 | undefined {
   if (!input || typeof input !== 'object') return undefined
   const baseUrl = typeof input.baseUrl === 'string' && input.baseUrl.trim()
-    ? normalizeDeepseekBaseUrl(input.baseUrl)
+    ? normalizeMimoBaseUrl(input.baseUrl)
     : ''
   const models = normalizeProviderModels(input.models)
   if (!baseUrl && models.length === 0) return undefined
@@ -1167,13 +1114,13 @@ function normalizeModelProviderVideoCapability(
 }
 
 export function normalizeVideoGenerationProtocol(value: unknown): VideoGenerationProtocol {
-  return value === 'minimax-video' ? 'minimax-video' : DEFAULT_VIDEO_GENERATION_PROTOCOL
+  return value === 'custom-video' ? 'custom-video' : DEFAULT_VIDEO_GENERATION_PROTOCOL
 }
 
-function normalizeModelProviderBaseUrl(value: unknown, fallback = DEFAULT_DEEPSEEK_BASE_URL): string {
+function normalizeModelProviderBaseUrl(value: unknown, fallback = DEFAULT_MIMO_BASE_URL): string {
   if (typeof value !== 'string') return fallback
   const trimmed = value.trim()
-  return trimmed ? normalizeDeepseekBaseUrl(trimmed) : ''
+  return trimmed ? normalizeMimoBaseUrl(trimmed) : ''
 }
 
 function normalizeProviderModels(models: unknown): string[] {

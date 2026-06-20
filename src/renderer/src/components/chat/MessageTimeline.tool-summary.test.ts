@@ -24,7 +24,7 @@ const activeThread: NormalizedThread = {
   id: 'thr_1',
   title: 'Thread',
   updatedAt: '2026-06-07T00:00:00.000Z',
-  model: 'deepseek-chat',
+  model: 'mimo-chat',
   mode: 'code',
   workspace: '/tmp/project'
 }
@@ -217,6 +217,31 @@ describe('MessageTimeline Kun runtime metadata smoke', () => {
     expect(html).not.toContain('Feishu / Lark inbound message')
   })
 
+  it('hides MIMO Work runtime instructions from user bubbles', () => {
+    const block: ChatBlock = {
+      kind: 'user',
+      id: 'user_runtime',
+      text: [
+        '[Code managed instructions]',
+        '',
+        'MIMO Work execution guardrails:',
+        '- Keep visible progress moving.',
+        '- Save generated artifacts under this workspace.',
+        '',
+        '---',
+        '[Current user request]',
+        '打开该文件'
+      ].join('\n')
+    }
+
+    const html = renderToStaticMarkup(createElement(MessageBubble, { block }))
+
+    expect(html).toContain('打开该文件')
+    expect(html).not.toContain('Code managed instructions')
+    expect(html).not.toContain('execution guardrails')
+    expect(html).not.toContain('Save generated artifacts')
+  })
+
   it('renders attachment, Skill, memory, web source, and child-agent chips in bubbles', () => {
     const block: ToolBlock = toolBlock({
       summary: 'web_search: docs',
@@ -387,7 +412,7 @@ describe('MessageTimeline Kun runtime metadata smoke', () => {
     expect(html).not.toContain('grep detail should stay tucked away')
   })
 
-  it('auto-expands pending request_user_input while keeping other tool details tucked away', () => {
+  it('auto-expands pending request_user_input after the runtime is waiting for the user', () => {
     const readBlock: ChatBlock = toolBlock({
       id: 'tool_read',
       summary: 'read: file',
@@ -418,7 +443,7 @@ describe('MessageTimeline Kun runtime metadata smoke', () => {
     const html = renderToStaticMarkup(
       createElement(ProcessSectionRow, {
         section: { id: 'execution-batch', kind: 'execution', blocks: [readBlock, inputBlock] },
-        processing: true,
+        processing: false,
         singleReasoningSection: false,
         viewportRef: { current: null }
       })
@@ -428,6 +453,7 @@ describe('MessageTimeline Kun runtime metadata smoke', () => {
     expect(html).toContain('What should we eat tonight?')
     expect(html).toContain('Noodles')
     expect(html).not.toContain('read detail should stay tucked away')
+    expect(html).not.toContain('ds-shiny-text')
   })
 
   it('auto-expands pending approvals while keeping other tool details tucked away', () => {
@@ -482,7 +508,7 @@ describe('MessageTimeline Kun runtime metadata smoke', () => {
     const html = renderToStaticMarkup(
       createElement(ProcessSectionRow, {
         section: { id: 'execution-input', kind: 'execution', blocks: [inputBlock] },
-        processing: true,
+        processing: false,
         singleReasoningSection: false,
         viewportRef: { current: null }
       })
@@ -492,6 +518,272 @@ describe('MessageTimeline Kun runtime metadata smoke', () => {
     expect(html).toContain('<textarea')
     expect(html).not.toContain('userInputOther')
     expect(html).not.toContain('其他')
+  })
+
+  it('expands completed turns that are waiting for user input', () => {
+    const blocks: ChatBlock[] = [
+      {
+        kind: 'user',
+        id: 'user_1',
+        text: 'write a paper'
+      },
+      {
+        kind: 'user_input',
+        id: 'ui_1',
+        requestId: 'input_1',
+        status: 'pending',
+        questions: [
+          {
+            header: 'Topic',
+            id: 'topic',
+            question: '请选择数学建模题目',
+            options: [
+              {
+                label: '2023年国赛C题',
+                description: '古代玻璃制品成分分析'
+              }
+            ]
+          }
+        ]
+      }
+    ]
+    useChatStore.setState({
+      busy: false,
+      currentTurnUserId: null,
+      turnStartedAtByUserId: {}
+    })
+
+    const html = renderToStaticMarkup(
+      createElement(MessageTimeline, {
+        blocks,
+        liveReasoning: '',
+        live: '',
+        activeThreadId: 'thr_1',
+        runtimeConnection: 'ready',
+        onRetryConnection: () => undefined,
+        onOpenSettings: () => undefined
+      })
+    )
+
+    expect(html).toContain('aria-expanded="true"')
+    expect(html).toContain('请选择数学建模题目')
+    expect(html).toContain('2023年国赛C题')
+  })
+
+  it('expands completed process-only turns so progress does not look blank', () => {
+    const blocks: ChatBlock[] = [
+      {
+        kind: 'user',
+        id: 'user_1',
+        text: 'build the Word file'
+      },
+      {
+        kind: 'reasoning',
+        id: 'reasoning_1',
+        text: '正在整理论文结构并生成图表。'
+      }
+    ]
+    useChatStore.setState({
+      busy: false,
+      currentTurnUserId: null,
+      turnStartedAtByUserId: {}
+    })
+
+    const html = renderToStaticMarkup(
+      createElement(MessageTimeline, {
+        blocks,
+        liveReasoning: '',
+        live: '',
+        activeThreadId: 'thr_1',
+        runtimeConnection: 'ready',
+        onRetryConnection: () => undefined,
+        onOpenSettings: () => undefined
+      })
+    )
+
+    expect(html).toContain('aria-expanded="true"')
+    expect(html).toContain('正在整理论文结构并生成图表。')
+  })
+
+  it('keeps ordinary completed tool work collapsed when the final answer is visible', () => {
+    const blocks: ChatBlock[] = [
+      {
+        kind: 'user',
+        id: 'user_1',
+        text: 'inspect this file'
+      },
+      toolBlock({
+        summary: 'read: file',
+        detail: 'completed tool detail should stay tucked away',
+        meta: { toolName: 'read' },
+        filePath: '/tmp/project/src/app.ts'
+      }),
+      {
+        kind: 'assistant',
+        id: 'assistant_1',
+        text: 'I found the answer.'
+      }
+    ]
+    useChatStore.setState({
+      busy: false,
+      currentTurnUserId: null,
+      turnStartedAtByUserId: {}
+    })
+
+    const html = renderToStaticMarkup(
+      createElement(MessageTimeline, {
+        blocks,
+        liveReasoning: '',
+        live: '',
+        activeThreadId: 'thr_1',
+        runtimeConnection: 'ready',
+        onRetryConnection: () => undefined,
+        onOpenSettings: () => undefined
+      })
+    )
+
+    expect(html).toContain('aria-expanded="false"')
+    expect(html).toContain('I found the answer.')
+    expect(html).not.toContain('completed tool detail should stay tucked away')
+  })
+
+  it('collapses completed process errors when the final answer is visible', () => {
+    const blocks: ChatBlock[] = [
+      {
+        kind: 'user',
+        id: 'user_1',
+        createdAt: '2026-06-19T10:00:00.000Z',
+        text: 'finish the paper'
+      },
+      {
+        kind: 'system',
+        id: 'error_1',
+        createdAt: '2026-06-19T10:00:06.900Z',
+        text: 'Cannot read binary file',
+        detail: 'binary read failure detail should stay inside the collapsed process',
+        severity: 'error'
+      },
+      {
+        kind: 'assistant',
+        id: 'assistant_1',
+        createdAt: '2026-06-19T10:02:05.000Z',
+        text: '论文已完成，保存在 output.docx。'
+      }
+    ]
+    useChatStore.setState({
+      busy: false,
+      currentTurnUserId: null,
+      turnStartedAtByUserId: {}
+    })
+
+    const html = renderToStaticMarkup(
+      createElement(MessageTimeline, {
+        blocks,
+        liveReasoning: '',
+        live: '',
+        activeThreadId: 'thr_1',
+        runtimeConnection: 'ready',
+        onRetryConnection: () => undefined,
+        onOpenSettings: () => undefined
+      })
+    )
+
+    expect(html).toContain('aria-expanded="false"')
+    expect(html).toContain('论文已完成，保存在 output.docx。')
+    expect(html).not.toContain('Cannot read binary file')
+    expect(html).not.toContain('binary read failure detail should stay inside the collapsed process')
+  })
+
+  it('uses completed turn timestamps instead of first-feedback timing for the processed label', () => {
+    const blocks: ChatBlock[] = [
+      {
+        kind: 'user',
+        id: 'user_1',
+        createdAt: '2026-06-19T10:00:00.000Z',
+        text: 'complete the modeling paper'
+      },
+      {
+        kind: 'reasoning',
+        id: 'reasoning_1',
+        createdAt: '2026-06-19T10:00:06.900Z',
+        text: 'First feedback arrived quickly, but the project is still running.'
+      },
+      {
+        kind: 'assistant',
+        id: 'assistant_1',
+        createdAt: '2026-06-19T10:02:05.000Z',
+        text: '论文已完成，保存在 modeling.docx。'
+      }
+    ]
+    useChatStore.setState({
+      busy: false,
+      currentTurnUserId: null,
+      turnStartedAtByUserId: {},
+      turnDurationByUserId: { user_1: 6900 }
+    })
+
+    const html = renderToStaticMarkup(
+      createElement(MessageTimeline, {
+        blocks,
+        liveReasoning: '',
+        live: '',
+        activeThreadId: 'thr_1',
+        runtimeConnection: 'ready',
+        onRetryConnection: () => undefined,
+        onOpenSettings: () => undefined
+      })
+    )
+
+    expect(html).toContain('Processed 2m 5s')
+    expect(html).not.toContain('Processed 6.9s')
+    expect(html).toContain('论文已完成，保存在 modeling.docx。')
+  })
+
+  it('renders dot jump navigation with question previews for multi-turn threads', () => {
+    const blocks: ChatBlock[] = [
+      {
+        kind: 'user',
+        id: 'user_1',
+        text: '第一问：先检查数据。'
+      },
+      {
+        kind: 'assistant',
+        id: 'assistant_1',
+        text: '数据已检查。'
+      },
+      {
+        kind: 'user',
+        id: 'user_2',
+        text: '第二问：完成数学建模论文。'
+      },
+      {
+        kind: 'assistant',
+        id: 'assistant_2',
+        text: '论文已完成。'
+      }
+    ]
+    useChatStore.setState({
+      busy: false,
+      currentTurnUserId: null,
+      turnStartedAtByUserId: {}
+    })
+
+    const html = renderToStaticMarkup(
+      createElement(MessageTimeline, {
+        blocks,
+        liveReasoning: '',
+        live: '',
+        activeThreadId: 'thr_1',
+        runtimeConnection: 'ready',
+        onRetryConnection: () => undefined,
+        onOpenSettings: () => undefined
+      })
+    )
+
+    expect(html).toContain('timeline-jump-rail')
+    expect(html).toContain('timeline-jump-rail-dot')
+    expect(html).toContain('第一问：先检查数据。')
+    expect(html).toContain('第二问：完成数学建模论文。')
   })
 
   it('expands the live work timeline by default while keeping tool details collapsed', () => {

@@ -1,7 +1,7 @@
 import type { GuiUpdateChannel } from './gui-update'
 import type { KeyboardShortcutsConfigV1 } from './keyboard-shortcuts'
-import type { ApprovalPolicy, SandboxMode } from '../../kun/src/contracts/policy.js'
-import type { ModelEndpointFormat } from '../../kun/src/contracts/model-endpoint-format.js'
+import type { ApprovalPolicy, SandboxMode } from './policy'
+import type { ModelEndpointFormat } from './model-endpoint-format'
 export {
   DEFAULT_MODEL_ENDPOINT_FORMAT,
   inferModelEndpointFormatFromUrl,
@@ -11,19 +11,19 @@ export {
   normalizeModelEndpointFormat,
   resolveModelEndpointFormat,
   usesChatCompletionsShape
-} from '../../kun/src/contracts/model-endpoint-format.js'
+} from './model-endpoint-format'
 export { DEFAULT_GUI_UPDATE_CHANNEL, normalizeGuiUpdateChannel, type GuiUpdateChannel } from './gui-update'
 export {
   DEFAULT_APPROVAL_POLICY,
   DEFAULT_SANDBOX_MODE,
   type ApprovalPolicy,
   type SandboxMode
-} from '../../kun/src/contracts/policy.js'
+} from './policy'
 export type UiFontScale = 'small' | 'medium' | 'large'
 export type ScheduleRunMode = 'agent' | 'plan'
 export type ScheduleKind = 'manual' | 'interval' | 'daily' | 'at'
 export type ScheduleTaskStatus = 'idle' | 'running' | 'success' | 'error'
-export type ScheduleModel = 'deepseek-v4-pro' | 'deepseek-v4-flash'
+export type ScheduleModel = 'mimo-v2.5-pro' | 'mimo-v2-flash'
 export type ScheduleReasoningEffort = 'auto' | 'off' | 'low' | 'medium' | 'high' | 'max'
 export type ClawRunMode = ScheduleRunMode
 export type ClawImProvider = 'feishu' | 'weixin'
@@ -31,9 +31,9 @@ export type ClawScheduleKind = ScheduleKind
 export type ClawTaskStatus = ScheduleTaskStatus
 export type ClawModel = 'auto' | ScheduleModel
 
-export const DEFAULT_DEEPSEEK_BASE_URL = 'https://api.deepseek.com'
+export const DEFAULT_MIMO_BASE_URL = 'https://token-plan-cn.xiaomimimo.com/v1'
 export const CUSTOM_IMAGE_GENERATION_PROVIDER_ID = 'custom'
-export const IMAGE_GENERATION_PROTOCOLS = ['openai-images', 'minimax-image'] as const
+export const IMAGE_GENERATION_PROTOCOLS = ['openai-images'] as const
 export type ImageGenerationProtocol = (typeof IMAGE_GENERATION_PROTOCOLS)[number]
 export const DEFAULT_IMAGE_GENERATION_PROTOCOL: ImageGenerationProtocol = 'openai-images'
 export const CUSTOM_SPEECH_TO_TEXT_PROVIDER_ID = 'custom'
@@ -41,32 +41,30 @@ export const SPEECH_TO_TEXT_PROTOCOLS = ['openai-transcriptions', 'mimo-asr'] as
 export type SpeechToTextProtocol = (typeof SPEECH_TO_TEXT_PROTOCOLS)[number]
 export const DEFAULT_SPEECH_TO_TEXT_PROTOCOL: SpeechToTextProtocol = 'openai-transcriptions'
 export const CUSTOM_TEXT_TO_SPEECH_PROVIDER_ID = 'custom'
-export const TEXT_TO_SPEECH_PROTOCOLS = ['openai-speech', 'minimax-t2a', 'mimo-tts'] as const
+export const TEXT_TO_SPEECH_PROTOCOLS = ['openai-speech', 'mimo-tts'] as const
 export type TextToSpeechProtocol = (typeof TEXT_TO_SPEECH_PROTOCOLS)[number]
 export const DEFAULT_TEXT_TO_SPEECH_PROTOCOL: TextToSpeechProtocol = 'openai-speech'
 export const CUSTOM_MUSIC_GENERATION_PROVIDER_ID = 'custom'
-export const MUSIC_GENERATION_PROTOCOLS = ['minimax-music'] as const
+export const MUSIC_GENERATION_PROTOCOLS = ['custom-music'] as const
 export type MusicGenerationProtocol = (typeof MUSIC_GENERATION_PROTOCOLS)[number]
-export const DEFAULT_MUSIC_GENERATION_PROTOCOL: MusicGenerationProtocol = 'minimax-music'
+export const DEFAULT_MUSIC_GENERATION_PROTOCOL: MusicGenerationProtocol = 'custom-music'
 export const CUSTOM_VIDEO_GENERATION_PROVIDER_ID = 'custom'
-export const VIDEO_GENERATION_PROTOCOLS = ['minimax-video'] as const
+export const VIDEO_GENERATION_PROTOCOLS = ['custom-video'] as const
 export type VideoGenerationProtocol = (typeof VIDEO_GENERATION_PROTOCOLS)[number]
-export const DEFAULT_VIDEO_GENERATION_PROTOCOL: VideoGenerationProtocol = 'minimax-video'
+export const DEFAULT_VIDEO_GENERATION_PROTOCOL: VideoGenerationProtocol = 'custom-video'
 export const DEFAULT_CLAW_MODEL = 'auto'
-export const CLAW_MODEL_IDS = ['auto', 'deepseek-v4-pro', 'deepseek-v4-flash'] as const
-export const DEFAULT_SCHEDULE_MODEL = 'deepseek-v4-flash'
-export const SCHEDULE_MODEL_IDS = ['deepseek-v4-pro', 'deepseek-v4-flash'] as const
+export const CLAW_MODEL_IDS = ['auto', 'mimo-v2.5-pro', 'mimo-v2-flash'] as const
+export const DEFAULT_SCHEDULE_MODEL = 'mimo-v2.5-pro'
+export const SCHEDULE_MODEL_IDS = ['mimo-v2.5-pro', 'mimo-v2-flash'] as const
 export const DEFAULT_SCHEDULE_REASONING_EFFORT = 'medium'
 export const SCHEDULE_REASONING_EFFORT_IDS = ['auto', 'off', 'low', 'medium', 'high', 'max'] as const
 export const DEFAULT_SCHEDULE_INTERNAL_PORT = 8788
-// 这些默认目录与 legacy-data-migration.ts 的 HOME_DATA_MIGRATION_MAPPINGS
-// 一一对应:老安装的 ~/.deepseekgui/* 在启动期被搬到这里。
-export const DEFAULT_WRITE_WORKSPACE_ROOT = '~/.kun/write_workspace'
-export const DEFAULT_KUN_DATA_DIR = '~/.kun/data'
-export const DEFAULT_KUN_MODEL = 'deepseek-v4-pro'
-export const DEFAULT_WRITE_INLINE_COMPLETION_BASE_URL = 'https://api.deepseek.com/beta'
-export const DEFAULT_WRITE_INLINE_COMPLETION_MODEL = 'deepseek-v4-flash'
-export const WRITE_INLINE_COMPLETION_MODEL_IDS = ['deepseek-v4-pro', 'deepseek-v4-flash'] as const
+export const DEFAULT_WRITE_WORKSPACE_ROOT = '~/MIMO Work/write_workspace'
+export const DEFAULT_KUN_DATA_DIR = '~/.mimo-work/data'
+export const DEFAULT_KUN_MODEL = 'mimo-v2.5-pro'
+export const DEFAULT_WRITE_INLINE_COMPLETION_BASE_URL = DEFAULT_MIMO_BASE_URL
+export const DEFAULT_WRITE_INLINE_COMPLETION_MODEL = 'mimo-v2-flash'
+export const WRITE_INLINE_COMPLETION_MODEL_IDS = ['mimo-v2.5-pro', 'mimo-v2-flash'] as const
 export const DEFAULT_WRITE_INLINE_COMPLETION_DEBOUNCE_MS = 650
 export const DEFAULT_WRITE_INLINE_COMPLETION_MIN_ACCEPT_SCORE = 0.52
 export const DEFAULT_WRITE_INLINE_COMPLETION_MAX_TOKENS = 96
@@ -75,7 +73,13 @@ export const DEFAULT_WRITE_INLINE_LONG_COMPLETION_MIN_ACCEPT_SCORE = 0.36
 export const DEFAULT_WRITE_INLINE_LONG_COMPLETION_MAX_TOKENS = 256
 export const DEFAULT_KUN_PORT = 8899
 export const DEFAULT_WEIXIN_BRIDGE_RPC_URL = 'http://127.0.0.1:18790/api/v1/admin/rpc'
-export const DEFAULT_MODEL_PROVIDER_ID = 'deepseek'
+export const DEFAULT_MODEL_PROVIDER_ID = 'xiaomi-token-plan'
+export const MANAGED_RUNTIME_IDS = ['mimo-work'] as const
+export type ManagedRuntimeId = (typeof MANAGED_RUNTIME_IDS)[number]
+export const MIMO_CREDENTIAL_MODES = ['recharge', 'tokenplan'] as const
+export type MimoCredentialMode = (typeof MIMO_CREDENTIAL_MODES)[number]
+export const MIMO_TOKENPLAN_REGIONS = ['cn', 'sgp', 'ams'] as const
+export type MimoTokenplanRegion = (typeof MIMO_TOKENPLAN_REGIONS)[number]
 export type { ModelEndpointFormat }
 export const MODEL_PROVIDER_INPUT_MODALITIES = ['text', 'image'] as const
 export type ModelProviderInputModality = (typeof MODEL_PROVIDER_INPUT_MODALITIES)[number]
@@ -85,7 +89,6 @@ export const MODEL_REASONING_EFFORTS = ['auto', 'off', 'low', 'medium', 'high', 
 export type ModelReasoningEffort = (typeof MODEL_REASONING_EFFORTS)[number]
 export const MODEL_REASONING_REQUEST_PROTOCOLS = [
   'none',
-  'deepseek-chat-completions',
   'glm-chat-completions',
   'mimo-chat-completions',
   'openai-responses',
@@ -172,6 +175,8 @@ export type ModelProviderSettingsPatchV1 = Partial<
 }
 
 export type KunRuntimeSettingsV1 = {
+  /** Runtime backend selected by MIMO Work. `kun` remains available during migration. */
+  runtimeEngine: ManagedRuntimeId
   binaryPath: string
   port: number
   autoStart: boolean
@@ -216,6 +221,19 @@ export type KunRuntimeSettingsV1 = {
   modelProfiles: Record<string, ModelProviderModelProfileV1>
   /** Whether long-term memory is enabled in the Kun runtime. */
   memoryEnabled: boolean
+  /** Local knowledge-base directories such as Obsidian vaults/wiki folders. */
+  knowledgeBaseDirs: string[]
+  /** MiMo-Code credentials used by the MIMO Work runtime adapter. */
+  mimo: MimoCredentialSettingsV1
+}
+
+export type MimoCredentialSettingsV1 = {
+  mode: MimoCredentialMode
+  apiKey: string
+  baseUrl: string
+  region: MimoTokenplanRegion
+  model: string
+  metadata: Record<string, string>
 }
 
 export type KunImageGenerationSettingsV1 = {
@@ -384,7 +402,7 @@ export type KunTokenEconomySettingsPatchV1 = Partial<
 export type KunRuntimeSettingsPatchV1 = Partial<
   Omit<
     KunRuntimeSettingsV1,
-    'mcpSearch' | 'storage' | 'contextCompaction' | 'runtimeTuning' | 'tokenEconomy' | 'imageGeneration' | 'speechToText' | 'textToSpeech' | 'musicGeneration' | 'videoGeneration' | 'modelProfiles'
+    'mcpSearch' | 'storage' | 'contextCompaction' | 'runtimeTuning' | 'tokenEconomy' | 'imageGeneration' | 'speechToText' | 'textToSpeech' | 'musicGeneration' | 'videoGeneration' | 'modelProfiles' | 'mimo'
   >
 > & {
   mcpSearch?: Partial<KunMcpSearchSettingsV1>
@@ -398,6 +416,7 @@ export type KunRuntimeSettingsPatchV1 = Partial<
   musicGeneration?: Partial<KunMusicGenerationSettingsV1>
   videoGeneration?: Partial<KunVideoGenerationSettingsV1>
   modelProfiles?: Record<string, ModelProviderModelProfilePatchV1 | null>
+  mimo?: Partial<MimoCredentialSettingsV1>
 }
 
 export type KunSettingsEnvelopePatchV1 = {
@@ -705,6 +724,11 @@ export type GuiUpdateConfigV1 = {
   channel: GuiUpdateChannel
 }
 
+export type EnvironmentProjectV1 = {
+  path: string
+  setupCommand: string
+}
+
 export type AppSettingsV1 = {
   version: 1
   locale: 'en' | 'zh'
@@ -713,6 +737,7 @@ export type AppSettingsV1 = {
   provider: ModelProviderSettingsV1
   agents: KunSettingsEnvelopeV1
   workspaceRoot: string
+  environmentProjects?: EnvironmentProjectV1[]
   log: LogConfigV1
   notifications: NotificationConfigV1
   appBehavior: AppBehaviorConfigV1

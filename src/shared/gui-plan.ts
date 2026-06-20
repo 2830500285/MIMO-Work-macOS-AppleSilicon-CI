@@ -1,8 +1,6 @@
-export const GUI_PLAN_RELATIVE_DIR = '.kunsdd/plan'
-export const GUI_PLAN_LEGACY_RELATIVE_DIR = '.deepseekgui/plan'
+export const GUI_PLAN_RELATIVE_DIR = '.mimo-work/plan'
 export const GUI_PLAN_ACCEPTED_RELATIVE_DIRS = [
-  GUI_PLAN_RELATIVE_DIR,
-  GUI_PLAN_LEGACY_RELATIVE_DIR
+  GUI_PLAN_RELATIVE_DIR
 ] as const
 
 const MAX_FEATURE_NAME_LENGTH = 96

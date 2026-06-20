@@ -10,6 +10,7 @@ import {
   listNonTextModelIds,
   modelProfileSupportsTextChat,
   modelProviderModelProfile,
+  type ModelProviderProfileV1,
   resolveKunRuntimeSettings,
   type AppSettingsV1
 } from '../shared/app-settings'
@@ -18,7 +19,13 @@ import type { ModelProviderModelGroup } from '../shared/kun-gui-api'
 import { upstreamOpenAiModelsUrl } from '../shared/openai-compat-url'
 
 export type FetchUpstreamModelsResult =
-  | { ok: true; modelIds: string[]; defaultModelId?: string; modelGroups?: ModelProviderModelGroup[] }
+  | {
+    ok: true
+    modelIds: string[]
+    defaultModelId?: string
+    defaultProviderId?: string
+    modelGroups?: ModelProviderModelGroup[]
+  }
   | { ok: false; message: string }
 
 const UPSTREAM_MODELS_TIMEOUT_MS = 8_000
@@ -37,11 +44,15 @@ export async function fetchUpstreamModelIds(
   const runtime = resolveKunRuntimeSettings(settings)
   const runtimeModel = runtime.model.trim()
   const defaultModelId = isComposerChatModelId(runtimeModel, nonTextModelIds) ? runtimeModel : ''
+  const activeProvider = getModelProviderProfile(settings, runtime.providerId)
+  const defaultProviderId = activeProvider.id
+  const modelGroups = ensureProviderGroupIncludesModel(configuredGroups, activeProvider, defaultModelId)
   if (isCustomModelEndpointFormat(runtime.endpointFormat)) {
     return modelListOrError(
       configuredModelIds,
-      configuredGroups,
+      modelGroups,
       defaultModelId,
+      defaultProviderId,
       'Custom full endpoint mode does not support querying upstream /models.'
     )
   }
@@ -49,12 +60,12 @@ export async function fetchUpstreamModelIds(
   if (!key) {
     return modelListOrError(
       configuredModelIds,
-      configuredGroups,
+      modelGroups,
       defaultModelId,
+      defaultProviderId,
       'Missing API key; cannot query upstream /v1/models.'
     )
   }
-  const activeProvider = getModelProviderProfile(settings, runtime.providerId)
   const url = upstreamOpenAiModelsUrl(runtime.baseUrl)
   try {
     const res = await fetch(url, {
@@ -69,8 +80,9 @@ export async function fetchUpstreamModelIds(
     if (!res.ok) {
       return modelListOrError(
         configuredModelIds,
-        configuredGroups,
+        modelGroups,
         defaultModelId,
+        defaultProviderId,
         `Upstream models request failed (${res.status}): ${text.slice(0, 400)}`
       )
     }
@@ -80,8 +92,9 @@ export async function fetchUpstreamModelIds(
     } catch {
       return modelListOrError(
         configuredModelIds,
-        configuredGroups,
+        modelGroups,
         defaultModelId,
+        defaultProviderId,
         'Upstream /v1/models returned non-JSON body.'
       )
     }
@@ -89,8 +102,9 @@ export async function fetchUpstreamModelIds(
     if (!Array.isArray(data)) {
       return modelListOrError(
         configuredModelIds,
-        configuredGroups,
+        modelGroups,
         defaultModelId,
+        defaultProviderId,
         'Upstream /v1/models JSON missing data[] array.'
       )
     }
@@ -115,19 +129,20 @@ export async function fetchUpstreamModelIds(
       ok: true,
       modelIds: sorted,
       defaultModelId,
+      defaultProviderId,
       modelGroups: mergeModelGroups([
-        ...configuredGroups,
+        ...modelGroups,
         {
           providerId: activeProvider.id,
           label: activeProvider.name,
-          modelIds: [...ids],
+          modelIds: defaultModelId ? [defaultModelId, ...ids] : [...ids],
           modelProfiles: activeProvider.modelProfiles
         }
       ])
     }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
-    return modelListOrError(configuredModelIds, configuredGroups, defaultModelId, msg)
+    return modelListOrError(configuredModelIds, modelGroups, defaultModelId, defaultProviderId, msg)
   }
 }
 
@@ -158,10 +173,11 @@ function modelListOrError(
   ids: readonly string[],
   groups: readonly ModelProviderModelGroup[],
   defaultModelId: string,
+  defaultProviderId: string,
   message: string
 ): FetchUpstreamModelsResult {
   return hasCustomModelId(ids)
-    ? { ok: true, modelIds: mergeModelIds(ids), defaultModelId, modelGroups: mergeModelGroups(groups) }
+    ? { ok: true, modelIds: mergeModelIds(ids), defaultModelId, defaultProviderId, modelGroups: mergeModelGroups(groups) }
     : { ok: false, message }
 }
 
@@ -182,6 +198,25 @@ async function readConfiguredModelGroups(settings: AppSettingsV1): Promise<Model
     })
   }
   return mergeModelGroups(groups)
+}
+
+function ensureProviderGroupIncludesModel(
+  groups: readonly ModelProviderModelGroup[],
+  provider: ModelProviderProfileV1,
+  modelId: string
+): ModelProviderModelGroup[] {
+  const id = modelId.trim()
+  const providerId = provider.id.trim()
+  if (!id || !providerId) return mergeModelGroups(groups)
+  return mergeModelGroups([
+    ...groups,
+    {
+      providerId,
+      label: provider.name,
+      modelIds: [id],
+      modelProfiles: provider.modelProfiles
+    }
+  ])
 }
 
 function mergeModelGroups(groups: readonly ModelProviderModelGroup[]): ModelProviderModelGroup[] {

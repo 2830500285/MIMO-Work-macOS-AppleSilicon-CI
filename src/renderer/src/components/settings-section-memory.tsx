@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { ReactElement } from 'react'
-import { Ban, BrainCircuit, Pencil, Plus, Trash2 } from 'lucide-react'
+import { Ban, BrainCircuit, FolderPlus, Pencil, Plus, Trash2 } from 'lucide-react'
 import type { CoreMemoryRecordJson } from '../agent/kun-contract'
 import { SettingsCard, SettingRow, Toggle } from './settings-controls'
 
@@ -20,6 +20,18 @@ const EMPTY_DRAFT: MemoryDraft = {
   confidence: 1
 }
 
+function parseKnowledgeBaseDirs(raw: string): string[] {
+  const out: string[] = []
+  const seen = new Set<string>()
+  for (const line of raw.split(/\r?\n/)) {
+    const trimmed = line.trim()
+    if (!trimmed || seen.has(trimmed)) continue
+    seen.add(trimmed)
+    out.push(trimmed)
+  }
+  return out
+}
+
 export function MemorySettingsSection({ ctx }: { ctx: Record<string, any> }): ReactElement {
   const {
     t,
@@ -37,6 +49,7 @@ export function MemorySettingsSection({ ctx }: { ctx: Record<string, any> }): Re
   const [draft, setDraft] = useState<MemoryDraft>(EMPTY_DRAFT)
   const [creating, setCreating] = useState(false)
   const [scopeFilter, setScopeFilter] = useState<'all' | MemoryScope>('all')
+  const knowledgeBaseDirs = kun?.knowledgeBaseDirs ?? []
 
   const filteredRecords = useMemo(() => {
     const records: CoreMemoryRecordJson[] = memoryRecords ?? []
@@ -96,6 +109,13 @@ export function MemorySettingsSection({ ctx }: { ctx: Record<string, any> }): Re
     // The error is surfaced via runtimeDiagnosticsNotice in the parent handler.
   }
 
+  const pickKnowledgeBaseDirectory = async (): Promise<void> => {
+    if (typeof window.kunGui?.pickWorkspaceDirectory !== 'function') return
+    const picked = await window.kunGui.pickWorkspaceDirectory(knowledgeBaseDirs[0] || undefined)
+    if (picked.canceled || !picked.path) return
+    updateKun({ knowledgeBaseDirs: parseKnowledgeBaseDirs([...knowledgeBaseDirs, picked.path].join('\n')) })
+  }
+
   return (
     <SettingsCard title={t('sectionMemory')}>
       <SettingRow
@@ -131,6 +151,32 @@ export function MemorySettingsSection({ ctx }: { ctx: Record<string, any> }): Re
               <div className="mt-0.5 font-mono text-[15px] font-semibold text-ds-ink">
                 {memoryDiagnostics?.enabled === false ? t('memoryOff') : t('memoryOn')}
               </div>
+            </div>
+          </div>
+        }
+      />
+      <SettingRow
+        title={t('knowledgeBaseDirs')}
+        description={t('knowledgeBaseDirsDesc')}
+        wideControl
+        control={
+          <div className="flex flex-col gap-2">
+            <textarea
+              value={knowledgeBaseDirs.join('\n')}
+              onChange={(event) => updateKun({ knowledgeBaseDirs: parseKnowledgeBaseDirs(event.target.value) })}
+              spellCheck={false}
+              placeholder={t('knowledgeBaseDirsPlaceholder')}
+              className="min-h-24 w-full rounded-2xl border border-ds-border bg-ds-card px-4 py-3 font-mono text-[13px] leading-6 text-ds-ink shadow-sm focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/30"
+            />
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => void pickKnowledgeBaseDirectory()}
+                className="inline-flex min-h-8 items-center justify-center gap-1.5 rounded-lg border border-ds-border bg-ds-card px-3 py-1.5 text-[12.5px] font-medium text-ds-muted transition hover:bg-ds-hover hover:text-ds-ink"
+              >
+                <FolderPlus className="h-3.5 w-3.5" strokeWidth={1.8} />
+                {t('knowledgeBasePickDirectory')}
+              </button>
             </div>
           </div>
         }

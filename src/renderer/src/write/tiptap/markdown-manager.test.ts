@@ -66,9 +66,9 @@ describe('auditWriteMarkdownFidelity', () => {
 
   it('rejects ordered-list hard-wrapped continuations that lose characters', () => {
     const doc = [
-      '1. Add protocol fields in `kun/src/contracts/`.',
-      '2. Add agent behavior in `kun/src/loop/`, or a',
-      '   new port/adapter under `kun/src/ports/`.',
+      '1. Add protocol fields in `MIMO-Work-Core/packages/opencode/src/contracts/`.',
+      '2. Add agent behavior in `MIMO-Work-Core/packages/opencode/src/loop/`, or a',
+      '   new port/adapter under `MIMO-Work-Core/packages/opencode/src/ports/`.',
       ''
     ].join('\n')
     const fidelity = auditWriteMarkdownFidelity(doc)

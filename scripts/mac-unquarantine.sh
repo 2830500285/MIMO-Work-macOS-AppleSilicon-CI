@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-APP_PATH="${1:-dist/mac-arm64/Kun.app}"
+APP_PATH="${1:-dist/mac-arm64/MIMO Work.app}"
 if [ ! -d "$APP_PATH" ]; then
   echo "App not found: $APP_PATH" >&2
-  echo "Usage: npm run mac:unquarantine -- '/path/to/Kun.app'" >&2
+  echo "Usage: npm run mac:unquarantine -- '/path/to/MIMO Work.app'" >&2
   exit 1
 fi
 xattr -cr "$APP_PATH"

@@ -20,7 +20,7 @@ export type SddPrototypeTurnOptions = {
 export function buildSddPrototypeTurnPrompt(options: SddPrototypeTurnOptions): string {
   const requirements = options.customPrompt?.trim() || WRITE_PROTOTYPE_DEFAULT_PROMPT
   const lines = [
-    'Kun is asking you to build an interactive HTML prototype for an SDD requirement.',
+    'MIMO Work is asking you to build an interactive HTML prototype for an SDD requirement.',
     `Workspace: ${options.workspaceRoot}`,
     `Reserved prototype file: ${options.prototypeRelativePath}`,
     '',

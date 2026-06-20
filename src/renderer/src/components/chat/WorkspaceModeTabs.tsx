@@ -18,14 +18,14 @@ export function WorkspaceModeTabs({
   const tabClass = (active: boolean): string =>
     `group inline-flex min-h-[32px] flex-1 min-w-0 items-center justify-center gap-2 rounded-[8px] px-2.5 py-1.5 text-left text-[13px] outline-none transition focus-visible:ring-2 focus-visible:ring-black/10 dark:focus-visible:ring-white/20 ${
       active
-        ? 'bg-[var(--ds-sidebar-field-focus)] font-medium text-[#182230] shadow-[0_1px_3px_rgba(20,47,95,0.07),inset_0_0_0_1px_var(--ds-sidebar-row-ring),inset_0_1px_0_rgba(255,255,255,0.78)] dark:bg-white/[0.09] dark:text-white dark:shadow-[0_1px_5px_rgba(0,0,0,0.24),inset_0_0_0_1px_rgba(255,255,255,0.1)]'
+        ? 'bg-[var(--ds-sidebar-field-focus)] font-medium text-[#182230] shadow-[0_1px_3px_rgba(31,35,41,0.07),inset_0_0_0_1px_var(--ds-sidebar-row-ring),inset_0_1px_0_rgba(255,255,255,0.78)] dark:bg-white/[0.09] dark:text-white dark:shadow-[0_1px_5px_rgba(0,0,0,0.24),inset_0_0_0_1px_rgba(255,255,255,0.1)]'
         : 'font-normal text-[#5c6675] hover:bg-[color-mix(in_srgb,var(--ds-sidebar-field-focus)_56%,transparent)] hover:text-[#1f2733] dark:text-white/58 dark:hover:bg-white/[0.055] dark:hover:text-white/88'
     }`
 
   const iconClass = (active: boolean): string =>
     `flex h-[21px] w-[21px] shrink-0 items-center justify-center rounded-[7px] transition ${
       active
-        ? 'bg-[var(--ds-accent-soft)] text-[var(--ds-accent)] shadow-[inset_0_0_0_1px_rgba(59,130,216,0.12)] dark:bg-[rgba(111,176,232,0.2)] dark:text-[#78bdff] dark:shadow-[inset_0_0_0_1px_rgba(111,176,232,0.16)]'
+        ? 'bg-[var(--ds-accent-soft)] text-[var(--ds-accent)] shadow-[inset_0_0_0_1px_rgba(251,129,71,0.12)] dark:bg-[rgba(251,129,71,0.16)] dark:text-[#ffad7f] dark:shadow-[inset_0_0_0_1px_rgba(251,129,71,0.16)]'
         : 'text-[#6f7a89] group-hover:bg-white/55 group-hover:text-[#344055] dark:text-white/48 dark:group-hover:bg-white/[0.06] dark:group-hover:text-white/78'
     }`
 

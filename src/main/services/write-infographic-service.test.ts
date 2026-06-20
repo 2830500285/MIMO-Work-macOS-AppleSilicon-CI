@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { AppSettingsV1 } from '../../shared/app-settings'
-import type { ImageGenClient, ImageGenEditRequest, ImageGenRequest } from '../../../kun/src/adapters/tool/image-gen-tool-provider.js'
+import type { ImageGenClient, ImageGenEditRequest, ImageGenRequest } from './local-media-utils'
 import { buildWriteInfographicPrompt, requestWriteInfographic } from './write-infographic-service'
 
 let workspace: string
@@ -148,10 +148,10 @@ describe('write infographic service', () => {
     expect(prompt.length).toBeLessThan(7_000)
   })
 
-  it('keeps MiniMax prompts inside the provider prompt limit', async () => {
+  it('keeps MIMO prompts inside the provider prompt limit', async () => {
     const client = fakeClient()
     const result = await requestWriteInfographic(settingsWithImageGen({
-      protocol: 'minimax-image',
+      protocol: 'mimo-image',
       model: 'image-01'
     }), {
       text: `核心结论：${'增长、留存、转化、复购、风险。'.repeat(300)}`,

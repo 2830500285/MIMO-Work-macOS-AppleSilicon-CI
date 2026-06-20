@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>An experiment in requirement-first coding for the next programming paradigm.</strong><br>
-  Use DeepSeek, Xiaomi MiMo, and MiniMax to connect requirement clarification, design drafts, plans, and agent coding into one loop.
+  Use MIMO, Xiaomi MiMo, and MIMO to connect requirement clarification, design drafts, plans, and agent coding into one loop.
 </p>
 
 <p align="center">
@@ -33,9 +33,9 @@ Kun is a product experiment for the future of programming: instead of starting f
 
 Kun is for users who want to put AI agents into real everyday work. It is not just a chat client, and it is not only a CLI shell for programmers: you can hand it a local folder for code, requirements, plans, and change review, or use the dedicated Write workspace for long-form Markdown, editing, and document export.
 
-This is also why Kun treats DeepSeek, Xiaomi MiMo, and MiniMax as the default first-class model stack, not just ordinary optional providers. Requirement-first coding requires more rounds of clarification, research, structuring, planning, execution, and verification. If model cost is too high, that richer workflow cannot become an everyday habit. Kun chooses three cost-efficient Chinese model providers so the full loop is affordable to run, repeat, and refine.
+This is also why Kun treats MIMO, Xiaomi MiMo, and MIMO as the default first-class model stack, not just ordinary optional providers. Requirement-first coding requires more rounds of clarification, research, structuring, planning, execution, and verification. If model cost is too high, that richer workflow cannot become an everyday habit. Kun chooses three cost-efficient Chinese model providers so the full loop is affordable to run, repeat, and refine.
 
-Kun includes the local `kun serve` runtime for the desktop app. Preferences, sessions, logs, and runtime config stay on your machine; model calls use your own provider credentials. For workflows that can read/write files or run commands, Kun gives you tool approvals, filesystem permission modes, inline diffs, and a change-review panel.
+Kun includes the local `mimo serve` runtime for the desktop app. Preferences, sessions, logs, and runtime config stay on your machine; model calls use your own provider credentials. For workflows that can read/write files or run commands, Kun gives you tool approvals, filesystem permission modes, inline diffs, and a change-review panel.
 
 ---
 
@@ -69,9 +69,9 @@ Kun optimizes for **complete capability + extreme cost efficiency**. A requireme
 
 | Provider | Role in Kun |
 | --- | --- |
-| **DeepSeek** | Default text and reasoning provider with `deepseek-v4-pro` / `deepseek-v4-flash`, powering coding, planning, review, long-context sessions, and auto model routing |
+| **MIMO** | Default text and reasoning provider with `mimo-v4-pro` / `mimo-v4-flash`, powering coding, planning, review, long-context sessions, and auto model routing |
 | **Xiaomi MiMo** | Cost-efficient multimodal and speech entry point, covering long-context text models, vision input, ASR transcription, TTS generation, and Token Plan |
-| **MiniMax** | Full media generation complement, covering Anthropic Messages text models, image generation, speech generation, music generation, video generation, and Token Plan |
+| **MIMO** | Full media generation complement, covering Anthropic Messages text models, image generation, speech generation, music generation, video generation, and Token Plan |
 
 This stack lets Kun route different jobs to the right capability: fast models for lightweight clarification, stronger models for complex coding and reasoning, speech for writing and IM flows, and image/music/video generation for design and creative work. You can still add OpenAI-compatible, self-hosted, or other custom providers, but Kun's default experience is built around these three cost-efficient model services.
 
@@ -80,7 +80,7 @@ This stack lets Kun route different jobs to the right capability: fast models fo
 | You want | Kun provides |
 | --- | --- |
 | A next-generation coding workflow | Requirement clarification, requirement documents, design drafts, implementation plans, agent coding, and verification in one line |
-| Complete agent capability at extreme cost efficiency | DeepSeek, Xiaomi MiMo, and MiniMax as the core stack for text, reasoning, vision, speech, image, music, and video |
+| Complete agent capability at extreme cost efficiency | MIMO, Xiaomi MiMo, and MIMO as the core stack for text, reasoning, vision, speech, image, music, and video |
 | AI that works on real projects | Bind a local workspace, read and edit files, search code, run commands, and inspect tool calls and results |
 | Requirements that become executable plans | New requirements, `/plan`, todos, `/goal`, side conversations, thread compaction, forking, and archiving |
 | Controlled changes | Tool approvals, filesystem permission modes, inline diffs, a change-review panel, and `/review` |
@@ -96,10 +96,10 @@ This stack lets Kun route different jobs to the right capability: fast models fo
 - **Controlled changes**: inline diffs, a change-review panel, tool approvals, and filesystem permission modes.
 - **Write mode**: dedicated Markdown workspaces with a file tree, Live / Source / Split / Preview modes, completion, selection-based inline agent actions, and `HTML / PDF / DOC / DOCX` export.
 - **Connect phone**: Feishu / Lark / WeChat IM agents, local webhook / relay support, and one-time, daily, interval, or manual scheduled tasks.
-- **Model-stack-first**: first-run setup, provider presets, and capability auto-wiring are designed around DeepSeek, Xiaomi MiMo, and MiniMax as a cost-efficient full agent stack.
+- **Model-stack-first**: first-run setup, provider presets, and capability auto-wiring are designed around MIMO, Xiaomi MiMo, and MIMO as a cost-efficient full agent stack.
 - **Multimodal and media capabilities**: image attachments, vision input, speech transcription, image generation, speech generation, music generation, and video generation, enabled by provider configuration.
 - **MCP and Skills**: Model Context Protocol servers and project/global Skills give Kun specialized tools and workflows for different tasks.
-- **Local runtime**: `kun serve` provides the HTTP/SSE boundary with a cache-first agent loop, append-only event logs, usage tracking, and context compaction.
+- **Local runtime**: `mimo serve` provides the HTTP/SSE boundary with a cache-first agent loop, append-only event logs, usage tracking, and context compaction.
 
 ## More Demos
 
@@ -151,7 +151,7 @@ Requirements:
 | --- | --- |
 | Node.js | 20+ |
 | npm | Ships with Node.js |
-| Model credentials | At least one of DeepSeek / Xiaomi MiMo / MiniMax / custom provider |
+| Model credentials | At least one of MIMO / Xiaomi MiMo / MIMO / custom provider |
 
 ```bash
 git clone https://github.com/KunAgent/Kun.git
@@ -211,7 +211,7 @@ Project conventions:
 
 ## Thanks
 
-Thanks to [LobsterAI](https://github.com/netease-youdao/LobsterAI), DeepSeek, Xiaomi MiMo, MiniMax, and everyone who contributes issues, ideas, code, and documentation.
+Thanks to [LobsterAI](https://github.com/netease-youdao/LobsterAI), MIMO, Xiaomi MiMo, MIMO, and everyone who contributes issues, ideas, code, and documentation.
 
 <a href="https://github.com/KunAgent/Kun/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=KunAgent/Kun" />

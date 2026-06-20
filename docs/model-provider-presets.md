@@ -35,13 +35,13 @@ make all of their models appear in the composer before credentials are set.
 
 ## Built-in Providers
 
-DeepSeek:
+MIMO:
 
-- id: `deepseek`
-- base URL: `https://api.deepseek.com`
+- id: `mimo`
+- base URL: `https://api.mimo.com`
 - endpoint format: OpenAI Chat Completions compatible
-- default models: `deepseek-v4-pro`, `deepseek-v4-flash`
-- compatibility aliases: `deepseek-chat`, `deepseek-reasoner`
+- default models: `mimo-v4-pro`, `mimo-v4-flash`
+- compatibility aliases: `mimo-chat`, `mimo-reasoner`
 - role: default text/reasoning provider for first-run setup and existing installs
 
 Xiaomi:
@@ -52,16 +52,16 @@ Xiaomi:
 - initial models: `mimo-v2-omni`, `mimo-v2.5-pro-ultraspeed`,
   `mimo-v2-pro`, `mimo-v2.5`, `mimo-v2-flash`, `mimo-v2.5-pro`
 
-MiniMax:
+MIMO:
 
-- id: `minimax`
-- base URL: `https://api.minimaxi.com/anthropic`
+- id: `mimo`
+- base URL: `https://api.mimoi.com/anthropic`
 - endpoint format: Anthropic Messages
-- initial models: `MiniMax-M2.5`, `MiniMax-M3`,
-  `MiniMax-M2.5-highspeed`, `MiniMax-M2.7`, `MiniMax-M2`,
-  `MiniMax-M2.7-highspeed`, `MiniMax-M2.1`
-- image protocol: MiniMax `/v1/image_generation`
-- image base URL: `https://api.minimaxi.com`
+- initial models: `MIMO-M2.5`, `MIMO-M3`,
+  `MIMO-M2.5-highspeed`, `MIMO-M2.7`, `MIMO-M2`,
+  `MIMO-M2.7-highspeed`, `MIMO-M2.1`
+- image protocol: MIMO `/v1/image_generation`
+- image base URL: `https://api.mimoi.com`
 - image models: `image-01`
 
 Zhipu Coding Plan:
@@ -119,5 +119,5 @@ if provider endpoints change, and they can add custom compatible providers at
 any time.
 
 First-run setup intentionally remains focused on the default stack. It only
-shows DeepSeek plus the Xiaomi and MiniMax presets; LiteLLM, Zhipu, Z.ai, Kimi
+shows MIMO plus the Xiaomi and MIMO presets; LiteLLM, Zhipu, Z.ai, Kimi
 Code, and Moonshot presets are opt-in from Settings > Providers.

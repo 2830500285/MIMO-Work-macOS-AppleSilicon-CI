@@ -1,7 +1,7 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   defaultClawSettings,
   defaultKeyboardShortcuts,
@@ -12,6 +12,12 @@ import {
   type AppSettingsV1
 } from '../../shared/app-settings'
 import { guiSkillRootsForRuntime, listGuiSkillRoots, listGuiSkills } from './skill-service'
+
+vi.mock('electron', () => ({
+  app: {
+    getPath: () => tmpdir()
+  }
+}))
 
 describe('skill-service', () => {
   let tempRoot = ''
@@ -119,6 +125,39 @@ describe('skill-service', () => {
       skillCount: 1
     })
     expect(comparable(claude?.path ?? '')).toBe(comparable(join(workspaceRoot, '.claude', 'skills')))
+  })
+
+  it('discovers bundled MIMO Work skills from nested built-in roots', async () => {
+    const workspaceRoot = join(tempRoot, 'ws-builtin')
+    const builtinRoot = join(tempRoot, 'builtin-skills')
+    const skillRoot = join(builtinRoot, 'software-development', 'mimo-bundled-verification-loop')
+    const previous = process.env.MIMO_WORK_BUILTIN_SKILL_DIR
+    await mkdir(skillRoot, { recursive: true })
+    await mkdir(workspaceRoot, { recursive: true })
+    await writeFile(join(skillRoot, 'SKILL.md'), [
+      '---',
+      'name: mimo-bundled-verification-loop',
+      'description: Verify changes before reporting completion.',
+      '---',
+      '',
+      'Run the smallest meaningful verification.'
+    ].join('\n'), 'utf8')
+    process.env.MIMO_WORK_BUILTIN_SKILL_DIR = builtinRoot
+
+    try {
+      const result = await listGuiSkills(createSettings(workspaceRoot), workspaceRoot)
+      expect(result.ok).toBe(true)
+      if (!result.ok) return
+      expect(result.skills).toContainEqual(expect.objectContaining({
+        id: 'mimo-bundled-verification-loop',
+        name: 'Mimo Bundled Verification Loop',
+        description: 'Verify changes before reporting completion.',
+        scope: 'global'
+      }))
+    } finally {
+      if (previous === undefined) delete process.env.MIMO_WORK_BUILTIN_SKILL_DIR
+      else process.env.MIMO_WORK_BUILTIN_SKILL_DIR = previous
+    }
   })
 
   it('omits a directory disabled via disabledDirs from runtime roots but still lists it', async () => {

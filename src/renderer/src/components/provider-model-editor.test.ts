@@ -37,7 +37,7 @@ function chatForm(
 
 describe('provider-model-editor', () => {
   it('derives the reasoning protocol from the provider connection', () => {
-    expect(defaultReasoningProtocolForProvider(provider())).toBe('deepseek-chat-completions')
+    expect(defaultReasoningProtocolForProvider(provider())).toBe('mimo-chat-completions')
     expect(
       defaultReasoningProtocolForProvider(provider({ endpointFormat: 'messages' }))
     ).toBe('anthropic-thinking')
@@ -87,12 +87,12 @@ describe('provider-model-editor', () => {
       reasoningEnabled: true,
       reasoningEfforts: ['max', 'off', 'high'],
       reasoningDefaultEffort: 'medium',
-      reasoningProtocol: 'deepseek-chat-completions'
+      reasoningProtocol: 'mimo-chat-completions'
     }))
     expect(next.modelProfiles['thinker'].reasoning).toEqual({
       supportedEfforts: ['off', 'high', 'max'],
       defaultEffort: 'max',
-      requestProtocol: 'deepseek-chat-completions'
+      requestProtocol: 'mimo-chat-completions'
     })
   })
 
@@ -182,19 +182,19 @@ describe('provider-model-editor', () => {
       modelId: 'music-2.6'
     })
     expect(withMusic.music).toEqual({
-      protocol: 'minimax-music',
+      protocol: 'custom-music',
       baseUrl: 'https://api.example.com/v1',
       models: ['music-2.6']
     })
 
     const withVideo = applyProviderModelForm(withMusic, {
       ...newProviderModelForm('video', withMusic),
-      modelId: 'MiniMax-Hailuo-2.3'
+      modelId: 'custom-video-model'
     })
     expect(withVideo.video).toEqual({
-      protocol: 'minimax-video',
+      protocol: 'custom-video',
       baseUrl: 'https://api.example.com/v1',
-      models: ['MiniMax-Hailuo-2.3']
+      models: ['custom-video-model']
     })
   })
 
@@ -204,8 +204,8 @@ describe('provider-model-editor', () => {
       image: { protocol: 'openai-images', baseUrl: 'https://api.example.com/v1', models: ['image-01'] },
       speech: { protocol: 'mimo-asr', baseUrl: 'https://api.example.com/v1', models: ['mimo-v2.5-asr'] },
       textToSpeech: { protocol: 'mimo-tts', baseUrl: 'https://api.example.com/v1', models: ['mimo-v2.5-tts'] },
-      music: { protocol: 'minimax-music', baseUrl: 'https://api.example.com/v1', models: ['music-2.6'] },
-      video: { protocol: 'minimax-video', baseUrl: 'https://api.example.com/v1', models: ['MiniMax-Hailuo-2.3'] }
+      music: { protocol: 'custom-music', baseUrl: 'https://api.example.com/v1', models: ['music-2.6'] },
+      video: { protocol: 'custom-video', baseUrl: 'https://api.example.com/v1', models: ['custom-video-model'] }
     })
 
     expect(providerModelListEntries(target)).toEqual([
@@ -214,7 +214,7 @@ describe('provider-model-editor', () => {
       { kind: 'speech', modelId: 'mimo-v2.5-asr' },
       { kind: 'tts', modelId: 'mimo-v2.5-tts' },
       { kind: 'music', modelId: 'music-2.6' },
-      { kind: 'video', modelId: 'MiniMax-Hailuo-2.3' }
+      { kind: 'video', modelId: 'custom-video-model' }
     ])
   })
 
@@ -233,7 +233,7 @@ describe('provider-model-editor', () => {
       'mimo-v2.5-tts',
       'speech-2.8-hd',
       'music-2.6',
-      'MiniMax-Hailuo-2.3',
+      'custom-video-model',
       'text-embedding-3-large',
       'chat-capable'
     ])).toEqual({
@@ -242,7 +242,7 @@ describe('provider-model-editor', () => {
       speech: ['mimo-v2.5-asr', 'whisper-1'],
       tts: ['mimo-v2.5-tts', 'speech-2.8-hd'],
       music: ['music-2.6'],
-      video: ['MiniMax-Hailuo-2.3']
+      video: ['custom-video-model']
     })
   })
 
@@ -291,7 +291,7 @@ describe('provider-model-editor', () => {
   it('warns when a chat model id matches non-text patterns', () => {
     const target = provider()
     expect(chatModelIdLooksNonText(chatForm(target, { modelId: 'flux-image-pro' }))).toBe(true)
-    expect(chatModelIdLooksNonText(chatForm(target, { modelId: 'deepseek-v4-pro' }))).toBe(false)
+    expect(chatModelIdLooksNonText(chatForm(target, { modelId: 'mimo-v2.5-pro' }))).toBe(false)
   })
 
   it('parses and formats context window shorthand', () => {

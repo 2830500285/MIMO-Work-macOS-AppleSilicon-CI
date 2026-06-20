@@ -109,12 +109,12 @@ function buildChannel(overrides: Partial<ClawImChannelV1> = {}): ClawImChannelV1
 
 function buildModelProvider(overrides: Partial<ModelProviderProfileV1> = {}): ModelProviderProfileV1 {
   return {
-    id: 'minimax',
-    name: 'MiniMax',
-    apiKey: 'sk-minimax',
-    baseUrl: 'https://api.minimaxi.com/anthropic',
+    id: 'mimo',
+    name: 'MIMO',
+    apiKey: 'sk-mimo',
+    baseUrl: 'https://api.mimoi.com/anthropic',
     endpointFormat: 'messages',
-    models: ['MiniMax-M3', 'MiniMax-M2.7'],
+    models: ['MIMO-M3', 'MIMO-M2.7'],
     modelProfiles: {},
     ...overrides
   }
@@ -744,10 +744,10 @@ describe('ClawRuntime', () => {
     })
 
     expect(runtimeRequest).not.toHaveBeenCalled()
-    expect(current().claw.channels[0].model).toBe('deepseek-v4-flash')
+    expect(current().claw.channels[0].model).toBe('mimo-v4-flash')
     expect(send).toHaveBeenCalledWith(
       'oc_chat_a',
-      { markdown: 'Claw IM model switched to `deepseek-v4-flash`.' },
+      { markdown: 'Claw IM model switched to `mimo-v4-flash`.' },
       { replyTo: 'om_inbound', replyInThread: false }
     )
   })
@@ -810,16 +810,16 @@ describe('ClawRuntime', () => {
       { markdown?: string },
       Record<string, unknown>
     ]
-    expect(providerListCall[1]).toMatchObject({ markdown: expect.stringContaining('`minimax`') })
+    expect(providerListCall[1]).toMatchObject({ markdown: expect.stringContaining('`mimo`') })
 
-    await handleFeishuMessage('/provider minimax', 'om_provider_switch')
+    await handleFeishuMessage('/provider mimo', 'om_provider_switch')
     expect(current().claw.channels[0]).toMatchObject({
-      providerId: 'minimax',
-      model: 'MiniMax-M2.7'
+      providerId: 'mimo',
+      model: 'MIMO-M2.7'
     })
     expect(send).toHaveBeenLastCalledWith(
       'oc_chat_a',
-      { markdown: 'IM provider switched to `minimax`; model is `MiniMax-M2.7`. Send `/model` to list models for this provider.' },
+      { markdown: 'IM provider switched to `mimo`; model is `MIMO-M2.7`. Send `/model` to list models for this provider.' },
       { replyTo: 'om_provider_switch', replyInThread: false }
     )
   })
@@ -831,7 +831,7 @@ describe('ClawRuntime', () => {
       ...settings.provider.providers,
       buildModelProvider()
     ]
-    settings.claw.channels = [buildChannel({ providerId: 'minimax', model: 'MiniMax-M2.7' })]
+    settings.claw.channels = [buildChannel({ providerId: 'mimo', model: 'MIMO-M2.7' })]
     const { current, store } = mutableSettingsStore(settings)
     const runtimeRequest = vi.fn()
     const send = vi.fn(async () => ({ messageId: 'om_sent' }))
@@ -881,14 +881,14 @@ describe('ClawRuntime', () => {
       { markdown?: string },
       Record<string, unknown>
     ]
-    expect(modelListCall[1]).toMatchObject({ markdown: expect.stringContaining('`MiniMax-M3`') })
-    expect(modelListCall[1]).toMatchObject({ markdown: expect.not.stringContaining('deepseek-v4-flash') })
+    expect(modelListCall[1]).toMatchObject({ markdown: expect.stringContaining('`MIMO-M3`') })
+    expect(modelListCall[1]).toMatchObject({ markdown: expect.not.stringContaining('mimo-v4-flash') })
 
-    await handleFeishuMessage('/model MiniMax-M3', 'om_model_switch')
-    expect(current().claw.channels[0].model).toBe('MiniMax-M3')
+    await handleFeishuMessage('/model MIMO-M3', 'om_model_switch')
+    expect(current().claw.channels[0].model).toBe('MIMO-M3')
     expect(send).toHaveBeenLastCalledWith(
       'oc_chat_a',
-      { markdown: 'Claw IM model switched to `MiniMax-M3`.' },
+      { markdown: 'Claw IM model switched to `MIMO-M3`.' },
       { replyTo: 'om_model_switch', replyInThread: false }
     )
   })
@@ -902,32 +902,32 @@ describe('ClawRuntime', () => {
       buildModelProvider()
     ]
     settings.claw.channels = [buildChannel({
-      providerId: 'minimax',
-      model: 'MiniMax-M3',
-      threadId: 'thr_minimax',
-      conversations: [buildConversation({ localThreadId: 'thr_minimax' })]
+      providerId: 'mimo',
+      model: 'MIMO-M3',
+      threadId: 'thr_mimo',
+      conversations: [buildConversation({ localThreadId: 'thr_mimo' })]
     })]
     const { store } = mutableSettingsStore(settings)
     const runtimeRequest = vi.fn(async (requestSettings: AppSettingsV1, path, init) => {
-      expect(requestSettings.agents.kun.providerId).toBe('minimax')
-      expect(requestSettings.agents.kun.model).toBe('MiniMax-M3')
-      if (path === '/v1/threads/thr_minimax/turns' && init?.method === 'POST') {
+      expect(requestSettings.agents.kun.providerId).toBe('mimo')
+      expect(requestSettings.agents.kun.model).toBe('MIMO-M3')
+      if (path === '/v1/threads/thr_mimo/turns' && init?.method === 'POST') {
         const body = JSON.parse(init?.body ?? '{}') as { model?: string }
-        expect(body.model).toBe('MiniMax-M3')
-        return { ok: true, status: 202, body: JSON.stringify({ threadId: 'thr_minimax', turnId: 'turn_minimax' }) }
+        expect(body.model).toBe('MIMO-M3')
+        return { ok: true, status: 202, body: JSON.stringify({ threadId: 'thr_mimo', turnId: 'turn_mimo' }) }
       }
-      if (path === '/v1/threads/thr_minimax' && init?.method === 'GET') {
+      if (path === '/v1/threads/thr_mimo' && init?.method === 'GET') {
         return {
           ok: true,
           status: 200,
           body: JSON.stringify({
-            id: 'thr_minimax',
+            id: 'thr_mimo',
             status: 'idle',
             turns: [
               {
-                id: 'turn_minimax',
+                id: 'turn_mimo',
                 status: 'completed',
-                items: [{ kind: 'assistant_text', text: 'hello from minimax' }]
+                items: [{ kind: 'assistant_text', text: 'hello from mimo' }]
               }
             ]
           })
@@ -973,7 +973,7 @@ describe('ClawRuntime', () => {
 
     expect(send).toHaveBeenCalledWith(
       'oc_chat_a',
-      { markdown: 'hello from minimax' },
+      { markdown: 'hello from mimo' },
       { replyTo: 'om_inbound', replyInThread: false }
     )
   })
@@ -2015,7 +2015,7 @@ describe('ClawRuntime', () => {
   })
 
   it('sends the latest generated workspace file to Feishu when the user asks for it', async () => {
-    const workspaceRoot = await mkdtemp(join(tmpdir(), 'deepseek-gui-feishu-file-'))
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'mimo-work-feishu-file-'))
     const filePath = join(workspaceRoot, 'hello.md')
     await writeFile(filePath, '# Hello\n')
     const realFilePath = await realpath(filePath)
@@ -2167,8 +2167,8 @@ describe('ClawRuntime', () => {
   })
 
   it('sends generated image tool output to Feishu for image requests', async () => {
-    const workspaceRoot = await mkdtemp(join(tmpdir(), 'deepseek-gui-feishu-image-'))
-    const imageDir = join(workspaceRoot, '.deepseekgui-images')
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'mimo-work-feishu-image-'))
+    const imageDir = join(workspaceRoot, '.mimo-work-images')
     const imagePath = join(imageDir, 'img-20260611000100-abcd.png')
     await mkdir(imageDir, { recursive: true })
     await writeFile(imagePath, Buffer.from([0x89, 0x50, 0x4e, 0x47]))
@@ -2223,7 +2223,7 @@ describe('ClawRuntime', () => {
                       output: {
                         files: [{
                           absolutePath: imagePath,
-                          relativePath: '.deepseekgui-images/img-20260611000100-abcd.png',
+                          relativePath: '.mimo-work-images/img-20260611000100-abcd.png',
                           mimeType: 'image/png'
                         }],
                         endpoint: 'generations'
@@ -2299,8 +2299,8 @@ describe('ClawRuntime', () => {
   })
 
   it('returns generated files in the WeChat webhook reply for image requests', async () => {
-    const workspaceRoot = await mkdtemp(join(tmpdir(), 'deepseek-gui-weixin-image-'))
-    const imageDir = join(workspaceRoot, '.deepseekgui-images')
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'mimo-work-weixin-image-'))
+    const imageDir = join(workspaceRoot, '.mimo-work-images')
     const imagePath = join(imageDir, 'img-20260611000200-beef.png')
     await mkdir(imageDir, { recursive: true })
     await writeFile(imagePath, Buffer.from([0x89, 0x50, 0x4e, 0x47]))
@@ -2361,7 +2361,7 @@ describe('ClawRuntime', () => {
                       output: {
                         files: [{
                           absolutePath: imagePath,
-                          relativePath: '.deepseekgui-images/img-20260611000200-beef.png',
+                          relativePath: '.mimo-work-images/img-20260611000200-beef.png',
                           mimeType: 'image/png'
                         }],
                         endpoint: 'generations'
@@ -2421,7 +2421,7 @@ describe('ClawRuntime', () => {
       expect(parsed.files).toEqual([
         {
           path: realImagePath,
-          relativePath: '.deepseekgui-images/img-20260611000200-beef.png',
+          relativePath: '.mimo-work-images/img-20260611000200-beef.png',
           fileName: 'img-20260611000200-beef.png'
         }
       ])
@@ -2431,8 +2431,8 @@ describe('ClawRuntime', () => {
   })
 
   it('returns current-turn generated music files in the WeChat webhook reply for follow-up prompts', async () => {
-    const workspaceRoot = await mkdtemp(join(tmpdir(), 'deepseek-gui-weixin-music-'))
-    const mediaDir = join(workspaceRoot, '.deepseekgui-media')
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'mimo-work-weixin-music-'))
+    const mediaDir = join(workspaceRoot, '.mimo-work-media')
     const musicPath = join(mediaDir, 'music-20260612054704-78a2.mp3')
     await mkdir(mediaDir, { recursive: true })
     await writeFile(musicPath, Buffer.from([0x49, 0x44, 0x33, 0x03]))
@@ -2444,8 +2444,8 @@ describe('ClawRuntime', () => {
       settings.agents.kun.musicGeneration = {
         enabled: true,
         providerId: '',
-        protocol: 'minimax-music',
-        baseUrl: 'https://api.minimax.io',
+        protocol: 'custom-music',
+        baseUrl: 'https://api.example.com',
         apiKey: 'sk-music',
         model: 'music-2.6',
         format: 'mp3',
@@ -2494,7 +2494,7 @@ describe('ClawRuntime', () => {
                       output: {
                         files: [{
                           absolutePath: musicPath,
-                          relativePath: '.deepseekgui-media/music-20260612054704-78a2.mp3',
+                          relativePath: '.mimo-work-media/music-20260612054704-78a2.mp3',
                           mimeType: 'audio/mpeg'
                         }]
                       },
@@ -2553,7 +2553,7 @@ describe('ClawRuntime', () => {
       expect(parsed.files).toEqual([
         {
           path: realMusicPath,
-          relativePath: '.deepseekgui-media/music-20260612054704-78a2.mp3',
+          relativePath: '.mimo-work-media/music-20260612054704-78a2.mp3',
           fileName: 'music-20260612054704-78a2.mp3'
         }
       ])
@@ -2563,8 +2563,8 @@ describe('ClawRuntime', () => {
   })
 
   it('does not return files from previous turns when the current IM turn produces none', async () => {
-    const workspaceRoot = await mkdtemp(join(tmpdir(), 'deepseek-gui-weixin-stale-files-'))
-    const imageDir = join(workspaceRoot, '.deepseekgui-images')
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'mimo-work-weixin-stale-files-'))
+    const imageDir = join(workspaceRoot, '.mimo-work-images')
     const imagePath = join(imageDir, 'img-20260611000300-cafe.png')
     await mkdir(imageDir, { recursive: true })
     await writeFile(imagePath, Buffer.from([0x89, 0x50, 0x4e, 0x47]))
@@ -2624,7 +2624,7 @@ describe('ClawRuntime', () => {
                       output: {
                         files: [{
                           absolutePath: imagePath,
-                          relativePath: '.deepseekgui-images/img-20260611000300-cafe.png',
+                          relativePath: '.mimo-work-images/img-20260611000300-cafe.png',
                           mimeType: 'image/png'
                         }]
                       },
@@ -2694,8 +2694,8 @@ describe('ClawRuntime', () => {
   })
 
   it('returns generated speech files in the WeChat webhook reply for voice requests', async () => {
-    const workspaceRoot = await mkdtemp(join(tmpdir(), 'deepseek-gui-weixin-speech-'))
-    const speechDir = join(workspaceRoot, '.deepseekgui-media')
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'mimo-work-weixin-speech-'))
+    const speechDir = join(workspaceRoot, '.mimo-work-media')
     const speechPath = join(speechDir, 'speech-20260612000100-feed.mp3')
     await mkdir(speechDir, { recursive: true })
     await writeFile(speechPath, Buffer.from([0x49, 0x44, 0x33, 0x03]))
@@ -2707,8 +2707,8 @@ describe('ClawRuntime', () => {
       settings.agents.kun.textToSpeech = {
         enabled: true,
         providerId: '',
-        protocol: 'minimax-t2a',
-        baseUrl: 'https://api.minimax.io',
+        protocol: 'mimo-tts',
+        baseUrl: 'https://api.xiaomimimo.com/v1',
         apiKey: 'sk-speech',
         model: 'speech-2.8-hd',
         voice: '',
@@ -2757,7 +2757,7 @@ describe('ClawRuntime', () => {
                       output: {
                         files: [{
                           absolutePath: speechPath,
-                          relativePath: '.deepseekgui-media/speech-20260612000100-feed.mp3',
+                          relativePath: '.mimo-work-media/speech-20260612000100-feed.mp3',
                           mimeType: 'audio/mpeg'
                         }]
                       },
@@ -2816,7 +2816,7 @@ describe('ClawRuntime', () => {
       expect(parsed.files).toEqual([
         {
           path: realSpeechPath,
-          relativePath: '.deepseekgui-media/speech-20260612000100-feed.mp3',
+          relativePath: '.mimo-work-media/speech-20260612000100-feed.mp3',
           fileName: 'speech-20260612000100-feed.mp3'
         }
       ])
@@ -2826,8 +2826,8 @@ describe('ClawRuntime', () => {
   })
 
   it('returns current-turn generated video files in the WeChat webhook reply for follow-up prompts', async () => {
-    const workspaceRoot = await mkdtemp(join(tmpdir(), 'deepseek-gui-weixin-video-'))
-    const mediaDir = join(workspaceRoot, '.deepseekgui-media')
+    const workspaceRoot = await mkdtemp(join(tmpdir(), 'mimo-work-weixin-video-'))
+    const mediaDir = join(workspaceRoot, '.mimo-work-media')
     const videoPath = join(mediaDir, 'video-20260612061000-c0de.mp4')
     await mkdir(mediaDir, { recursive: true })
     await writeFile(videoPath, Buffer.from([0x00, 0x00, 0x00, 0x18, 0x66, 0x74, 0x79, 0x70]))
@@ -2839,10 +2839,10 @@ describe('ClawRuntime', () => {
       settings.agents.kun.videoGeneration = {
         enabled: true,
         providerId: '',
-        protocol: 'minimax-video',
-        baseUrl: 'https://api.minimax.io',
+        protocol: 'custom-video',
+        baseUrl: 'https://api.example.com',
         apiKey: 'sk-video',
-        model: 'MiniMax-Hailuo-2.3',
+        model: 'MIMO-Hailuo-2.3',
         defaultDuration: 6,
         defaultResolution: '1080P',
         timeoutMs: 900000,
@@ -2891,7 +2891,7 @@ describe('ClawRuntime', () => {
                       output: {
                         files: [{
                           absolutePath: videoPath,
-                          relativePath: '.deepseekgui-media/video-20260612061000-c0de.mp4',
+                          relativePath: '.mimo-work-media/video-20260612061000-c0de.mp4',
                           mimeType: 'video/mp4'
                         }]
                       },
@@ -2950,7 +2950,7 @@ describe('ClawRuntime', () => {
       expect(parsed.files).toEqual([
         {
           path: realVideoPath,
-          relativePath: '.deepseekgui-media/video-20260612061000-c0de.mp4',
+          relativePath: '.mimo-work-media/video-20260612061000-c0de.mp4',
           fileName: 'video-20260612061000-c0de.mp4'
         }
       ])
