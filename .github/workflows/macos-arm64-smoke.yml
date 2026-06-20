@@ -16,6 +16,7 @@ jobs:
     timeout-minutes: 60
     env:
       MIMO_WORK_MIMO_API_KEY: ${{ secrets.MIMO_WORK_MIMO_API_KEY }}
+      MIMO_WORK_CORE_DIR: ${{ github.workspace }}/work/mimo-runtime-core/MIMO-Work-Core
 
     steps:
       - name: Check runner architecture
@@ -34,6 +35,9 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Prepare macOS arm64 runtime
+        run: npm run prepare:mimo-runtime:mac-arm64
 
       - name: Typecheck
         run: npm run typecheck
