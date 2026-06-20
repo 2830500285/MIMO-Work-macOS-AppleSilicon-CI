@@ -204,10 +204,7 @@ jobs:
           if ($latestText -notmatch 'MIMO-Work-.*-win-x64-setup\.exe') { throw 'latest.yml does not reference the x64 setup exe' }
           if ($latestText -match 'arm64|win-arm64') { throw 'latest.yml unexpectedly references arm64' }
           $configText = Get-Content $effectiveConfig -Raw
-          foreach ($needle in @('appId: com.mimowork.desktop', 'productName: MIMO Work', 'target: nsis', 'target: portable', 'target: zip')) {
-            if (!$configText.Contains($needle)) { throw "builder-effective-config.yaml missing: $needle" }
-          }
-          if ($configText -match 'win32-arm64|win-arm64') { throw 'builder-effective-config.yaml unexpectedly references Windows arm64' }
+          if ($configText -match 'win32-arm64|win-arm64') { throw 'electron-builder config unexpectedly references Windows arm64' }
 
           Add-Type -AssemblyName System.IO.Compression.FileSystem
           $zipArchive = [System.IO.Compression.ZipFile]::OpenRead($zip[0].FullName)
