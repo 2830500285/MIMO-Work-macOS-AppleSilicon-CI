@@ -1395,6 +1395,14 @@ app.whenReady().then(async () => {
     }, 1500)
   }
 
+  if (process.env.MIMO_WORK_SMOKE_AUTOSTART === '1' && resolveConfiguredApiKey(initial)) {
+    setTimeout(() => {
+      void ensureRuntime(initial).catch((err) => {
+        console.warn('[mimo-work] smoke runtime autostart:', err)
+      })
+    }, 500)
+  }
+
   app.on('second-instance', () => {
     revealMainWindow()
   })

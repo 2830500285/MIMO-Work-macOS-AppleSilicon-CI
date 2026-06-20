@@ -409,7 +409,8 @@ async function runRuntimeSmoke(appPath, options) {
     cwd: smoke.workspace,
     env: {
       ...process.env,
-      MIMO_WORK_MIMO_API_KEY: process.env.MIMO_WORK_MIMO_API_KEY || ''
+      MIMO_WORK_MIMO_API_KEY: process.env.MIMO_WORK_MIMO_API_KEY || '',
+      MIMO_WORK_SMOKE_AUTOSTART: '1'
     },
     stdio: ['ignore', 'ignore', 'pipe']
   })
