@@ -43,14 +43,14 @@ describe('workbench plan controller helpers', () => {
       request: 'Build Login: OAuth / SSO?',
       workspaceRoot: '/Users/codex/app/',
       activeThreadId: 'thread-current',
-      existingRelativePaths: ['.kunsdd/plan/build-login-oauth-sso.md']
+      existingRelativePaths: ['.mimo-work/plan/build-login-oauth-sso.md']
     })
 
     expect(result.guiPlan).toEqual({
       operation: 'draft',
       workspaceRoot: '/Users/codex/app',
-      relativePath: '.kunsdd/plan/build-login-oauth-sso-2.md',
-      planId: '/Users/codex/app:.kunsdd/plan/build-login-oauth-sso-2.md',
+      relativePath: '.mimo-work/plan/build-login-oauth-sso-2.md',
+      planId: '/Users/codex/app:.mimo-work/plan/build-login-oauth-sso-2.md',
       sourceRequest: 'Build Login: OAuth / SSO?',
       title: 'build-login-oauth-sso-2'
     })

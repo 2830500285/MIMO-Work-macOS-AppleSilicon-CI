@@ -18,6 +18,7 @@ import {
   mergeClawSettings,
   mergeScheduleSettings,
   mergeWriteSettings,
+  migrateLegacyAppSettings,
   normalizeAppBehaviorSettings,
   normalizeKeyboardShortcuts,
   normalizeEnvironmentProjects,
@@ -35,6 +36,8 @@ const DEFAULT_WORKSPACE_ROOT = join(homedir(), 'MIMO Work', 'default_workspace')
 const DEFAULT_CLAW_CHANNELS_ROOT = join(homedir(), 'MIMO Work', 'claw')
 const DEFAULT_WRITE_WORKSPACE_ROOT_ABSOLUTE = expandHomePath(DEFAULT_WRITE_WORKSPACE_ROOT)
 const SETTINGS_FILE_NAME = 'mimo-work-settings.json'
+const LEGACY_SETTINGS_FILE_NAMES = ['kun-settings.json'] as const
+const COMPATIBLE_USER_DATA_DIR_NAMES = ['Kun', 'kun', 'mimo-work'] as const
 const WELCOME_MARKDOWN = `# Welcome to Write
 
 This is your default writing workspace.
@@ -212,31 +215,32 @@ const defaultSettings = (): AppSettingsV1 => ({
 })
 
 function buildMergedSettings(parsed: Partial<AppSettingsV1>): AppSettingsV1 {
+  const migrated = migrateLegacyAppSettings(parsed)
   const defaults = defaultSettings()
   return {
     ...defaults,
-    ...parsed,
-    provider: mergeModelProviderSettings(defaults.provider, parsed.provider),
+    ...migrated,
+    provider: mergeModelProviderSettings(defaults.provider, migrated.provider),
     agents: kunSettingsEnvelope(
-      mergeKunRuntimeSettings(getKunRuntimeSettings(defaults), parsed.agents?.kun)
+      mergeKunRuntimeSettings(getKunRuntimeSettings(defaults), migrated.agents?.kun)
     ),
     log: {
-      enabled: parsed.log?.enabled ?? defaults.log.enabled,
-      retentionDays: normalizeLogRetentionDays(parsed.log?.retentionDays, defaults.log.retentionDays)
+      enabled: migrated.log?.enabled ?? defaults.log.enabled,
+      retentionDays: normalizeLogRetentionDays(migrated.log?.retentionDays, defaults.log.retentionDays)
     },
-    notifications: { ...defaults.notifications, ...parsed.notifications },
+    notifications: { ...defaults.notifications, ...migrated.notifications },
     appBehavior: normalizeAppBehaviorSettings({
       ...defaults.appBehavior,
-      ...parsed.appBehavior
+      ...migrated.appBehavior
     }),
-    keyboardShortcuts: normalizeKeyboardShortcuts(parsed.keyboardShortcuts),
-    environmentProjects: normalizeEnvironmentProjects(parsed.environmentProjects),
-    write: mergeWriteSettings(defaults.write, parsed.write),
-    claw: mergeClawSettings(defaults.claw, parsed.claw),
-    schedule: mergeScheduleSettings(defaults.schedule, parsed.schedule),
-    guiUpdate: { ...defaults.guiUpdate, ...parsed.guiUpdate },
-    codePromptPrefix: typeof parsed.codePromptPrefix === 'string' ? parsed.codePromptPrefix : '',
-    disabledSkillIds: normalizeDisabledSkillIds(parsed.disabledSkillIds)
+    keyboardShortcuts: normalizeKeyboardShortcuts(migrated.keyboardShortcuts),
+    environmentProjects: normalizeEnvironmentProjects(migrated.environmentProjects),
+    write: mergeWriteSettings(defaults.write, migrated.write),
+    claw: mergeClawSettings(defaults.claw, migrated.claw),
+    schedule: mergeScheduleSettings(defaults.schedule, migrated.schedule),
+    guiUpdate: { ...defaults.guiUpdate, ...migrated.guiUpdate },
+    codePromptPrefix: typeof migrated.codePromptPrefix === 'string' ? migrated.codePromptPrefix : '',
+    disabledSkillIds: normalizeDisabledSkillIds(migrated.disabledSkillIds)
   }
 }
 
@@ -274,6 +278,24 @@ async function writeInvalidSettingsBackup(path: string, raw: string): Promise<st
   }
 }
 
+function compatibleSettingsPaths(currentPath: string): string[] {
+  const currentUserDataDir = dirname(currentPath)
+  const currentDirName = basename(currentUserDataDir)
+  const parentDir = dirname(currentUserDataDir)
+  const candidates: string[] = []
+  for (const fileName of LEGACY_SETTINGS_FILE_NAMES) {
+    candidates.push(join(currentUserDataDir, fileName))
+  }
+  for (const dirName of COMPATIBLE_USER_DATA_DIR_NAMES) {
+    if (dirName === currentDirName) continue
+    candidates.push(join(parentDir, dirName, SETTINGS_FILE_NAME))
+    for (const fileName of LEGACY_SETTINGS_FILE_NAMES) {
+      candidates.push(join(parentDir, dirName, fileName))
+    }
+  }
+  return candidates
+}
+
 async function readSettingsFileWithCompatibility(
   currentPath: string
 ): Promise<{ raw: string, sourcePath: string } | null> {
@@ -284,6 +306,18 @@ async function readSettingsFileWithCompatibility(
     }
   } catch (error) {
     if (!isErrnoException(error) || error.code !== 'ENOENT') throw error
+  }
+
+  for (const candidatePath of compatibleSettingsPaths(currentPath)) {
+    try {
+      return {
+        raw: await readFile(candidatePath, 'utf8'),
+        sourcePath: candidatePath
+      }
+    } catch (error) {
+      if (isErrnoException(error) && error.code === 'ENOENT') continue
+      throw error
+    }
   }
 
   return null

@@ -101,7 +101,7 @@ function createRequest(): WriteInlineCompletionRequest {
       local: 'This is',
       documentTail: '# Draft This is'
     },
-    model: 'mimo-v4-flash'
+    model: 'mimo-v2-flash'
   }
 }
 
@@ -112,9 +112,9 @@ afterEach(() => {
 })
 
 describe('requestWriteInlineCompletion', () => {
-  it('calls MIMO FIM completions directly instead of chat completions', async () => {
+  it('calls MIMO chat completions with an inline writing prompt', async () => {
     const fetchMock = vi.fn(async () =>
-      new Response(JSON.stringify({ choices: [{ text: ' only a test' }] }), {
+      new Response(JSON.stringify({ choices: [{ message: { content: '<<<SHORT\n only a test\n>>>' } }] }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
       })
@@ -130,39 +130,44 @@ describe('requestWriteInlineCompletion', () => {
         kind: 'short',
         text: ' only a test'
       },
-      model: 'mimo-v4-flash',
+      model: 'mimo-v2-flash',
       mode: 'short'
     })
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe('https://api.mimo.com/beta/completions')
-    expect(url).not.toContain('/chat/completions')
+    expect(url).toBe('https://token-plan-cn.xiaomimimo.com/v1/chat/completions')
     expect(init.headers).toMatchObject({
       Authorization: 'Bearer sk-test'
     })
-    const body = JSON.parse(String(init.body)) as { prompt: string; suffix: string; max_tokens: number }
+    const body = JSON.parse(String(init.body)) as {
+      messages: Array<{ role: string; content: string }>
+      prompt?: string
+      suffix?: string
+      max_tokens: number
+    }
     expect(body).toMatchObject({
-      model: 'mimo-v4-flash',
-      suffix: ' a test.',
+      model: 'mimo-v2-flash',
       max_tokens: 64
     })
-    expect(body.prompt).toContain('Kun inline completion')
-    expect(body.prompt).toContain('Return only the text to insert at the cursor')
-    expect(body.prompt).not.toContain('<<<SHORT')
-    expect(body.prompt).toContain('<<<PREFIX')
-    expect(body.prompt).toContain('<<<SUFFIX')
-    expect(body.prompt.endsWith('# Draft\n\nThis is')).toBe(true)
+    expect(body.prompt).toBeUndefined()
+    expect(body.suffix).toBeUndefined()
+    expect(body.messages[0].content).toContain('MIMO Work inline writing')
+    expect(body.messages[1].content).toContain('Return exactly one TextIDE-style action block')
+    expect(body.messages[1].content).toContain('<<<SHORT')
+    expect(body.messages[1].content).toContain('<<<PREFIX')
+    expect(body.messages[1].content).toContain('<<<SUFFIX')
+    expect(body.messages[1].content).toContain('# Draft\n\nThis is')
     const debugEntries = listWriteInlineCompletionDebugEntries()
     expect(debugEntries).toHaveLength(1)
     expect(debugEntries[0]).toMatchObject({
       ok: true,
       completion: ' only a test',
       mode: 'short',
-      model: 'mimo-v4-flash'
+      model: 'mimo-v2-flash'
     })
   })
 
-  it('does not route lookalike MIMO hosts to FIM completions', async () => {
+  it('does not route lookalike MIMO hosts to the official token-plan endpoint', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({
         choices: [{
@@ -230,7 +235,7 @@ describe('requestWriteInlineCompletion', () => {
       suffix: ' a test.',
       responseChars: 0
     })
-    expect(debugEntries[0].prompt).toContain('Kun inline completion')
+    expect(debugEntries[0].prompt).toContain('MIMO Work inline completion')
     expect(debugEntries[0].prompt.endsWith('# Draft\n\nThis is')).toBe(true)
   })
 
@@ -245,17 +250,17 @@ describe('requestWriteInlineCompletion', () => {
 
     const request = {
       ...createRequest(),
-      model: 'mimo-v4-pro'
+      model: 'mimo-v2.5-pro'
     }
     const result = await requestWriteInlineCompletion(createSettings(), request)
 
     expect(result).toMatchObject({
       ok: true,
-      model: 'mimo-v4-pro'
+      model: 'mimo-v2.5-pro'
     })
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(JSON.parse(String(init.body))).toMatchObject({
-      model: 'mimo-v4-pro'
+      model: 'mimo-v2.5-pro'
     })
   })
 
@@ -270,9 +275,13 @@ describe('requestWriteInlineCompletion', () => {
 
     const settings = createSettings()
     settings.provider.baseUrl = 'https://general.example/v1'
+    settings.provider.providers[0] = {
+      ...settings.provider.providers[0],
+      baseUrl: 'https://general.example/v1'
+    }
     settings.agents.kun.model = 'mimo-chat'
-    settings.write.inlineCompletion.baseUrl = 'https://api.mimo.com/beta'
-    settings.write.inlineCompletion.model = 'mimo-v4-flash'
+    settings.write.inlineCompletion.baseUrl = ''
+    settings.write.inlineCompletion.model = 'mimo-v2-flash'
 
     const result = await requestWriteInlineCompletion(settings, {
       ...createRequest(),
@@ -285,7 +294,7 @@ describe('requestWriteInlineCompletion', () => {
     })
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toContain('https://general.example')
-    expect(url).toContain('/completions')
+    expect(url).toContain('/chat/completions')
     expect(JSON.parse(String(init.body))).toMatchObject({
       model: 'mimo-chat'
     })
@@ -361,9 +370,13 @@ describe('requestWriteInlineCompletion', () => {
 
     const settings = createSettings({
       inheritModel: false,
-      model: 'mimo-v4-flash'
+      model: 'mimo-v2-flash'
     })
     settings.provider.baseUrl = 'https://general.example/v1'
+    settings.provider.providers[0] = {
+      ...settings.provider.providers[0],
+      baseUrl: 'https://general.example/v1'
+    }
     settings.agents.kun.model = 'mimo-chat'
 
     const result = await requestWriteInlineCompletion(settings, {
@@ -373,12 +386,12 @@ describe('requestWriteInlineCompletion', () => {
 
     expect(result).toMatchObject({
       ok: true,
-      model: 'mimo-v4-flash'
+      model: 'mimo-v2-flash'
     })
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
     expect(url).toContain('https://general.example')
     expect(JSON.parse(String(init.body))).toMatchObject({
-      model: 'mimo-v4-flash'
+      model: 'mimo-v2-flash'
     })
   })
 
@@ -410,14 +423,17 @@ describe('requestWriteInlineCompletion', () => {
       mode: 'long'
     })
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    const body = JSON.parse(String(init.body)) as { prompt: string; max_tokens: number }
+    const body = JSON.parse(String(init.body)) as {
+      messages: Array<{ role: string; content: string }>
+      max_tokens: number
+    }
     expect(body.max_tokens).toBe(320)
-    expect(body.prompt).toContain('Trigger hint: long')
-    expect(body.prompt).toContain('paused for inspiration')
-    expect(body.prompt.endsWith(request.prefix)).toBe(true)
+    expect(body.messages[1].content).toContain('Trigger hint: long')
+    expect(body.messages[1].content).toContain('<<<LONG')
+    expect(body.messages[1].content).toContain(request.prefix)
   })
 
-  it('records plain long completions from the FIM request', async () => {
+  it('records plain long completions from the chat completions request', async () => {
     const fetchMock = vi.fn(async () =>
       new Response(JSON.stringify({ choices: [{ text: '\n\nA fuller continuation.' }] }), {
         status: 200,
@@ -441,12 +457,12 @@ describe('requestWriteInlineCompletion', () => {
       mode: 'long'
     })
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    const body = JSON.parse(String(init.body)) as { prompt: string }
-    expect(body.prompt).toContain('Return only the text to insert at the cursor')
-    expect(body.prompt).not.toContain('<<<LONG')
+    const body = JSON.parse(String(init.body)) as { messages: Array<{ role: string; content: string }> }
+    expect(body.messages[1].content).toContain('Return exactly one TextIDE-style action block')
+    expect(body.messages[1].content).toContain('<<<LONG')
   })
 
-  it('adds BM25 retrieval snippets to the FIM prompt when workspace context is available', async () => {
+  it('adds BM25 retrieval snippets to the chat prompt when workspace context is available', async () => {
     const workspaceRoot = await mkdtemp(join(tmpdir(), 'ds-gui-write-rag-'))
     await mkdir(join(workspaceRoot, 'notes'), { recursive: true })
     await writeFile(
@@ -495,11 +511,11 @@ describe('requestWriteInlineCompletion', () => {
 
     expect(result).toMatchObject({ ok: true })
     const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    const body = JSON.parse(String(init.body)) as { prompt: string }
-    expect(body.prompt).toContain('Reference snippets from the same writing workspace')
-    expect(body.prompt).toContain('notes/retrieval.md')
-    expect(body.prompt).toContain('BM25 keyword retrieval keeps inline completion grounded')
-    expect(body.prompt.endsWith(request.prefix)).toBe(true)
+    const body = JSON.parse(String(init.body)) as { messages: Array<{ role: string; content: string }> }
+    expect(body.messages[1].content).toContain('Reference snippets from the same writing workspace')
+    expect(body.messages[1].content).toContain('notes/retrieval.md')
+    expect(body.messages[1].content).toContain('BM25 keyword retrieval keeps inline completion grounded')
+    expect(body.messages[1].content).toContain(request.prefix)
   })
 
   it('uses chat completions when the unified request may return an edit action', async () => {
@@ -557,18 +573,17 @@ describe('requestWriteInlineCompletion', () => {
       }
     })
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe('https://api.mimo.com/v1/chat/completions')
+    expect(url).toBe('https://token-plan-cn.xiaomimimo.com/v1/chat/completions')
     const body = JSON.parse(String(init.body)) as {
       messages: Array<{ role: string; content: string }>
       prompt?: string
       suffix?: string
       max_tokens: number
-      thinking?: { type: string }
     }
     expect(body.max_tokens).toBe(320)
-    expect(body.thinking).toEqual({ type: 'disabled' })
     expect(body.prompt).toBeUndefined()
     expect(body.suffix).toBeUndefined()
+    expect('thinking' in body).toBe(false)
     expect(body.messages[1].content).toContain('Recent local edits in this file')
     expect(body.messages[1].content).toContain('Editable local scope if EDIT is the best action')
     expect(body.messages[1].content).toContain('<<<EDIT_SCOPE')
@@ -612,14 +627,13 @@ describe('requestWriteInlineCompletion', () => {
       completion: 'Write mode keeps text editing local.'
     })
     const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
-    expect(url).toBe('https://api.mimo.com/v1/chat/completions')
+    expect(url).toBe('https://token-plan-cn.xiaomimimo.com/v1/chat/completions')
     const body = JSON.parse(String(init.body)) as {
       messages: Array<{ role: string; content: string }>
       suffix?: string
-      thinking?: { type: string }
     }
     expect(body.suffix).toBeUndefined()
-    expect(body.thinking).toEqual({ type: 'disabled' })
+    expect('thinking' in body).toBe(false)
     expect(body.messages[1].content).toContain('Trigger hint: edit')
     expect(body.messages[1].content).toContain('<<<PREFIX')
     expect(body.messages[1].content).toContain('<<<SUFFIX')
@@ -672,7 +686,7 @@ describe('requestWriteInlineCompletion', () => {
     const request = createRequest()
 
     const prompt = buildWriteInlineCompletionPrompt(request, null)
-    expect(prompt).toContain('Kun inline completion')
+    expect(prompt).toContain('MIMO Work inline completion')
     expect(prompt).toContain('<<<PREFIX')
     expect(prompt).toContain('<<<SUFFIX')
     expect(prompt).not.toContain('<<<SHORT')

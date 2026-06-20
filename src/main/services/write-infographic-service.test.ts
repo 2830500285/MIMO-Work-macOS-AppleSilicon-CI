@@ -48,6 +48,10 @@ function fakeClient(): ImageGenClient & { edits: ImageGenEditRequest[]; requests
   }
 }
 
+function expectSameRealPath(actual: string, expected: string): void {
+  expect(realpathSync(actual)).toBe(realpathSync(expected))
+}
+
 describe('write infographic service', () => {
   beforeEach(() => {
     // realpath: macOS tmpdir lives behind a /var -> /private/var symlink and
@@ -88,8 +92,8 @@ describe('write infographic service', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.relativePath).toMatch(/^\.\.\/img\/infographic-\d{14}-[0-9a-f]{4}\.png$/)
-    expect(result.absolutePath).toBe(join(workspace, 'img', result.fileName))
     expect(existsSync(result.absolutePath)).toBe(true)
+    expectSameRealPath(result.absolutePath, join(workspace, 'img', result.fileName))
     expect(readFileSync(result.absolutePath, 'utf8')).toBe('fake-png-bytes')
 
     expect(client.requests).toHaveLength(1)
@@ -110,7 +114,7 @@ describe('write infographic service', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.relativePath).toMatch(/^img\/infographic-\d{14}-[0-9a-f]{4}\.png$/)
-    expect(result.absolutePath).toBe(join(workspace, 'img', result.fileName))
+    expectSameRealPath(result.absolutePath, join(workspace, 'img', result.fileName))
   })
 
   it('prefers an explicit defaultSize over the portrait default', async () => {
@@ -148,19 +152,16 @@ describe('write infographic service', () => {
     expect(prompt.length).toBeLessThan(7_000)
   })
 
-  it('keeps MIMO prompts inside the provider prompt limit', async () => {
+  it('leaves generic provider prompts uncapped when no prompt limit is configured', async () => {
     const client = fakeClient()
-    const result = await requestWriteInfographic(settingsWithImageGen({
-      protocol: 'mimo-image',
-      model: 'image-01'
-    }), {
+    const result = await requestWriteInfographic(settingsWithImageGen({ model: 'image-01' }), {
       text: `核心结论：${'增长、留存、转化、复购、风险。'.repeat(300)}`,
       filePath: join(workspace, 'doc.md'),
       workspaceRoot: workspace
     }, { client })
 
     expect(result.ok).toBe(true)
-    expect(client.requests[0].prompt.length).toBeLessThanOrEqual(1500)
+    expect(client.requests[0].prompt.length).toBeGreaterThan(1500)
     expect(client.requests[0].prompt).toContain('polished infographic poster')
     expect(client.requests[0].prompt).toContain('核心结论')
   })
@@ -209,8 +210,8 @@ describe('write infographic service', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.relativePath).toMatch(/^\.\.\/\.\.\/img\/design-\d{14}-[0-9a-f]{4}\.png$/)
-    expect(result.absolutePath).toBe(join(workspace, '.kunsdd', 'img', result.fileName))
     expect(existsSync(result.absolutePath)).toBe(true)
+    expectSameRealPath(result.absolutePath, join(workspace, '.kunsdd', 'img', result.fileName))
   })
 
   it('uses the landscape default size and design prompt for kind=design', async () => {

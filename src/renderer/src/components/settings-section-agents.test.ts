@@ -434,41 +434,39 @@ describe('AgentsSettingsSection Kun diagnostics smoke', () => {
     }))
   })
 
-  it('defaults MIMO media generation when adding a configured MIMO provider', () => {
+  it('keeps Xiaomi media capabilities when adding a configured MIMO provider', () => {
     const provider = defaultModelProviderSettings()
-    const mimo = getModelProviderPreset('mimo')
-    expect(mimo).not.toBeNull()
-    const mimoProvider = modelProviderPresetProfile(mimo!, 'sk-mimo')
+    const xiaomi = getModelProviderPreset('xiaomi')
+    expect(xiaomi).not.toBeNull()
+    const xiaomiProvider = modelProviderPresetProfile(xiaomi!, 'sk-mimo')
 
     const patch = modelProvidersSettingsPatch({
       provider,
-      providers: [...provider.providers, mimoProvider],
+      providers: [...provider.providers, xiaomiProvider],
       currentKun: defaultKunRuntimeSettings(),
       kun: {
-        providerId: mimoProvider.id,
-        model: mimoProvider.models[0]
+        providerId: xiaomiProvider.id,
+        model: xiaomiProvider.models[0]
       }
     })
 
     expect(patch.agents?.kun).toEqual(expect.objectContaining({
-      providerId: 'mimo',
-      model: mimoProvider.models[0],
-      textToSpeech: expect.objectContaining({
-        enabled: true,
-        providerId: 'mimo',
-        model: 'speech-2.8-hd'
-      }),
-      musicGeneration: expect.objectContaining({
-        enabled: true,
-        providerId: 'mimo',
-        model: 'music-2.6'
-      }),
-      videoGeneration: expect.objectContaining({
-        enabled: true,
-        providerId: 'mimo',
-        model: 'MIMO-Hailuo-2.3'
-      })
+      providerId: 'xiaomi',
+      model: xiaomiProvider.models[0]
     }))
+    expect(patch.provider?.providers).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: 'xiaomi',
+        speech: expect.objectContaining({
+          protocol: 'mimo-asr',
+          models: expect.arrayContaining(['mimo-v2.5-asr'])
+        }),
+        textToSpeech: expect.objectContaining({
+          protocol: 'mimo-tts',
+          models: expect.arrayContaining(['mimo-v2.5-tts'])
+        })
+      })
+    ]))
   })
 
   it('renders custom model provider id as editable', () => {
@@ -604,11 +602,11 @@ describe('AgentsSettingsSection Kun diagnostics smoke', () => {
     expect(html).toContain('Pure JSONL file storage')
   })
 
-  it('shows MIMO V4 model compaction thresholds from the model profile', () => {
+  it('shows MIMO model compaction thresholds from the model profile', () => {
     const html = renderToStaticMarkup(createElement(AgentsSettingsSection, { ctx: baseCtx() }))
 
     expect(html).toContain('Current model context policy')
-    expect(html).toContain('mimo-v4-pro')
+    expect(html).toContain('mimo-v2.5-pro')
     expect(html).toContain('Built-in model config')
     expect(html).toContain('1,000,000')
     expect(html).toContain('980,000')
@@ -674,33 +672,18 @@ describe('AgentsSettingsSection Kun diagnostics smoke', () => {
     expect(html).not.toContain('config.toml')
   })
 
-  it('defines the LiteLLM provider preset for the Providers menu', () => {
-    const litellm = getModelProviderPreset('litellm')
-    expect(litellm && modelProviderPresetProfile(litellm)).toMatchObject({
-      id: 'litellm',
-      name: 'LiteLLM',
-      baseUrl: 'http://localhost:4000',
-      endpointFormat: 'chat_completions'
+  it('defines the Xiaomi MIMO provider preset for the Providers menu', () => {
+    const preset = getModelProviderPreset('xiaomi')
+    expect(preset && modelProviderPresetProfile(preset)).toMatchObject({
+      id: 'xiaomi',
+      name: 'MIMO',
+      baseUrl: 'https://api.xiaomimimo.com/v1',
+      endpointFormat: 'chat_completions',
+      models: expect.arrayContaining(['mimo-v2.5-pro', 'mimo-v2-flash'])
     })
-  })
-
-  it('defines coding provider presets for the Providers menu', () => {
-    const expected = [
-      ['zhipu-coding-plan', 'Zhipu Coding Plan', 'https://open.bigmodel.cn/api/coding/paas/v4'],
-      ['zai-coding-plan', 'Z.ai Coding Plan', 'https://api.z.ai/api/coding/paas/v4'],
-      ['kimi-code', 'Kimi Code', 'https://api.kimi.com/coding/v1'],
-      ['moonshot-cn', 'Moonshot CN', 'https://api.moonshot.cn/v1'],
-      ['moonshot-global', 'Moonshot Global', 'https://api.moonshot.ai/v1']
-    ] as const
-
-    for (const [id, name, baseUrl] of expected) {
-      const preset = getModelProviderPreset(id)
-      expect(preset && modelProviderPresetProfile(preset)).toMatchObject({
-        id,
-        name,
-        baseUrl,
-        endpointFormat: 'chat_completions'
-      })
-    }
+    expect(preset?.tokenPlan).toMatchObject({
+      baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
+      keyPrefix: 'tp-'
+    })
   })
 })

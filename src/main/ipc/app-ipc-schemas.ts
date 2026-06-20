@@ -667,7 +667,6 @@ function stripLegacySettingsPatchKeys(payload: unknown): unknown {
   const next: Record<string, unknown> = { ...source }
 
   delete next.agentProvider
-  delete next.disabledSkillIds
   delete next.reasonix
   delete next.quickChat
 

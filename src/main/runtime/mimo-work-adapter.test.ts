@@ -74,7 +74,7 @@ describe('mimo work adapter contract mapping', () => {
     current.provider.providers.push({
       id: 'xiaomi-token-plan',
       name: 'Xiaomi Tokenplan',
-      apiKey: 'tp-unit-test-key-12345678901234567890',
+      apiKey: 'tp-test',
       baseUrl: 'https://token-plan-sgp.xiaomimimo.com/v1',
       endpointFormat: 'chat_completions',
       models: ['mimo-v2.5-pro'],
@@ -90,12 +90,12 @@ describe('mimo work adapter contract mapping', () => {
     current.agents.kun.providerId = 'xiaomi-token-plan'
     current.agents.kun.model = 'mimo-v2.5-pro'
     current.agents.kun.mimo.apiKey = ''
-    current.provider.apiKey = 'tp-unit-test-key-12345678901234567890'
+    current.provider.apiKey = 'tp-test'
     current.provider.baseUrl = 'https://token-plan-sgp.xiaomimimo.com/v1'
 
     expect(mimoWorkAdapterTestInternals.effectiveMimoCredentials(current)).toMatchObject({
       mode: 'tokenplan',
-      apiKey: 'tp-unit-test-key-12345678901234567890',
+      apiKey: 'tp-test',
       baseUrl: 'https://token-plan-sgp.xiaomimimo.com/v1',
       model: 'mimo-v2.5-pro'
     })
@@ -122,7 +122,7 @@ describe('mimo work adapter contract mapping', () => {
     })
     current.agents.kun.providerId = 'custom-provider-2'
     current.agents.kun.model = 'provider:prov_custom:mimo-v2.5'
-    current.agents.kun.mimo.apiKey = 'tp-old-tokenplan-key-12345678901234567890'
+    current.agents.kun.mimo.apiKey = 'tp-test'
 
     const mimo = mimoWorkAdapterTestInternals.effectiveMimoCredentials(current)
 
@@ -350,7 +350,7 @@ describe('mimo work adapter contract mapping', () => {
 
     const event = mimoWorkAdapterTestInternals.runtimeStreamFailedEvent(
       'ses_stream_failed',
-      'terminated token=tp-123456789012345678901234'
+      'terminated token=tp-test'
     )
 
     expect(event).toMatchObject({
@@ -361,7 +361,7 @@ describe('mimo work adapter contract mapping', () => {
     })
     expect(String(event.message)).toContain('当前回复没有完成')
     expect(String(event.message)).toContain('<redacted>')
-    expect(String(event.message)).not.toContain('tp-123456789012345678901234')
+    expect(String(event.message)).not.toContain('tp-test')
   })
 
   it('maps MiMo tool parts into visible running and completed tool events', async () => {

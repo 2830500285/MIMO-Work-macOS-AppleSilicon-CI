@@ -744,10 +744,10 @@ describe('ClawRuntime', () => {
     })
 
     expect(runtimeRequest).not.toHaveBeenCalled()
-    expect(current().claw.channels[0].model).toBe('mimo-v4-flash')
+    expect(current().claw.channels[0].model).toBe('mimo-v2-flash')
     expect(send).toHaveBeenCalledWith(
       'oc_chat_a',
-      { markdown: 'Claw IM model switched to `mimo-v4-flash`.' },
+      { markdown: 'Claw IM model switched to `mimo-v2-flash`.' },
       { replyTo: 'om_inbound', replyInThread: false }
     )
   })
@@ -1425,7 +1425,7 @@ describe('ClawRuntime', () => {
     expect(send).toHaveBeenCalledTimes(2)
     const welcomeCall = send.mock.calls[0] as unknown as [string, { markdown?: string }, Record<string, unknown>]
     expect(welcomeCall[0]).toBe('oc_chat_a')
-    expect(welcomeCall[1].markdown).toContain('Kun')
+    expect(welcomeCall[1].markdown).toContain('MIMO Work')
     expect(welcomeCall[1].markdown).toContain('`/new`')
     expect(welcomeCall[1].markdown).toContain('`/model`')
     expect(welcomeCall[2]).toEqual({})
@@ -1626,7 +1626,7 @@ describe('ClawRuntime', () => {
     }).handleWebhook(req, res)
 
     const reply = String(JSON.parse(responseBody).reply)
-    expect(reply).toContain('Kun')
+    expect(reply).toContain('MIMO Work')
     expect(reply).toContain('`/new`')
     expect(reply.endsWith('hello from GUI')).toBe(true)
     expect(current().claw.channels[0].welcomeSentAt).toBeTruthy()

@@ -50,7 +50,7 @@ function makeClawChannel(patch: Partial<ClawImChannelV1> = {}): ClawImChannelV1 
     provider: 'feishu',
     label: 'Feishu Agent',
     enabled: true,
-    model: 'mimo-v4-flash',
+    model: 'mimo-v2-flash',
     threadId: '',
     workspaceRoot: '/tmp/claw-workspace',
     agentProfile: {
@@ -178,7 +178,7 @@ describe('ScheduleRuntime', () => {
 
     const result = await runtime.createScheduledTaskFromText('Remind me tomorrow to ship the review.', {
       workspaceRoot: '/tmp/schedule',
-      modelHint: 'mimo-v4-flash',
+      modelHint: 'mimo-v2-flash',
       mode: 'plan'
     })
 
@@ -191,9 +191,9 @@ describe('ScheduleRuntime', () => {
     expect(store.read().schedule.tasks[0]).toMatchObject({
       title: 'Ship review reminder',
       workspaceRoot: '/tmp/schedule',
-      providerId: 'mimo',
-      model: 'mimo-v4-flash',
-      reasoningEffort: 'max',
+      providerId: 'xiaomi-token-plan',
+      model: 'mimo-v2-flash',
+      reasoningEffort: 'medium',
       mode: 'plan',
       schedule: { kind: 'at', atTime: future }
     })
@@ -232,12 +232,12 @@ describe('ScheduleRuntime', () => {
     expect(JSON.parse(String(createRequest))).toMatchObject({
       title: '[Scheduled task] Task',
       workspace: '/tmp/workspace',
-      model: 'mimo-v4-flash',
+      model: 'mimo-v2.5-pro',
       mode: 'agent'
     })
     expect(JSON.parse(String(turnRequest))).toMatchObject({
-      model: 'mimo-v4-flash',
-      reasoningEffort: 'max',
+      model: 'mimo-v2.5-pro',
+      reasoningEffort: 'high',
       // Headless turn: a user_input request would hang until timeout.
       disableUserInput: true
     })
@@ -286,7 +286,7 @@ describe('ScheduleRuntime', () => {
     )?.[2]?.body
     expect(JSON.parse(String(createRequest))).toMatchObject({
       workspace: '/tmp/claw-workspace',
-      model: 'mimo-v4-flash'
+      model: 'mimo-v2-flash'
     })
     const turnBody = JSON.parse(String(turnRequest))
     expect(turnBody.prompt).toContain('[Claw managed instructions]')

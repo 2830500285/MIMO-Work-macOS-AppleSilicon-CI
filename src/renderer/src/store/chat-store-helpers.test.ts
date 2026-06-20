@@ -97,19 +97,18 @@ describe('chat-store Claw helpers', () => {
       ])
     ).toEqual([
       '/Users/zxy/project-a',
-      '/Users/zxy/.mimo-work/default_workspace',
       '/Users/zxy/project-b'
     ])
   })
 
-  it('deduplicates default workspace aliases', () => {
+  it('drops default workspace aliases', () => {
     expect(
       compactCodeWorkspaceRoots([
         '~/.mimo-work/default_workspace',
         'C:\\Users\\zxy\\.mimo-work\\default_workspace',
         'C:\\Users\\zxy\\.mimo-work\\default_workspace\\'
       ])
-    ).toEqual(['~/.mimo-work/default_workspace'])
+    ).toEqual([])
   })
 
   it('caps code workspace roots while keeping the newest unique roots first', () => {
@@ -189,17 +188,17 @@ describe('chat-store Claw helpers', () => {
 
     expect(pick).not.toContain('auto')
     expect(pick).toContain('custom-model')
-    expect(pick).toContain('mimo-v4-pro')
-    expect(pick).toContain('mimo-v4-flash')
+    expect(pick).toContain('mimo-v2.5-pro')
+    expect(pick).toContain('mimo-v2-flash')
     expect(mergeComposerPickList(false, ['upstream-model'])).not.toContain('upstream-model')
   })
 
   it('falls back to the runtime default model, then known defaults', () => {
-    const pick = ['a-model', 'custom-model', 'mimo-v4-flash', 'mimo-v4-pro']
+    const pick = ['a-model', 'custom-model', 'mimo-v2-flash', 'mimo-v2.5-pro']
 
     expect(fallbackComposerModel(pick, 'custom-model')).toBe('custom-model')
-    expect(fallbackComposerModel(pick, 'auto')).toBe('mimo-v4-pro')
-    expect(fallbackComposerModel(pick, 'missing-model')).toBe('mimo-v4-pro')
+    expect(fallbackComposerModel(pick, 'auto')).toBe('mimo-v2.5-pro')
+    expect(fallbackComposerModel(pick, 'missing-model')).toBe('mimo-v2.5-pro')
     expect(fallbackComposerModel(['a-model'], '')).toBe('a-model')
     expect(fallbackComposerModel([], '')).toBe('')
   })

@@ -39,8 +39,8 @@ describe('normalizeUiPluginManifest', () => {
     }
   })
 
-  it('allows the bundled ikun id (iKun ships as a pre-installed plugin)', () => {
-    expect(normalizeUiPluginManifest({ ...validManifest, id: 'ikun' }).ok).toBe(true)
+  it('rejects the retired bundled ikun id', () => {
+    expect(normalizeUiPluginManifest({ ...validManifest, id: 'ikun' }).ok).toBe(false)
   })
 
   it('rejects traversal, absolute paths, and non-image extensions in figures', () => {

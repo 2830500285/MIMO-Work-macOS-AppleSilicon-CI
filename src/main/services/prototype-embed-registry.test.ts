@@ -1,6 +1,6 @@
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   authorizePrototypePath,
@@ -45,7 +45,10 @@ describe('prototype embed registry', () => {
   })
 
   it('rejects paths escaping the workspace and missing files', async () => {
-    const escaped = await authorizePrototypePath('/tmp/.kunsdd/proto/evil.html', workspace)
+    const escaped = await authorizePrototypePath(
+      join(dirname(workspace), 'outside', '.kunsdd', 'proto', 'evil.html'),
+      workspace
+    )
     expect(escaped.ok).toBe(false)
 
     const missing = await authorizePrototypePath(

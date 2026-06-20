@@ -19,7 +19,7 @@ describe('gui-plan path validation', () => {
     expect(isGuiPlanRelativePath(`${GUI_PLAN_RELATIVE_DIR}\\login.md`)).toBe(true)
     expect(isGuiPlanRelativePath('.mimo-work/plan/login.md')).toBe(true)
     expect(isGuiPlanCurrentRelativePath(`${GUI_PLAN_RELATIVE_DIR}/login.md`)).toBe(true)
-    expect(isGuiPlanCurrentRelativePath('.mimo-work/plan/login.md')).toBe(false)
+    expect(isGuiPlanCurrentRelativePath('.mimo-work/plan/login.md')).toBe(true)
   })
 
   it('rejects nested paths', () => {

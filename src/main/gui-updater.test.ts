@@ -70,7 +70,7 @@ function platformManifestName(): string {
 }
 
 describe('checkGuiUpdate feed URL', () => {
-  it('prefers the kun-agent update feed when metadata is reachable', async () => {
+  it('prefers the primary MIMO Work update feed when metadata is reachable', async () => {
     process.env.MIMO_WORK_ALLOW_UNSIGNED_UPDATES = '1'
     const fetchMock = vi.fn().mockResolvedValue({ ok: true })
     vi.stubGlobal('fetch', fetchMock)
@@ -88,16 +88,16 @@ describe('checkGuiUpdate feed URL', () => {
       hasUpdate: true
     })
     expect(fetchMock).toHaveBeenCalledWith(
-      `https://www.kun-agent.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
+      `https://www.mimowork.app/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
       expect.objectContaining({ method: 'HEAD' })
     )
     expect(updater.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://www.kun-agent.com/api/r2/mimo-work/channels/stable/latest/'
+      url: 'https://www.mimowork.app/api/r2/mimo-work/channels/stable/latest/'
     })
   })
 
-  it('falls back to the bare kun-agent feed before the legacy feed', async () => {
+  it('falls back to the bare mimowork feed when the primary feed is unavailable', async () => {
     process.env.MIMO_WORK_ALLOW_UNSIGNED_UPDATES = '1'
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: false, status: 404 })
@@ -118,26 +118,25 @@ describe('checkGuiUpdate feed URL', () => {
     })
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      `https://www.kun-agent.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
+      `https://www.mimowork.app/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
       expect.objectContaining({ method: 'HEAD' })
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      `https://kun-agent.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
+      `https://mimowork.app/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
       expect.objectContaining({ method: 'HEAD' })
     )
     expect(updater.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://kun-agent.com/api/r2/mimo-work/channels/stable/latest/'
+      url: 'https://mimowork.app/api/r2/mimo-work/channels/stable/latest/'
     })
   })
 
-  it('falls back to the legacy mimo-work feed when both kun-agent feeds are unavailable', async () => {
+  it('uses the secondary feed when probe requests are unavailable', async () => {
     process.env.MIMO_WORK_ALLOW_UNSIGNED_UPDATES = '1'
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: false, status: 404 })
       .mockResolvedValueOnce({ ok: false, status: 404 })
-      .mockResolvedValueOnce({ ok: true })
     vi.stubGlobal('fetch', fetchMock)
     updater.checkForUpdates.mockResolvedValue({
       updateInfo: { version: '0.2.0', releaseDate: '2026-06-06T00:00:00.000Z' },
@@ -154,22 +153,18 @@ describe('checkGuiUpdate feed URL', () => {
     })
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      `https://www.kun-agent.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
+      `https://www.mimowork.app/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
       expect.objectContaining({ method: 'HEAD' })
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      `https://kun-agent.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
+      `https://mimowork.app/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
       expect.objectContaining({ method: 'HEAD' })
     )
-    expect(fetchMock).toHaveBeenNthCalledWith(
-      3,
-      `https://mimo-work.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
-      expect.objectContaining({ method: 'HEAD' })
-    )
+    expect(fetchMock).toHaveBeenCalledTimes(2)
     expect(updater.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://mimo-work.com/api/r2/mimo-work/channels/stable/latest/'
+      url: 'https://mimowork.app/api/r2/mimo-work/channels/stable/latest/'
     })
   })
 })

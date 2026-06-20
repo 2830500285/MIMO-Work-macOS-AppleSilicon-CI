@@ -72,14 +72,14 @@ describe('write term propagation', () => {
   })
 
   it('propagates canonical casing after an incremental case edit', () => {
-    const content = 'MIMO Work works. mimo gui should follow. mimo api should not.'
+    const content = 'MIMO Work works. mimo work should follow. mimo api should not.'
     const seedFrom = content.indexOf('MIMO Work')
 
     const changes = buildWriteCanonicalTermPropagationChanges(content, {
       from: seedFrom,
       to: seedFrom + 1,
-      deletedText: 'd',
-      insertedText: 'D'
+      deletedText: 'm',
+      insertedText: 'M'
     })
 
     expect(applyChanges(content, changes)).toBe(

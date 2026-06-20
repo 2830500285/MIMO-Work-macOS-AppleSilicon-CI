@@ -10,14 +10,14 @@ describe('write inline completion model options', () => {
     ])
 
     expect(options).toEqual(['MIMO-M2', 'MIMO-M3'])
-    expect(options).not.toContain('mimo-v4-pro')
-    expect(options).not.toContain('mimo-v4-flash')
+    expect(options).not.toContain('mimo-v2.5-pro')
+    expect(options).not.toContain('mimo-v2-flash')
   })
 
   it('uses built-in defaults only when the provider has no models', () => {
     expect(writeInlineCompletionModelOptions([])).toEqual([
-      'mimo-v4-pro',
-      'mimo-v4-flash'
+      'mimo-v2.5-pro',
+      'mimo-v2-flash'
     ])
   })
 })

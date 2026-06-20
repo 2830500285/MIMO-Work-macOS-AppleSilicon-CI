@@ -21,7 +21,7 @@ describe('weixin bridge runtime', () => {
 
     expect(baseInfo).toMatchObject({
       channel_version: pkg.version,
-      bot_agent: 'Kun/0.2.0-test'
+      bot_agent: 'MIMO-Work/0.2.0-test'
     })
   })
 

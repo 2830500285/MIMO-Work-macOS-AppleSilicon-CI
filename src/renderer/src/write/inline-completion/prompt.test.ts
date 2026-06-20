@@ -129,8 +129,8 @@ describe('buildInlineCompletionPayload', () => {
   it('expands a local word candidate to a nearby term from recent replacements', () => {
     const payload = buildInlineCompletionPayload(
       context({
-        head: 29,
-        column: 21,
+        head: 26,
+        column: 18,
         prefix: '# Draft\n\nAnother MIMO Work',
         suffix: ' mention needs alignment.',
         prefixWindow: '# Draft\n\nAnother MIMO Work',
@@ -143,13 +143,13 @@ describe('buildInlineCompletionPayload', () => {
         docPreview: '# Draft\n\nAnother MIMO Work',
         editCandidate: {
           kind: 'selection',
-          from: 26,
-          to: 29,
+          from: 22,
+          to: 26,
           startLine: 3,
-          startColumn: 18,
+          startColumn: 14,
           endLine: 3,
-          endColumn: 20,
-          original: 'gui'
+          endColumn: 17,
+          original: 'Work'
         }
       }),
       {
@@ -167,6 +167,6 @@ describe('buildInlineCompletionPayload', () => {
       kind: 'selection',
       original: 'MIMO Work'
     })
-    expect(payload.editCandidate ? payload.editCandidate.to - payload.editCandidate.from : 0).toBe(12)
+    expect(payload.editCandidate ? payload.editCandidate.to - payload.editCandidate.from : 0).toBe('MIMO Work'.length)
   })
 })

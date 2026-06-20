@@ -18,7 +18,7 @@ function thread(id: string): NormalizedThread {
     id,
     title: id,
     updatedAt: '2026-06-09T00:00:00.000Z',
-    model: 'mimo-v4-pro',
+    model: 'mimo-v2.5-pro',
     mode: 'agent',
     workspace: '/workspace/mimo-work',
     status: 'running'
@@ -85,7 +85,7 @@ describe('chat-store-thread-actions queued messages', () => {
     const guiPlan: GuiPlanMessageContext = {
       operation: 'draft',
       workspaceRoot: '/workspace/mimo-work',
-      relativePath: '.kunsdd/plan/feature.md',
+      relativePath: '.mimo-work/plan/feature.md',
       planId: 'plan-1',
       sourceRequest: 'feature'
     }
@@ -115,7 +115,7 @@ describe('chat-store-thread-actions queued messages', () => {
         guiPlan: {
           operation: 'draft',
           workspaceRoot: '/workspace/mimo-work',
-          relativePath: '.kunsdd/plan/one.md',
+          relativePath: '.mimo-work/plan/one.md',
           planId: 'plan-1'
         }
       },
@@ -196,7 +196,7 @@ describe('chat-store-thread-actions queued messages', () => {
     vi.stubGlobal('window', {
       kunGui: {
         getSettings: vi.fn(async () => ({
-          agents: { kun: { providerId: 'mimo-token-plan', model: 'MIMO-M2' } },
+          agents: { kun: { providerId: 'xiaomi', model: 'mimo-v2.5-pro' } },
           codePromptPrefix: ''
         })),
         saveSettingsSilent,
@@ -216,11 +216,14 @@ describe('chat-store-thread-actions queued messages', () => {
     })
     expect(restartRuntime).toHaveBeenCalledTimes(1)
     expect(provider.connect).toHaveBeenCalledTimes(1)
-    expect(provider.sendUserMessage).toHaveBeenCalledWith(
-      'thr_existing',
-      'hello',
-      expect.objectContaining({ model: 'mimo-v2-flash' })
-    )
+    const [threadId, runtimeText, options] = provider.sendUserMessage.mock.calls[0] as unknown as [
+      string,
+      string,
+      { model?: string; displayText?: string }
+    ]
+    expect(threadId).toBe('thr_existing')
+    expect(runtimeText).toContain('[Current user request]\nhello')
+    expect(options).toMatchObject({ model: 'mimo-v2-flash', displayText: 'hello' })
   })
 
   it('applies an override provider before sending from the write route', async () => {
@@ -235,14 +238,14 @@ describe('chat-store-thread-actions queued messages', () => {
     }
     registryMock.getProvider.mockReturnValue(provider)
     const saveSettingsSilent = vi.fn(async () => ({
-      agents: { kun: { providerId: 'mimo-token-plan', model: 'MIMO-M3' } },
+      agents: { kun: { providerId: 'xiaomi-token-plan', model: 'mimo-v2.5-pro' } },
       codePromptPrefix: ''
     }))
     const restartRuntime = vi.fn(async () => undefined)
     vi.stubGlobal('window', {
       kunGui: {
         getSettings: vi.fn(async () => ({
-          agents: { kun: { providerId: 'mimo', model: 'mimo-v4-pro' } },
+          agents: { kun: { providerId: 'xiaomi', model: 'mimo-v2.5-pro' } },
           codePromptPrefix: ''
         })),
         saveSettingsSilent,
@@ -256,19 +259,22 @@ describe('chat-store-thread-actions queued messages', () => {
     state.ensureWriteThreadForWorkspace = vi.fn(async () => 'thr_existing') as never
 
     await expect(actions.sendMessage('make a prototype', 'agent', {
-      model: 'MIMO-M3',
-      providerId: 'mimo-token-plan'
+      model: 'mimo-v2.5-pro',
+      providerId: 'xiaomi-token-plan'
     })).resolves.toBe(true)
 
     expect(saveSettingsSilent).toHaveBeenCalledWith({
-      agents: { kun: { providerId: 'mimo-token-plan', model: 'MIMO-M3' } }
+      agents: { kun: { providerId: 'xiaomi-token-plan', model: 'mimo-v2.5-pro' } }
     })
     expect(restartRuntime).toHaveBeenCalledTimes(1)
     expect(provider.connect).toHaveBeenCalledTimes(1)
-    expect(provider.sendUserMessage).toHaveBeenCalledWith(
-      'thr_existing',
-      'make a prototype',
-      expect.objectContaining({ model: 'MIMO-M3' })
-    )
+    const [threadId, runtimeText, options] = provider.sendUserMessage.mock.calls[0] as unknown as [
+      string,
+      string,
+      { model?: string; displayText?: string }
+    ]
+    expect(threadId).toBe('thr_existing')
+    expect(runtimeText).toContain('[Current user request]\nmake a prototype')
+    expect(options).toMatchObject({ model: 'mimo-v2.5-pro', displayText: 'make a prototype' })
   })
 })

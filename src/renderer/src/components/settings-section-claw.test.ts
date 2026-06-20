@@ -121,6 +121,6 @@ describe('ClawSettingsSection', () => {
     expect(html).toContain('Personality')
     expect(html).toContain('Reply rules')
     expect(html).toContain('Start with the conclusion.')
-    expect(html).toContain('<option value="mimo-v4-pro"')
+    expect(html).toContain('<option value="mimo-v2.5-pro"')
   })
 })

@@ -41,7 +41,7 @@ export function isClawWorkspacePath(path?: string): boolean {
   const trimmed = path?.trim() ?? ''
   if (!trimmed) return false
   const normalized = normalizePathForMatch(trimmed)
-  return normalized.includes('/mimo work/claw/')
+  return normalized.includes('/mimo work/claw/') || normalized.includes('/.mimo-work/claw/')
 }
 
 export function isInternalMimoWorkWorkspace(path?: string): boolean {

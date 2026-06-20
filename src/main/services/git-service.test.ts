@@ -23,6 +23,10 @@ import { getGitBranches, switchGitBranch, createAndSwitchGitBranch } from './git
 let sandbox = ''
 let repoRoot = ''
 
+function normalizePathForCompare(value: string): string {
+  return value.replace(/\\/g, '/')
+}
+
 beforeEach(async () => {
   sandbox = await mkdtemp(join(tmpdir(), 'ds-gui-git-service-'))
   repoRoot = await realpath(sandbox)
@@ -58,7 +62,7 @@ describe('getGitBranches — integration with real git', () => {
     if (!result.ok) throw new Error('unreachable: just checked ok')
 
     // `repositoryRoot` must be the repo root (not the subdirectory we passed in).
-    expect(result.repositoryRoot).toBe(repoRoot)
+    expect(normalizePathForCompare(result.repositoryRoot)).toBe(normalizePathForCompare(repoRoot))
     // And we should see the default branch we created.
     expect(result.currentBranch).toBe('main')
     expect(result.branches.map((b) => b.name)).toContain('main')
@@ -71,7 +75,7 @@ describe('getGitBranches — integration with real git', () => {
 
     expect(result.ok).toBe(true)
     if (!result.ok) throw new Error('unreachable')
-    expect(result.repositoryRoot).toBe(repoRoot)
+    expect(normalizePathForCompare(result.repositoryRoot)).toBe(normalizePathForCompare(repoRoot))
     expect(result.currentBranch).toBe('main')
   })
 
@@ -84,7 +88,7 @@ describe('getGitBranches — integration with real git', () => {
 
     expect(result.ok).toBe(true)
     if (!result.ok) throw new Error('unreachable')
-    expect(result.repositoryRoot).toBe(repoRoot)
+    expect(normalizePathForCompare(result.repositoryRoot)).toBe(normalizePathForCompare(repoRoot))
     expect(result.dirtyCount).toBeGreaterThanOrEqual(1)
   })
 
@@ -126,7 +130,7 @@ describe('switchGitBranch / createAndSwitchGitBranch — integration with real g
 
     expect(result.ok).toBe(true)
     if (!result.ok) throw new Error('unreachable')
-    expect(result.repositoryRoot).toBe(repoRoot)
+    expect(normalizePathForCompare(result.repositoryRoot)).toBe(normalizePathForCompare(repoRoot))
     expect(result.currentBranch).toBe('feature/x')
 
     // Confirm the underlying git state actually changed.
@@ -144,7 +148,7 @@ describe('switchGitBranch / createAndSwitchGitBranch — integration with real g
 
     expect(result.ok).toBe(true)
     if (!result.ok) throw new Error('unreachable')
-    expect(result.repositoryRoot).toBe(repoRoot)
+    expect(normalizePathForCompare(result.repositoryRoot)).toBe(normalizePathForCompare(repoRoot))
     expect(result.currentBranch).toBe('feature/y')
     expect(readdirSync(join(repoRoot, '.git', 'refs', 'heads'))).toContain('feature')
   })
