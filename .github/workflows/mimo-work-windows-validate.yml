@@ -169,12 +169,16 @@ jobs:
           $portable = @(Get-ChildItem dist -File -Filter 'MIMO-Work-*-win-x64-portable.exe')
           $zip = @(Get-ChildItem dist -File -Filter 'MIMO-Work-*-win-x64.zip')
           $latest = Join-Path $PWD 'dist\latest.yml'
-          $effectiveConfig = Join-Path $PWD 'dist\builder-effective-config.yaml'
+          $effectiveConfigCandidates = @(
+            (Join-Path $PWD 'dist\builder-effective-config.yaml'),
+            (Join-Path $PWD 'dist\builder-debug.yml')
+          )
+          $effectiveConfig = @($effectiveConfigCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1)
           if ($setup.Count -ne 1) { throw "Expected one x64 setup exe, found $($setup.Count)" }
           if ($portable.Count -ne 1) { throw "Expected one x64 portable exe, found $($portable.Count)" }
           if ($zip.Count -ne 1) { throw "Expected one x64 zip, found $($zip.Count)" }
           if (!(Test-Path $latest)) { throw 'Missing latest.yml' }
-          if (!(Test-Path $effectiveConfig)) { throw 'Missing builder-effective-config.yaml' }
+          if (!$effectiveConfig) { throw 'Missing electron-builder effective/debug config yaml' }
 
           $unexpectedArm = @(Get-ChildItem dist -Recurse -File | Where-Object { $_.Name -match 'win-arm64|arm64' })
           if ($unexpectedArm.Count -gt 0) {
@@ -265,3 +269,4 @@ jobs:
             dist/MIMO-Work-*-win-x64.zip
             dist/latest.yml
             dist/builder-effective-config.yaml
+            dist/builder-debug.yml
