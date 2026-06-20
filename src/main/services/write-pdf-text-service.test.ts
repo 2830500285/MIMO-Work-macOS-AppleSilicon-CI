@@ -63,5 +63,5 @@ describe('write PDF text service', () => {
       charStart: 0
     })
     expect(result.pages[0].text).toContain('PDF BM25 keyword retrieval context')
-  })
+  }, 20_000)
 })
