@@ -1,7 +1,4 @@
-/**
- * Build `.../models` URL for OpenAI-compatible providers, matching
- * DeepSeek-TUI `client::api_url(base, "models")` so `/beta` bases still hit `/v1/models`.
- */
+/** Build `.../models` URL for OpenAI-compatible providers. */
 function splitUrlSuffix(url: string): { path: string; suffix: string } {
   const query = url.search(/[?#]/)
   if (query < 0) return { path: url, suffix: '' }
@@ -68,17 +65,4 @@ export function upstreamOpenAiChatCompletionsUrl(baseUrl: string): string {
 
 export function upstreamOpenAiCustomEndpointUrl(baseUrl: string): string {
   return trimUrlPathEnd(baseUrl)
-}
-
-export function upstreamDeepSeekFimCompletionsUrl(baseUrl: string): string {
-  const path = 'completions'
-  const trimmed = trimUrlPathEnd(baseUrl)
-  const base = trimmed || 'https://api.deepseek.com/beta'
-  const segment = lastPathSegment(base).toLowerCase()
-  const betaBase = segment === 'beta'
-    ? base
-    : isVersionSegment(segment)
-      ? appendUrlPath(unversionedBaseUrl(base), 'beta')
-      : appendUrlPath(base, 'beta')
-  return appendUrlPath(betaBase, path)
 }

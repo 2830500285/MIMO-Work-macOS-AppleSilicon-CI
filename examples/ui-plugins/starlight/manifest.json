@@ -1,9 +1,9 @@
 {
   "id": "starlight",
-  "name": "星夜 Kun",
+  "name": "星夜 MIMO Work",
   "version": "1.0.0",
-  "author": "Kun Team",
-  "description": "官方示例插件:深紫星夜配色的 Kun 形象,含主题色与进行中文案。",
+  "author": "MIMO Work Team",
+  "description": "官方示例插件:深紫星夜配色的 MIMO Work 形象,含主题色与进行中文案。",
   "figures": {
     "swim": "img/bird.png",
     "surf": "img/surf.png",

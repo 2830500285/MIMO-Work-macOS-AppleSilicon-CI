@@ -50,7 +50,7 @@ function makeClawChannel(patch: Partial<ClawImChannelV1> = {}): ClawImChannelV1 
     provider: 'feishu',
     label: 'Feishu Agent',
     enabled: true,
-    model: 'deepseek-v4-flash',
+    model: 'mimo-v4-flash',
     threadId: '',
     workspaceRoot: '/tmp/claw-workspace',
     agentProfile: {
@@ -178,7 +178,7 @@ describe('ScheduleRuntime', () => {
 
     const result = await runtime.createScheduledTaskFromText('Remind me tomorrow to ship the review.', {
       workspaceRoot: '/tmp/schedule',
-      modelHint: 'deepseek-v4-flash',
+      modelHint: 'mimo-v4-flash',
       mode: 'plan'
     })
 
@@ -191,8 +191,8 @@ describe('ScheduleRuntime', () => {
     expect(store.read().schedule.tasks[0]).toMatchObject({
       title: 'Ship review reminder',
       workspaceRoot: '/tmp/schedule',
-      providerId: 'deepseek',
-      model: 'deepseek-v4-flash',
+      providerId: 'mimo',
+      model: 'mimo-v4-flash',
       reasoningEffort: 'max',
       mode: 'plan',
       schedule: { kind: 'at', atTime: future }
@@ -232,11 +232,11 @@ describe('ScheduleRuntime', () => {
     expect(JSON.parse(String(createRequest))).toMatchObject({
       title: '[Scheduled task] Task',
       workspace: '/tmp/workspace',
-      model: 'deepseek-v4-flash',
+      model: 'mimo-v4-flash',
       mode: 'agent'
     })
     expect(JSON.parse(String(turnRequest))).toMatchObject({
-      model: 'deepseek-v4-flash',
+      model: 'mimo-v4-flash',
       reasoningEffort: 'max',
       // Headless turn: a user_input request would hang until timeout.
       disableUserInput: true
@@ -286,7 +286,7 @@ describe('ScheduleRuntime', () => {
     )?.[2]?.body
     expect(JSON.parse(String(createRequest))).toMatchObject({
       workspace: '/tmp/claw-workspace',
-      model: 'deepseek-v4-flash'
+      model: 'mimo-v4-flash'
     })
     const turnBody = JSON.parse(String(turnRequest))
     expect(turnBody.prompt).toContain('[Claw managed instructions]')

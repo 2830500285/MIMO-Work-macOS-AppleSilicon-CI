@@ -186,7 +186,7 @@ function buildDetectionPrompt(now: Date): string {
 
 function detectionModel(model: string): string {
   const trimmed = model.trim()
-  return trimmed && trimmed !== DEFAULT_SCHEDULE_MODEL ? trimmed : 'deepseek-v4-flash'
+  return trimmed && trimmed !== DEFAULT_SCHEDULE_MODEL ? trimmed : 'mimo-v2-flash'
 }
 
 function buildDetectionRequest(input: {

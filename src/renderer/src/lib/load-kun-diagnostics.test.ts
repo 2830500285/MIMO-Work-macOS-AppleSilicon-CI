@@ -3,7 +3,7 @@ import { loadKunDiagnostics } from './load-kun-diagnostics'
 
 describe('loadKunDiagnostics', () => {
   it('loads runtime info, tool diagnostics, and memory records together', async () => {
-    const runtimeInfo = { pid: 42, capabilities: { model: { id: 'deepseek-v4-pro' } } } as any
+    const runtimeInfo = { pid: 42, capabilities: { model: { id: 'mimo-v4-pro' } } } as any
     const toolDiagnostics = { providers: [{ id: 'builtin' }] } as any
     const memoryRecords = [{ id: 'mem_1', content: 'remember this' }] as any
     const provider = {

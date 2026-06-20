@@ -19,7 +19,7 @@ type HastNode = {
   children?: HastNode[]
 }
 
-const FILE_REFERENCE_SCHEME = 'deepseek-file:'
+const FILE_REFERENCE_SCHEME = 'mimo-work-file:'
 const PATH_PREFIX_BOUNDARY = String.raw`(?<![\w@.~\/\\-])`
 
 const EXTENSIONS = [

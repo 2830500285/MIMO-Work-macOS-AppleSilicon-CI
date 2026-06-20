@@ -78,6 +78,9 @@ export function GeneralSettingsSection({ ctx }: { ctx: Record<string, any> }): R
   const platform = typeof window !== 'undefined' ? window.kunGui?.platform ?? '' : ''
   const openAtLoginSupported = platform === 'win32' || platform === 'darwin'
   const startMinimizedSupported = platform === 'win32'
+  const logRetentionPresets = [0, 3, 7, 30]
+  const logRetentionDays = typeof form.log?.retentionDays === 'number' ? form.log.retentionDays : 7
+  const logRetentionMode = logRetentionPresets.includes(logRetentionDays) ? String(logRetentionDays) : 'custom'
   const desktopBehavior = form.appBehavior
   const fontScaleOptions: AppSettingsV1['uiFontScale'][] = ['small', 'medium', 'large']
   const selectedFontScaleIndex = fontScaleOptions.indexOf(form.uiFontScale)
@@ -278,19 +281,45 @@ export function GeneralSettingsSection({ ctx }: { ctx: Record<string, any> }): R
                   title={t('logRetention')}
                   description={t('logRetentionDesc')}
                   control={
-                    <select
-                      className={selectControlClass}
-                      value={form.log.retentionDays}
-                      onChange={(e) =>
-                        update({ log: { retentionDays: Number(e.target.value) } })
-                      }
-                    >
-                      <option value={1}>{t('logRetentionOne')}</option>
-                      <option value={2}>{t('logRetentionTwo')}</option>
-                      <option value={3}>{t('logRetentionThree')}</option>
-                      <option value={5}>{t('logRetentionFive')}</option>
-                      <option value={7}>{t('logRetentionSeven')}</option>
-                    </select>
+                    <div className="flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                      <select
+                        className={selectControlClass}
+                        value={logRetentionMode}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          update({
+                            log: {
+                              retentionDays: value === 'custom'
+                                ? (logRetentionDays > 0 ? logRetentionDays : 14)
+                                : Number(value)
+                            }
+                          })
+                        }}
+                      >
+                        <option value={3}>{t('logRetentionThree')}</option>
+                        <option value={7}>{t('logRetentionSeven')}</option>
+                        <option value={30}>{t('logRetentionThirty')}</option>
+                        <option value={0}>{t('logRetentionForever')}</option>
+                        <option value="custom">{t('logRetentionCustom')}</option>
+                      </select>
+                      {logRetentionMode === 'custom' ? (
+                        <label className="flex min-w-0 items-center gap-2 text-[13px] text-ds-muted">
+                          <input
+                            type="number"
+                            min={1}
+                            max={3650}
+                            step={1}
+                            value={Math.max(1, logRetentionDays)}
+                            onChange={(e) => {
+                              const days = Math.max(1, Math.min(3650, Number(e.target.value) || 1))
+                              update({ log: { retentionDays: Math.trunc(days) } })
+                            }}
+                            className="h-10 w-24 rounded-xl border border-ds-border bg-ds-card px-3 text-[14px] text-ds-ink shadow-sm outline-none transition focus:border-accent/50 focus:ring-2 focus:ring-accent/15"
+                          />
+                          <span className="shrink-0">{t('logRetentionCustomUnit')}</span>
+                        </label>
+                      ) : null}
+                    </div>
                   }
                 />
                 <SettingRow

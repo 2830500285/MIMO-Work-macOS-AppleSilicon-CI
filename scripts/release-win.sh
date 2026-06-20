@@ -107,8 +107,11 @@ collect() {
   done
 }
 
-collect "Windows exe" "dist/Kun-*-win-*.exe"
-collect "Windows blockmap" "dist/Kun-*-win-*.exe.blockmap"
+collect "Windows x64 NSIS installer" "dist/MIMO-Work-*-win-x64-setup.exe"
+collect "Windows x64 portable exe" "dist/MIMO-Work-*-win-x64-portable.exe"
+collect "Windows x64 zip" "dist/MIMO-Work-*-win-x64.zip"
+collect "Windows x64 blockmap" "dist/MIMO-Work-*-win-x64*.blockmap"
+collect "Windows update metadata" "dist/latest*.yml"
 
 cyan "Uploading ${#ASSETS[@]} Windows asset(s) to ${TAG_NAME}..."
 for asset in "${ASSETS[@]}"; do

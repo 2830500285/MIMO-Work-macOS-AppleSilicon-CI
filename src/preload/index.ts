@@ -33,16 +33,10 @@ const api = {
     ipcRenderer.invoke('skill:list-roots', { workspaceRoot }),
   saveSkillFile: (rootPath, skillName, content) =>
     ipcRenderer.invoke('skill:save-file', { rootPath, skillName, content }),
+  installRecommendedSkill: (id) =>
+    ipcRenderer.invoke('skill:install-recommended', { id }),
   openSkillRoot: (rootPath) =>
     ipcRenderer.invoke('skill:open-root', rootPath),
-  listUiPlugins: () =>
-    ipcRenderer.invoke('ui-plugin:list'),
-  installUiPlugin: () =>
-    ipcRenderer.invoke('ui-plugin:install'),
-  removeUiPlugin: (id) =>
-    ipcRenderer.invoke('ui-plugin:remove', { id }),
-  loadUiPlugin: (id) =>
-    ipcRenderer.invoke('ui-plugin:load', { id }),
   getKunConfigFile: () =>
     ipcRenderer.invoke('kun:config:read'),
   setKunConfigFile: (content) =>

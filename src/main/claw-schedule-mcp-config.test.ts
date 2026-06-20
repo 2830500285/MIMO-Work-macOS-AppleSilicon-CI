@@ -8,7 +8,6 @@ import {
   removeLegacyClawScheduleTomlConfig,
   resolveClawScheduleMcpCommand,
   resolveClawScheduleMcpNodeEntryPath,
-  resolveDeepseekConfigPath,
   resolveKunConfigPath,
   resolveKunMcpJsonPath,
   syncClawScheduleMcpConfig,
@@ -73,19 +72,18 @@ function createSettings(patch: Partial<AppSettingsV1['schedule']['internal']> = 
 }
 
 const launch: ClawScheduleMcpLaunchConfig = {
-  appPath: '/Applications/Kun.app',
-  execPath: '/Applications/Kun.app/Contents/MacOS/Kun',
+  appPath: '/Applications/MIMO Work.app',
+  execPath: '/Applications/MIMO Work.app/Contents/MacOS/MIMO Work',
   isPackaged: false
 }
 
 describe('claw schedule MCP config', () => {
-  it('uses Kun config files by default', () => {
-    expect(resolveKunConfigPath()).toBe(join(homedir(), '.kun', 'config.toml'))
-    expect(resolveKunMcpJsonPath()).toBe(join(homedir(), '.kun', 'mcp.json'))
-    expect(resolveDeepseekConfigPath()).toBe(resolveKunConfigPath())
+  it('uses MIMO Work config files by default', () => {
+    expect(resolveKunConfigPath()).toBe(join(homedir(), '.mimo-work', 'config.toml'))
+    expect(resolveKunMcpJsonPath()).toBe(join(homedir(), '.mimo-work', 'mcp.json'))
   })
 
-  it('writes the gui_schedule server to the Kun MCP JSON config shape', () => {
+  it('writes the gui_schedule server to the MIMO Work MCP JSON config shape', () => {
     const settings = createSettings({ port: 9787, secret: 'top-secret' })
     const synced = buildSyncedClawScheduleMcpJson(
       {
@@ -129,10 +127,10 @@ describe('claw schedule MCP config', () => {
 
   it('uses the macOS Electron helper for real app bundle paths', () => {
     expect(resolveClawScheduleMcpCommand(launch, 'darwin')).toBe(
-      '/Applications/Kun.app/Contents/Frameworks/Kun Helper.app/Contents/MacOS/Kun Helper'
+      '/Applications/MIMO Work.app/Contents/Frameworks/MIMO Work Helper.app/Contents/MacOS/MIMO Work Helper'
     )
     expect(resolveClawScheduleMcpCommand({
-      appPath: '/tmp/deepseek-gui-test-app',
+      appPath: '/tmp/mimo-work-test-app',
       execPath: '/tmp/electron',
       isPackaged: false
     }, 'darwin')).toBe('/tmp/electron')
@@ -141,7 +139,7 @@ describe('claw schedule MCP config', () => {
   it('removes legacy config.toml claw_schedule blocks without touching other MCP servers', () => {
     const cleaned = removeLegacyClawScheduleTomlConfig(
       [
-        'provider = "deepseek"',
+        'provider = "mimo"',
         '',
         '[mcp_servers.context7]',
         'command = "npx"',
@@ -150,26 +148,26 @@ describe('claw schedule MCP config', () => {
         'command = "old"',
         'args = []',
         '',
-        '# DeepSeek GUI plugin:mcp:claw-schedule START',
+        '# MIMO Work plugin:mcp:claw-schedule START',
         '[mcp_servers.claw_schedule]',
         'command = "electron"',
         'args = []',
-        '# DeepSeek GUI plugin:mcp:claw-schedule END',
+        '# MIMO Work plugin:mcp:claw-schedule END',
         '',
-        '[providers.deepseek]',
+        '[providers.mimo]',
         'api_key = ""'
       ].join('\n')
     )
 
     expect(cleaned).toContain('[mcp_servers.context7]')
-    expect(cleaned).toContain('[providers.deepseek]')
+    expect(cleaned).toContain('[providers.mimo]')
     expect(cleaned).not.toContain('[mcp_servers.claw_schedule]')
-    expect(cleaned).not.toContain('DeepSeek GUI plugin:mcp:claw-schedule')
+    expect(cleaned).not.toContain('MIMO Work plugin:mcp:claw-schedule')
   })
 
   it('does not rewrite config.toml text when there is no legacy claw_schedule block', () => {
     const current = [
-      'provider = "deepseek"',
+      'provider = "mimo"',
       '',
       '[mcp_servers.context7]',
       'command = "npx"',
@@ -189,13 +187,13 @@ describe('claw schedule MCP config', () => {
     await writeFile(
       configTomlPath,
       [
-        'provider = "deepseek"',
+        'provider = "mimo"',
         '',
-        '# DeepSeek GUI plugin:mcp:claw-schedule START',
+        '# MIMO Work plugin:mcp:claw-schedule START',
         '[mcp_servers.claw_schedule]',
         'command = "electron"',
         'args = []',
-        '# DeepSeek GUI plugin:mcp:claw-schedule END',
+        '# MIMO Work plugin:mcp:claw-schedule END',
         ''
       ].join('\n'),
       'utf8'
@@ -220,7 +218,7 @@ describe('claw schedule MCP config', () => {
     const toml = await readFile(configTomlPath, 'utf8')
     const json = JSON.parse(await readFile(mcpJsonPath, 'utf8')) as Record<string, unknown>
 
-    expect(toml).toBe('provider = "deepseek"\n')
+    expect(toml).toBe('provider = "mimo"\n')
     expect(json).toMatchObject({
       servers: {
         existing: {

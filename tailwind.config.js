@@ -35,7 +35,9 @@ export default {
           subtle: 'var(--ds-surface-subtle)',
           hover: 'var(--ds-surface-hover)',
           border: 'var(--ds-border)',
+          'border-strong': 'var(--ds-border-strong)',
           'border-muted': 'var(--ds-border-muted)',
+          'surface-subtle': 'var(--ds-surface-subtle)',
           ink: 'var(--ds-text)',
           muted: 'var(--ds-text-muted)',
           faint: 'var(--ds-text-faint)',
@@ -43,6 +45,7 @@ export default {
           'success-soft': 'var(--ds-success-soft)',
           danger: 'var(--ds-danger)',
           'danger-soft': 'var(--ds-danger-soft)',
+          bg: 'var(--ds-bg-main)',
           'diff-added': 'var(--ds-diff-added)',
           'diff-added-soft': 'var(--ds-diff-added-soft)',
           'diff-removed': 'var(--ds-diff-removed)',
@@ -59,9 +62,9 @@ export default {
         panel: 'var(--ds-shadow-panel)'
       },
       borderRadius: {
-        xl: '14px',
-        '2xl': '18px',
-        '3xl': '22px'
+        xl: '8px',
+        '2xl': '8px',
+        '3xl': '10px'
       }
     }
   },

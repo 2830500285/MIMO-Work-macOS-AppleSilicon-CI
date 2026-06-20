@@ -15,15 +15,7 @@ import type {
   VideoGenerationProtocol
 } from './app-settings-types'
 
-export type ModelProviderPresetId =
-  | 'litellm'
-  | 'zhipu-coding-plan'
-  | 'zai-coding-plan'
-  | 'kimi-code'
-  | 'moonshot-cn'
-  | 'moonshot-global'
-  | 'xiaomi'
-  | 'minimax'
+export type ModelProviderPresetId = 'xiaomi'
 
 export const TOKEN_PLAN_PROVIDER_ID_SUFFIX = '-token-plan'
 
@@ -32,14 +24,6 @@ export type ModelProviderTokenPlanRegion = {
   baseUrl: string
 }
 
-/**
- * Subscription ("Token Plan") access mode. Providers issue separate keys for
- * subscription and pay-as-you-go calls, so this maps to its own provider
- * profile (`<presetId>-token-plan`) instead of a flag on the main profile.
- * Capabilities (speech/image) are included when subscription keys can access
- * the resource. Some resources use their own endpoint instead of the chat
- * endpoint, so each capability may carry a separate base URL.
- */
 export type ModelProviderTokenPlanPreset = {
   baseUrl: string
   /** Regional clusters. When present, baseUrl must equal the first region's baseUrl. */
@@ -114,148 +98,16 @@ export type ModelProviderPreset = {
   apiKeyUrl: string
 }
 
-// 这些 const 必须在 MODEL_PROVIDER_PRESETS 之前声明:
-// 数组初始化时就会调用下面的 profile 工厂函数,声明在后会触发 TDZ。
 const XIAOMI_REASONING: ModelProviderReasoningCapabilityV1 = {
   supportedEfforts: ['off', 'low', 'medium', 'high'],
   defaultEffort: 'high',
   requestProtocol: 'mimo-chat-completions'
 }
 
-const MINIMAX_M3_REASONING: ModelProviderReasoningCapabilityV1 = {
-  supportedEfforts: ['auto', 'off'],
-  defaultEffort: 'auto',
-  requestProtocol: 'anthropic-thinking'
-}
-
-const MINIMAX_BUILT_IN_REASONING: ModelProviderReasoningCapabilityV1 = {
-  supportedEfforts: ['auto'],
-  defaultEffort: 'auto',
-  requestProtocol: 'none'
-}
-
-const GLM_REASONING: ModelProviderReasoningCapabilityV1 = {
-  supportedEfforts: ['off', 'high', 'max'],
-  defaultEffort: 'max',
-  requestProtocol: 'glm-chat-completions'
-}
-
-const ZHIPU_CODING_PLAN_MODELS = [
-  'glm-5.2',
-  'glm-5.1',
-  'glm-5-turbo',
-  'glm-4.7',
-  'glm-4.5-air'
-]
-
-const ZAI_CODING_PLAN_MODELS = [
-  'glm-5.1',
-  'glm-5',
-  'glm-5-turbo',
-  'glm-4.7',
-  'glm-4.5-air'
-]
-
-const MOONSHOT_CHAT_MODELS = [
-  'kimi-k2.7-code',
-  'kimi-k2.6',
-  'kimi-k2.5',
-  'moonshot-v1-128k',
-  'moonshot-v1-32k',
-  'moonshot-v1-8k'
-]
-
 export const MODEL_PROVIDER_PRESETS: ModelProviderPreset[] = [
   {
-    id: 'litellm',
-    name: 'LiteLLM',
-    baseUrl: 'http://localhost:4000',
-    endpointFormat: 'chat_completions',
-    models: [],
-    docsUrl: 'https://docs.litellm.ai/docs/',
-    apiKeyUrl: 'https://docs.litellm.ai/docs/proxy/quick_start'
-  },
-  {
-    id: 'zhipu-coding-plan',
-    name: 'Zhipu Coding Plan',
-    baseUrl: 'https://open.bigmodel.cn/api/coding/paas/v4',
-    endpointFormat: 'chat_completions',
-    models: [...ZHIPU_CODING_PLAN_MODELS],
-    modelProfiles: {
-      'glm-5.2': textChatProfile(1_000_000, GLM_REASONING),
-      'glm-5.1': textChatProfile(200_000, GLM_REASONING),
-      'glm-5-turbo': textChatProfile(200_000, GLM_REASONING),
-      'glm-4.7': textChatProfile(200_000, GLM_REASONING),
-      'glm-4.5-air': textChatProfile(200_000, GLM_REASONING)
-    },
-    docsUrl: 'https://docs.bigmodel.cn/cn/coding-plan/overview',
-    apiKeyUrl: 'https://bigmodel.cn/usercenter/proj-mgmt/apikeys'
-  },
-  {
-    id: 'zai-coding-plan',
-    name: 'Z.ai Coding Plan',
-    baseUrl: 'https://api.z.ai/api/coding/paas/v4',
-    endpointFormat: 'chat_completions',
-    models: [...ZAI_CODING_PLAN_MODELS],
-    modelProfiles: {
-      'glm-5.1': textChatProfile(200_000, GLM_REASONING),
-      'glm-5': textChatProfile(200_000, GLM_REASONING),
-      'glm-5-turbo': textChatProfile(200_000, GLM_REASONING),
-      'glm-4.7': textChatProfile(200_000, GLM_REASONING),
-      'glm-4.5-air': textChatProfile(200_000, GLM_REASONING)
-    },
-    docsUrl: 'https://docs.z.ai/devpack/tool/others',
-    apiKeyUrl: 'https://z.ai/subscribe'
-  },
-  {
-    id: 'kimi-code',
-    name: 'Kimi Code',
-    baseUrl: 'https://api.kimi.com/coding/v1',
-    endpointFormat: 'chat_completions',
-    models: ['kimi-for-coding'],
-    modelProfiles: {
-      'kimi-for-coding': textChatProfile()
-    },
-    docsUrl: 'https://www.kimi.com/code/docs/en/',
-    apiKeyUrl: 'https://www.kimi.com/code'
-  },
-  {
-    id: 'moonshot-cn',
-    name: 'Moonshot CN',
-    baseUrl: 'https://api.moonshot.cn/v1',
-    endpointFormat: 'chat_completions',
-    models: [...MOONSHOT_CHAT_MODELS],
-    modelProfiles: {
-      'kimi-k2.7-code': visionChatProfile(),
-      'kimi-k2.6': visionChatProfile(),
-      'kimi-k2.5': visionChatProfile(),
-      'moonshot-v1-128k': textChatProfile(128_000),
-      'moonshot-v1-32k': textChatProfile(32_000),
-      'moonshot-v1-8k': textChatProfile(8_000)
-    },
-    docsUrl: 'https://platform.moonshot.cn/docs',
-    apiKeyUrl: 'https://platform.moonshot.cn/console/api-keys'
-  },
-  {
-    id: 'moonshot-global',
-    name: 'Moonshot Global',
-    baseUrl: 'https://api.moonshot.ai/v1',
-    endpointFormat: 'chat_completions',
-    models: [...MOONSHOT_CHAT_MODELS],
-    modelProfiles: {
-      'kimi-k2.7-code': visionChatProfile(),
-      'kimi-k2.6': visionChatProfile(),
-      'kimi-k2.5': visionChatProfile(),
-      'moonshot-v1-128k': textChatProfile(128_000),
-      'moonshot-v1-32k': textChatProfile(32_000),
-      'moonshot-v1-8k': textChatProfile(8_000)
-    },
-    docsUrl: 'https://platform.moonshot.ai/docs',
-    apiKeyUrl: 'https://platform.moonshot.ai/console/api-keys'
-  },
-  {
     id: 'xiaomi',
-    name: 'Xiaomi',
+    name: 'MIMO',
     baseUrl: 'https://api.xiaomimimo.com/v1',
     endpointFormat: 'chat_completions',
     models: [
@@ -321,103 +173,6 @@ export const MODEL_PROVIDER_PRESETS: ModelProviderPreset[] = [
     },
     docsUrl: 'https://platform.xiaomimimo.com/#/docs',
     apiKeyUrl: 'https://platform.xiaomimimo.com/#/console/api-keys'
-  },
-  {
-    id: 'minimax',
-    name: 'MiniMax',
-    baseUrl: 'https://api.minimaxi.com/anthropic',
-    endpointFormat: 'messages',
-    models: [
-      'MiniMax-M3',
-      'MiniMax-M2.7',
-      'MiniMax-M2.7-highspeed',
-      'MiniMax-M2.5',
-      'MiniMax-M2.5-highspeed',
-      'MiniMax-M2.1',
-      'MiniMax-M2.1-highspeed',
-      'MiniMax-M2'
-    ],
-    modelProfiles: {
-      'MiniMax-M3': minimaxM3ChatProfile(),
-      'MiniMax-M2.7': minimaxM2ChatProfile(),
-      'MiniMax-M2.7-highspeed': minimaxM2ChatProfile(),
-      'MiniMax-M2.5': minimaxM2ChatProfile(),
-      'MiniMax-M2.5-highspeed': minimaxM2ChatProfile(),
-      'MiniMax-M2.1': minimaxM2ChatProfile(),
-      'MiniMax-M2.1-highspeed': minimaxM2ChatProfile(),
-      'MiniMax-M2': minimaxM2ChatProfile()
-    },
-    image: {
-      protocol: 'minimax-image',
-      baseUrl: 'https://api.minimaxi.com',
-      models: ['image-01', 'image-01-live']
-    },
-    textToSpeech: {
-      protocol: 'minimax-t2a',
-      baseUrl: 'https://api.minimax.io',
-      models: ['speech-2.8-hd', 'speech-2.8-turbo']
-    },
-    music: {
-      protocol: 'minimax-music',
-      baseUrl: 'https://api.minimax.io',
-      models: ['music-2.6', 'music-cover', 'music-2.6-free', 'music-cover-free']
-    },
-    video: {
-      protocol: 'minimax-video',
-      baseUrl: 'https://api.minimax.io',
-      models: ['MiniMax-Hailuo-2.3', 'MiniMax-Hailuo-2.3-Fast']
-    },
-    tokenPlan: {
-      baseUrl: 'https://api.minimaxi.com/anthropic',
-      regions: [
-        { id: 'cn', baseUrl: 'https://api.minimaxi.com/anthropic' },
-        { id: 'global', baseUrl: 'https://api.minimax.io/anthropic' }
-      ],
-      endpointFormat: 'messages',
-      models: [
-        'MiniMax-M3',
-        'MiniMax-M2.7',
-        'MiniMax-M2.7-highspeed',
-        'MiniMax-M2.5',
-        'MiniMax-M2.5-highspeed',
-        'MiniMax-M2.1',
-        'MiniMax-M2.1-highspeed',
-        'MiniMax-M2'
-      ],
-      modelProfiles: {
-        'MiniMax-M3': minimaxM3ChatProfile(),
-        'MiniMax-M2.7': minimaxM2ChatProfile(),
-        'MiniMax-M2.7-highspeed': minimaxM2ChatProfile(),
-        'MiniMax-M2.5': minimaxM2ChatProfile(),
-        'MiniMax-M2.5-highspeed': minimaxM2ChatProfile(),
-        'MiniMax-M2.1': minimaxM2ChatProfile(),
-        'MiniMax-M2.1-highspeed': minimaxM2ChatProfile(),
-        'MiniMax-M2': minimaxM2ChatProfile()
-      },
-      image: {
-        protocol: 'minimax-image',
-        baseUrl: 'https://api.minimaxi.com',
-        models: ['image-01', 'image-01-live']
-      },
-      textToSpeech: {
-        protocol: 'minimax-t2a',
-        baseUrl: 'https://api.minimax.io',
-        models: ['speech-2.8-hd', 'speech-2.8-turbo']
-      },
-      music: {
-        protocol: 'minimax-music',
-        baseUrl: 'https://api.minimax.io',
-        models: ['music-2.6', 'music-cover', 'music-2.6-free', 'music-cover-free']
-      },
-      video: {
-        protocol: 'minimax-video',
-        baseUrl: 'https://api.minimax.io',
-        models: ['MiniMax-Hailuo-2.3', 'MiniMax-Hailuo-2.3-Fast']
-      },
-      apiKeyUrl: 'https://platform.minimaxi.com/docs/token-plan/quickstart'
-    },
-    docsUrl: 'https://platform.minimax.io/docs/api-reference/text-anthropic-api',
-    apiKeyUrl: 'https://platform.minimaxi.com/user-center/basic-information/interface-key'
   }
 ]
 
@@ -560,14 +315,6 @@ function xiaomiVisionChatProfile(contextWindowTokens: number): ModelProviderMode
   return visionChatProfile(contextWindowTokens, XIAOMI_REASONING)
 }
 
-function minimaxM3ChatProfile(): ModelProviderModelProfileV1 {
-  return visionChatProfile(1_000_000, MINIMAX_M3_REASONING)
-}
-
-function minimaxM2ChatProfile(): ModelProviderModelProfileV1 {
-  return textChatProfile(204_800, MINIMAX_BUILT_IN_REASONING)
-}
-
 function textChatProfile(
   contextWindowTokens?: number,
   reasoning?: ModelProviderReasoningCapabilityV1
@@ -624,51 +371,51 @@ function copyModelProfiles(
 }
 
 function modelProviderPresetImageCapability(
-  image: NonNullable<ModelProviderPreset['image']>
+  capability: NonNullable<ModelProviderPreset['image']>
 ): ModelProviderImageCapabilityV1 {
   return {
-    protocol: image.protocol,
-    baseUrl: image.baseUrl,
-    models: [...image.models]
+    protocol: capability.protocol,
+    baseUrl: capability.baseUrl,
+    models: [...capability.models]
   }
 }
 
 function modelProviderPresetSpeechCapability(
-  speech: NonNullable<ModelProviderPreset['speech']>
+  capability: NonNullable<ModelProviderPreset['speech']>
 ): ModelProviderSpeechCapabilityV1 {
   return {
-    protocol: speech.protocol,
-    baseUrl: speech.baseUrl,
-    models: [...speech.models]
+    protocol: capability.protocol,
+    baseUrl: capability.baseUrl,
+    models: [...capability.models]
   }
 }
 
 function modelProviderPresetTextToSpeechCapability(
-  textToSpeech: NonNullable<ModelProviderPreset['textToSpeech']>
+  capability: NonNullable<ModelProviderPreset['textToSpeech']>
 ): ModelProviderTextToSpeechCapabilityV1 {
   return {
-    protocol: textToSpeech.protocol,
-    baseUrl: textToSpeech.baseUrl,
-    models: [...textToSpeech.models]
+    protocol: capability.protocol,
+    baseUrl: capability.baseUrl,
+    models: [...capability.models]
   }
 }
 
 function modelProviderPresetMusicCapability(
-  music: NonNullable<ModelProviderPreset['music'] | ModelProviderTokenPlanPreset['music']>
+  capability: NonNullable<ModelProviderPreset['music']>
 ): ModelProviderMusicCapabilityV1 {
   return {
-    protocol: music.protocol,
-    baseUrl: music.baseUrl,
-    models: [...music.models]
+    protocol: capability.protocol,
+    baseUrl: capability.baseUrl,
+    models: [...capability.models]
   }
 }
 
 function modelProviderPresetVideoCapability(
-  video: NonNullable<ModelProviderPreset['video'] | ModelProviderTokenPlanPreset['video']>
+  capability: NonNullable<ModelProviderPreset['video']>
 ): ModelProviderVideoCapabilityV1 {
   return {
-    protocol: video.protocol,
-    baseUrl: video.baseUrl,
-    models: [...video.models]
+    protocol: capability.protocol,
+    baseUrl: capability.baseUrl,
+    models: [...capability.models]
   }
 }

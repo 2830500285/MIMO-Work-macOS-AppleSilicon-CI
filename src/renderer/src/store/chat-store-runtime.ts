@@ -895,8 +895,33 @@ export function buildThreadEventSink(
         }
         const flushed = flushLiveBlocks(s)
         const baseBlocks = flushed.blocks ?? s.blocks
+        const activeThreadId = s.activeThreadId
+        const watchTurnCompletion = activeThreadId
+          ? { ...s.watchTurnCompletion }
+          : s.watchTurnCompletion
+        const unreadThreadIds = activeThreadId
+          ? { ...s.unreadThreadIds }
+          : s.unreadThreadIds
+        if (activeThreadId) {
+          delete watchTurnCompletion[activeThreadId]
+          delete unreadThreadIds[activeThreadId]
+          clearWatchedCompletionNotification(activeThreadId)
+        }
         return {
+          ...finalizeTurnTiming(s),
           ...flushed,
+          busy: false,
+          currentTurnId: null,
+          currentTurnUserId: null,
+          threads: activeThreadId
+            ? s.threads.map((thread) =>
+                thread.id === activeThreadId
+                  ? { ...thread, status: 'waiting_for_user_input' }
+                  : thread
+              )
+            : s.threads,
+          watchTurnCompletion,
+          unreadThreadIds,
           blocks: [
             ...baseBlocks,
             {

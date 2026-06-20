@@ -22,12 +22,26 @@ export function threadBelongsToWorkspace(
 }
 
 export function hasPendingRuntimeWork(block: ChatBlock): boolean {
-  if (block.kind === 'tool') return block.status === 'running'
+  if (block.kind === 'tool') return block.status === 'running' && !isPendingQuestionTool(block)
   if (block.kind === 'compaction') return block.status === 'running'
   if (block.kind === 'review') return block.status === 'running'
   if (block.kind === 'approval') return block.status === 'pending'
   if (block.kind === 'user_input') return block.status === 'pending'
   return false
+}
+
+export function hasActiveRuntimeWork(block: ChatBlock): boolean {
+  if (block.kind === 'tool') return block.status === 'running' && !isPendingQuestionTool(block)
+  if (block.kind === 'compaction') return block.status === 'running'
+  if (block.kind === 'review') return block.status === 'running'
+  return false
+}
+
+function isPendingQuestionTool(block: Extract<ChatBlock, { kind: 'tool' }>): boolean {
+  const toolName = typeof block.meta?.toolName === 'string' ? block.meta.toolName.trim().toLowerCase() : ''
+  if (toolName === 'question') return true
+  const summary = block.summary.trim().toLowerCase()
+  return summary === 'question' || summary === 'question question'
 }
 
 function assistantBlockHasVisibleContent(block: Extract<ChatBlock, { kind: 'assistant' }>): boolean {
@@ -36,6 +50,17 @@ function assistantBlockHasVisibleContent(block: Extract<ChatBlock, { kind: 'assi
 }
 
 export function threadHasPendingRuntimeWork(blocks: ChatBlock[]): boolean {
+  return threadHasPendingWorkBy(blocks, hasPendingRuntimeWork)
+}
+
+export function threadHasActiveRuntimeWork(blocks: ChatBlock[]): boolean {
+  return threadHasPendingWorkBy(blocks, hasActiveRuntimeWork)
+}
+
+function threadHasPendingWorkBy(
+  blocks: ChatBlock[],
+  predicate: (block: ChatBlock) => boolean
+): boolean {
   let pendingInCurrentTurn = false
 
   for (const block of blocks) {
@@ -43,7 +68,7 @@ export function threadHasPendingRuntimeWork(blocks: ChatBlock[]): boolean {
       pendingInCurrentTurn = false
       continue
     }
-    if (hasPendingRuntimeWork(block)) {
+    if (predicate(block)) {
       pendingInCurrentTurn = true
       continue
     }

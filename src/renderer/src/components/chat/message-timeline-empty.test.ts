@@ -37,7 +37,7 @@ describe('MessageTimelineEmptyHero — runtime offline hero (issue #78)', () => 
 
   it('uses the waking title when no runtime error is available', () => {
     const html = renderOfflineHero(null)
-    expect(html).toContain('Kun is waking the local agent')
+    expect(html).toContain('MIMO Work is waking the local agent')
     expect(html).not.toContain('Cannot connect to the local runtime')
   })
 
@@ -47,7 +47,7 @@ describe('MessageTimelineEmptyHero — runtime offline hero (issue #78)', () => 
     // New error title should appear (so users see the failure immediately)
     expect(html).toContain('Cannot connect to the local runtime')
     // The old "waking" title must NOT appear — that's the bug we're fixing
-    expect(html).not.toContain('Kun is waking the local agent')
+    expect(html).not.toContain('MIMO Work is waking the local agent')
     // The specific localized port-conflict message should appear in the body
     expect(html).toContain(portConflict)
   })
@@ -55,7 +55,7 @@ describe('MessageTimelineEmptyHero — runtime offline hero (issue #78)', () => 
   it('treats whitespace-only runtimeError as no error', () => {
     const html = renderOfflineHero('   \n  ')
     // Falls back to the generic waking hero
-    expect(html).toContain('Kun is waking the local agent')
+    expect(html).toContain('MIMO Work is waking the local agent')
     expect(html).not.toContain('Cannot connect to the local runtime')
   })
 
@@ -65,22 +65,23 @@ describe('MessageTimelineEmptyHero — runtime offline hero (issue #78)', () => 
     expect(html).toContain('Open Settings')
   })
 
-  it('plays the waking loading effects only while genuinely reconnecting', () => {
-    // Still probing: stage carries the is-waking modifier with the Zzz /
-    // sonar / caret decorations.
+  it('uses the MIMO Work wordmark without the legacy window mascot art', () => {
+    // Still probing: stage carries the is-waking modifier, but the visible
+    // artwork is the MIMO Work brand card rather than the old window/Kun scene.
     const waking = renderOfflineHero(null)
     expect(waking).toContain('is-waking')
-    expect(waking).toContain('ds-runtime-wake-zzz')
-    expect(waking).toContain('ds-runtime-wake-sonar')
-    expect(waking).toContain('ds-runtime-wake-caret')
+    expect(waking).toContain('aria-label="MIMO Work"')
+    expect(waking).not.toContain('ds-runtime-wake-shell')
+    expect(waking).not.toContain('ds-runtime-wake-kun')
+    expect(waking).not.toContain('ds-runtime-wake-zzz')
 
     // Runtime error: same #78 principle as the title swap — an error state
-    // must not look like it is still loading, so the effects are dropped.
+    // must not look like it is still loading, so the modifier is dropped.
     const errored = renderOfflineHero(i18n.t('common:runtimePortConflict'))
     expect(errored).not.toContain('is-waking')
-    expect(errored).not.toContain('ds-runtime-wake-zzz')
-    expect(errored).not.toContain('ds-runtime-wake-sonar')
-    expect(errored).not.toContain('ds-runtime-wake-caret')
+    expect(errored).toContain('aria-label="MIMO Work"')
+    expect(errored).not.toContain('ds-runtime-wake-shell')
+    expect(errored).not.toContain('ds-runtime-wake-kun')
   })
 })
 

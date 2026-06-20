@@ -1,0 +1,267 @@
+name: MIMO Work Windows Validate
+
+on:
+  push:
+    branches:
+      - 'codex/mimo-work-windows-validate-*'
+
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  MIMO_CODE_VERSION: 'v0.1.1'
+  MIMO_CODE_WINDOWS_X64_SHA256: '4ec1ab7f5fbd4ccaf401c524c8786312a5166f1481af82629e00c80d04c0054b'
+
+jobs:
+  windows-x64:
+    name: Windows x64 complete validation
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      MIMO_WORK_CORE_DIR: ${{ github.workspace }}\.cache\MIMO-Work-Core
+    steps:
+      - name: Check out validation branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Prepare minimal bundled skill resource directory
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path resources\skills | Out-Null
+          if (!(Test-Path resources\skills\.gitkeep)) {
+            '' | Set-Content -Encoding UTF8 resources\skills\.gitkeep
+          }
+
+      - name: Download MiMo-Code Windows x64 runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $downloadDir = Join-Path $env:GITHUB_WORKSPACE '.cache\mimocode-downloads'
+          $distDir = Join-Path $env:MIMO_WORK_CORE_DIR 'packages\opencode\dist'
+          $zipPath = Join-Path $downloadDir 'mimocode-windows-x64.zip'
+          $extractDir = Join-Path $distDir 'mimocode-windows-x64'
+          $binDir = Join-Path $extractDir 'bin'
+          New-Item -ItemType Directory -Force -Path $downloadDir, $binDir | Out-Null
+          $url = "https://github.com/XiaomiMiMo/MiMo-Code/releases/download/$env:MIMO_CODE_VERSION/mimocode-windows-x64.zip"
+          Invoke-WebRequest -Uri $url -OutFile $zipPath
+          $actual = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLowerInvariant()
+          if ($actual -ne $env:MIMO_CODE_WINDOWS_X64_SHA256) {
+            throw "MiMo-Code Windows x64 checksum mismatch: $actual"
+          }
+          Expand-Archive -Path $zipPath -DestinationPath $binDir -Force
+          $packageJson = Join-Path $env:MIMO_WORK_CORE_DIR 'package.json'
+          if (!(Test-Path $packageJson)) {
+            '{"name":"MIMO-Work-Core","private":true}' | Set-Content -Encoding UTF8 $packageJson
+          }
+          $mimoExe = Join-Path $binDir 'mimo.exe'
+          if (!(Test-Path $mimoExe)) {
+            throw "Missing MiMo-Code runtime executable: $mimoExe"
+          }
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Full unit test suite
+        run: npm test
+
+      - name: Focused Windows packaging tests
+        run: npx vitest run src/main/packaging-config.test.ts src/main/runtime/mimo-work-adapter.test.ts src/main/app-identity.test.ts
+
+      - name: Script syntax checks
+        shell: pwsh
+        run: |
+          node --check scripts/after-pack.cjs
+          node --check scripts/publish-r2.mjs
+          pwsh -NoProfile -Command {
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile('scripts/release-win.ps1', [ref]$null, [ref]$errors) | Out-Null
+            if ($errors) {
+              $errors | Format-List | Out-String | Write-Error
+              exit 1
+            }
+          }
+
+      - name: Build Windows x64 artifacts
+        run: npm run dist:win
+
+      - name: Validate Windows x64 artifacts deeply
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          function Get-PeMachine([string]$Path) {
+            $resolved = (Resolve-Path $Path).Path
+            $bytes = [System.IO.File]::ReadAllBytes($resolved)
+            if ($bytes.Length -lt 0x40) { throw "Not a PE file: $Path" }
+            if ([System.Text.Encoding]::ASCII.GetString($bytes, 0, 2) -ne 'MZ') {
+              throw "Missing MZ header: $Path"
+            }
+            $peOffset = [BitConverter]::ToInt32($bytes, 0x3c)
+            if ($peOffset -lt 0 -or ($peOffset + 6) -gt $bytes.Length) {
+              throw "Invalid PE header offset: $Path"
+            }
+            if ([BitConverter]::ToString($bytes, $peOffset, 4) -ne '50-45-00-00') {
+              throw "Missing PE signature: $Path"
+            }
+            $machine = [BitConverter]::ToUInt16($bytes, $peOffset + 4)
+            switch ($machine) {
+              0x8664 { return 'x64' }
+              0x014c { return 'x86' }
+              0xaa64 { return 'arm64' }
+              default { return ('0x{0:x4}' -f $machine) }
+            }
+          }
+
+          function Assert-PeMachine([string]$Path, [string]$Expected) {
+            $actual = Get-PeMachine $Path
+            if ($actual -ne $Expected) {
+              throw "Expected $Path to be $Expected PE, got $actual"
+            }
+            Write-Host "PE OK: $Path => $actual"
+          }
+
+          function Invoke-ExeWithTimeout([string]$FilePath, [string[]]$Arguments, [int]$TimeoutSeconds) {
+            $stdout = Join-Path $env:RUNNER_TEMP ([System.IO.Path]::GetRandomFileName())
+            $stderr = Join-Path $env:RUNNER_TEMP ([System.IO.Path]::GetRandomFileName())
+            $process = Start-Process -FilePath $FilePath -ArgumentList $Arguments -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru -NoNewWindow
+            if (!$process.WaitForExit($TimeoutSeconds * 1000)) {
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+              throw "Timed out after ${TimeoutSeconds}s: $FilePath $($Arguments -join ' ')"
+            }
+            if ($process.ExitCode -ne 0) {
+              Get-Content $stdout -ErrorAction SilentlyContinue | Select-Object -First 80
+              Get-Content $stderr -ErrorAction SilentlyContinue | Select-Object -First 80
+              throw "Process exited with $($process.ExitCode): $FilePath $($Arguments -join ' ')"
+            }
+          }
+
+          function Invoke-AppLaunchSmoke([string]$FilePath, [string]$UserDataDir) {
+            New-Item -ItemType Directory -Force -Path $UserDataDir | Out-Null
+            $args = @("--user-data-dir=$UserDataDir", '--disable-gpu', '--no-sandbox')
+            $process = Start-Process -FilePath $FilePath -ArgumentList $args -PassThru -WindowStyle Hidden
+            Start-Sleep -Seconds 12
+            if ($process.HasExited) {
+              if ($process.ExitCode -ne 0) {
+                throw "App launch smoke failed with exit code $($process.ExitCode): $FilePath"
+              }
+              Write-Host "App launch smoke exited cleanly: $FilePath"
+              return
+            }
+            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+            Write-Host "App launch smoke stayed alive for 12s: $FilePath"
+          }
+
+          $artifacts = Get-ChildItem dist -File | Sort-Object Name
+          $artifacts | ForEach-Object { Write-Host $_.FullName }
+          $setup = @(Get-ChildItem dist -File -Filter 'MIMO-Work-*-win-x64-setup.exe')
+          $portable = @(Get-ChildItem dist -File -Filter 'MIMO-Work-*-win-x64-portable.exe')
+          $zip = @(Get-ChildItem dist -File -Filter 'MIMO-Work-*-win-x64.zip')
+          $latest = Join-Path $PWD 'dist\latest.yml'
+          $effectiveConfig = Join-Path $PWD 'dist\builder-effective-config.yaml'
+          if ($setup.Count -ne 1) { throw "Expected one x64 setup exe, found $($setup.Count)" }
+          if ($portable.Count -ne 1) { throw "Expected one x64 portable exe, found $($portable.Count)" }
+          if ($zip.Count -ne 1) { throw "Expected one x64 zip, found $($zip.Count)" }
+          if (!(Test-Path $latest)) { throw 'Missing latest.yml' }
+          if (!(Test-Path $effectiveConfig)) { throw 'Missing builder-effective-config.yaml' }
+
+          $unexpectedArm = @(Get-ChildItem dist -Recurse -File | Where-Object { $_.Name -match 'win-arm64|arm64' })
+          if ($unexpectedArm.Count -gt 0) {
+            $unexpectedArm | ForEach-Object { Write-Host $_.FullName }
+            throw 'Unexpected arm64 artifact in Windows x64 build'
+          }
+
+          $appExe = 'dist\win-unpacked\MIMO Work.exe'
+          $runtime = 'dist\win-unpacked\resources\MIMO-Work-Core\packages\opencode\dist\mimocode-windows-x64\bin\mimo.exe'
+          if (!(Test-Path $appExe)) { throw "Missing unpacked app exe: $appExe" }
+          if (!(Test-Path $runtime)) { throw "Missing bundled x64 MiMo-Code runtime: $runtime" }
+          Assert-PeMachine $appExe 'x64'
+          Assert-PeMachine $runtime 'x64'
+          Assert-PeMachine $setup[0].FullName 'x86'
+          Assert-PeMachine $portable[0].FullName 'x86'
+
+          $versionInfo = [System.Diagnostics.FileVersionInfo]::GetVersionInfo((Resolve-Path $appExe).Path)
+          if ($versionInfo.ProductName -and $versionInfo.ProductName -ne 'MIMO Work') {
+            throw "Unexpected Windows product name metadata: $($versionInfo.ProductName)"
+          }
+
+          $latestText = Get-Content $latest -Raw
+          if ($latestText -notmatch 'MIMO-Work-.*-win-x64-setup\.exe') { throw 'latest.yml does not reference the x64 setup exe' }
+          if ($latestText -match 'arm64|win-arm64') { throw 'latest.yml unexpectedly references arm64' }
+          $configText = Get-Content $effectiveConfig -Raw
+          foreach ($needle in @('appId: com.mimowork.desktop', 'productName: MIMO Work', 'target: nsis', 'target: portable', 'target: zip')) {
+            if (!$configText.Contains($needle)) { throw "builder-effective-config.yaml missing: $needle" }
+          }
+          if ($configText -match 'win32-arm64|win-arm64') { throw 'builder-effective-config.yaml unexpectedly references Windows arm64' }
+
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $zipArchive = [System.IO.Compression.ZipFile]::OpenRead($zip[0].FullName)
+          try {
+            foreach ($entry in @('MIMO Work.exe', 'resources/app.asar', 'resources/MIMO-Work-Core/packages/opencode/dist/mimocode-windows-x64/bin/mimo.exe')) {
+              if (!($zipArchive.Entries | Where-Object { $_.FullName -eq $entry })) {
+                throw "Zip missing entry: $entry"
+              }
+            }
+            $bad = @($zipArchive.Entries | Where-Object {
+              $_.FullName -match 'mimocode-windows-arm64|win-arm64|@napi-rs/canvas-(linux|darwin|android|win32-arm64)'
+            })
+            if ($bad.Count -gt 0) {
+              $bad | Select-Object -First 20 | ForEach-Object { Write-Host $_.FullName }
+              throw 'Unexpected non-x64 Windows payload in x64 zip'
+            }
+          } finally {
+            $zipArchive.Dispose()
+          }
+
+          $zipExtract = Join-Path $env:RUNNER_TEMP 'mimo-work-zip'
+          Remove-Item $zipExtract -Recurse -Force -ErrorAction SilentlyContinue
+          Expand-Archive -Path $zip[0].FullName -DestinationPath $zipExtract -Force
+          $zipAppExe = Join-Path $zipExtract 'MIMO Work.exe'
+          $zipRuntime = Join-Path $zipExtract 'resources\MIMO-Work-Core\packages\opencode\dist\mimocode-windows-x64\bin\mimo.exe'
+          Assert-PeMachine $zipAppExe 'x64'
+          Assert-PeMachine $zipRuntime 'x64'
+          Invoke-ExeWithTimeout $zipRuntime @('--help') 20
+          Invoke-AppLaunchSmoke $zipAppExe (Join-Path $env:RUNNER_TEMP 'mimo-work-zip-user-data')
+
+          $installDir = Join-Path $env:RUNNER_TEMP 'mimo-work-install'
+          Remove-Item $installDir -Recurse -Force -ErrorAction SilentlyContinue
+          $install = Start-Process -FilePath $setup[0].FullName -ArgumentList @('/S', "/D=$installDir") -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "NSIS silent install failed: $($install.ExitCode)" }
+          $installedExe = Join-Path $installDir 'MIMO Work.exe'
+          $installedRuntime = Join-Path $installDir 'resources\MIMO-Work-Core\packages\opencode\dist\mimocode-windows-x64\bin\mimo.exe'
+          if (!(Test-Path $installedExe)) { throw "Missing installed app exe: $installedExe" }
+          if (!(Test-Path $installedRuntime)) { throw "Missing installed runtime: $installedRuntime" }
+          Assert-PeMachine $installedExe 'x64'
+          Assert-PeMachine $installedRuntime 'x64'
+          Invoke-ExeWithTimeout $installedRuntime @('--help') 20
+          Invoke-AppLaunchSmoke $installedExe (Join-Path $env:RUNNER_TEMP 'mimo-work-installed-user-data')
+          $uninstaller = @(Get-ChildItem $installDir -File -Filter '*Uninstall*.exe' | Select-Object -First 1)
+          if ($uninstaller.Count -gt 0) {
+            $uninstall = Start-Process -FilePath $uninstaller[0].FullName -ArgumentList '/S' -Wait -PassThru
+            if ($uninstall.ExitCode -ne 0) { throw "NSIS silent uninstall failed: $($uninstall.ExitCode)" }
+          }
+
+      - name: Upload Windows x64 artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mimo-work-windows-x64-complete
+          retention-days: 7
+          if-no-files-found: error
+          path: |
+            dist/MIMO-Work-*-win-x64-setup.exe
+            dist/MIMO-Work-*-win-x64-setup.exe.blockmap
+            dist/MIMO-Work-*-win-x64-portable.exe
+            dist/MIMO-Work-*-win-x64.zip
+            dist/latest.yml
+            dist/builder-effective-config.yaml

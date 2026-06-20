@@ -399,7 +399,7 @@ export function DevBrowserPanel({
     >
       <div className="shrink-0 border-b border-ds-border-muted bg-white/92 dark:bg-ds-card">
         <div className="flex h-10 min-w-0 items-center gap-2 border-b border-ds-border-muted/70 bg-ds-surface-subtle/55 px-3 dark:bg-white/[0.035]">
-          <div className="flex h-8 min-w-0 max-w-[15rem] items-center gap-2 rounded-[8px] bg-white px-2.5 pl-3 text-[12px] font-semibold text-ds-ink shadow-[0_1px_0_rgba(20,47,95,0.04)] dark:bg-white/[0.09]">
+          <div className="flex h-8 min-w-0 max-w-[15rem] items-center gap-2 rounded-[8px] bg-white px-2.5 pl-3 text-[12px] font-semibold text-ds-ink shadow-[0_1px_0_rgba(31,35,41,0.04)] dark:bg-white/[0.09]">
             <Globe2 className="h-3.5 w-3.5 shrink-0 text-ds-muted" strokeWidth={1.75} />
             <span className="min-w-0 flex-1 truncate">{tabLabel}</span>
             <button
@@ -494,7 +494,7 @@ export function DevBrowserPanel({
               type="button"
               onClick={() => setAutoFollow((value) => !value)}
               className={`inline-flex h-8 w-8 items-center justify-center rounded-full transition hover:bg-ds-hover ${
-                autoFollow ? 'text-sky-500 dark:text-sky-300' : 'text-ds-faint hover:text-ds-ink'
+                autoFollow ? 'text-[var(--ds-mimo-orange)] dark:text-[#ffad7f]' : 'text-ds-faint hover:text-ds-ink'
               }`}
               aria-label={t('browserAutoFollow')}
               aria-pressed={autoFollow}

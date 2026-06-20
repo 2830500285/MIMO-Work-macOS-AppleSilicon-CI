@@ -1,4 +1,4 @@
-import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 
 const require = createRequire(import.meta.url)
 const builderConfig = require('../../electron-builder.config.cjs')
+const packageJson = require('../../package.json')
 const afterPack = require('../../scripts/after-pack.cjs')
 const macNotarize = require('../../scripts/mac-notarize.cjs')
 
@@ -60,7 +61,25 @@ function createMacPackContext(root: string): {
     electronPlatformName: 'darwin',
     packager: {
       appInfo: {
-        productFilename: 'Kun'
+        productFilename: 'MIMO Work'
+      }
+    }
+  }
+}
+
+function createWinPackContext(root: string, arch: 'x64' | 'arm64'): {
+  appOutDir: string
+  electronPlatformName: string
+  arch: string
+  packager: { appInfo: { productFilename: string } }
+} {
+  return {
+    appOutDir: join(root, arch === 'arm64' ? 'win-arm64-unpacked' : 'win-unpacked'),
+    electronPlatformName: 'win32',
+    arch,
+    packager: {
+      appInfo: {
+        productFilename: 'MIMO Work'
       }
     }
   }
@@ -73,51 +92,136 @@ afterEach(() => {
   }
 })
 
-describe('electron-builder Kun packaging', () => {
-  it('includes Kun runtime dependencies in the packaged app', () => {
-    expect(builderConfig.files).toEqual(expect.arrayContaining([
-      'kun/dist/**/*',
-      'kun/package.json',
-      'kun/package-lock.json',
-      'kun/node_modules/**/*'
+describe('electron-builder MIMO Work packaging', () => {
+  it('keeps Windows app identity aligned with the package metadata', () => {
+    expect(packageJson.name).toBe('mimo-work')
+    expect(packageJson.productName).toBe('MIMO Work')
+    expect(builderConfig.appId).toBe('com.mimowork.desktop')
+    expect(builderConfig.productName).toBe('MIMO Work')
+    expect(builderConfig.win.executableName).toBe('MIMO Work')
+    expect(builderConfig.nsis.shortcutName).toBe('MIMO Work')
+    expect(builderConfig.nsis.uninstallDisplayName).toBe('MIMO Work')
+  })
+
+  it('builds mainstream Windows x64 installer, portable, and zip artifacts', () => {
+    expect(packageJson.scripts['dist:win']).toContain('--win --x64')
+    expect(packageJson.scripts['dist:win']).not.toContain('--arm64')
+    expect(packageJson.scripts['dist:win:arm64']).toBeUndefined()
+    expect(builderConfig.win.target).toEqual([
+      { target: 'nsis', arch: ['x64'] },
+      { target: 'portable', arch: ['x64'] },
+      { target: 'zip', arch: ['x64'] }
+    ])
+    expect(builderConfig.nsis.buildUniversalInstaller).toBe(false)
+    expect(builderConfig.portable.buildUniversalInstaller).toBe(false)
+    expect(builderConfig.artifactName).toBe('MIMO-Work-${version}-${os}-${arch}.${ext}')
+    expect(builderConfig.nsis.artifactName).toBe('MIMO-Work-${version}-win-${arch}-setup.${ext}')
+    expect(builderConfig.portable.artifactName).toBe('MIMO-Work-${version}-win-${arch}-portable.${ext}')
+  })
+
+  it('includes MiMo-Core as an extra resource in the packaged app', () => {
+    expect(builderConfig.extraResources).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        to: 'MIMO-Work-Core',
+        filter: expect.arrayContaining([
+          'package.json',
+          'packages/opencode/dist/**/*'
+        ])
+      })
     ]))
     expect(builderConfig.asarUnpack).toEqual(expect.arrayContaining([
-      '**/kun/dist/**/*',
-      '**/kun/package*.json',
-      '**/kun/node_modules/**/*'
-    ]))
-    expect(builderConfig.asarUnpack).not.toEqual(expect.arrayContaining([
-      '**/node_modules/node-bin-darwin-*/*',
-      '**/node_modules/node-bin-linux-*/*',
-      '**/node_modules/node-bin-win-*/*',
-      '**/node_modules/openclaw/**/*',
-      '**/node_modules/@tencent-weixin/openclaw-weixin/**/*'
-    ]))
-    // The openclaw shim (vendor/openclaw-shim) must ship: the WeChat bridge
-    // imports the bundled plugin's dist at runtime to send media, and that
-    // import chain resolves openclaw/plugin-sdk/*.
-    expect(builderConfig.files).not.toEqual(expect.arrayContaining([
-      '!**/node_modules/openclaw/**/*'
+      '**/node_modules/better-sqlite3/**/*'
     ]))
   })
 
-  it('validates the unpacked Kun runtime before release artifacts are created', () => {
+  it('bundles only project-owned public skills, not local user skill directories', () => {
+    const serializedResources = JSON.stringify(builderConfig.extraResources)
+    const skillResource = builderConfig.extraResources.find((resource: { to?: string }) =>
+      resource.to === 'MIMO-Work-Skills'
+    )
+
+    expect(skillResource).toEqual(expect.objectContaining({
+      from: expect.stringMatching(/resources[\\/]skills$/),
+      to: 'MIMO-Work-Skills'
+    }))
+    expect(serializedResources).not.toContain('.agents/skills')
+    expect(serializedResources).not.toContain('.codex/skills')
+    expect(serializedResources).not.toContain('.claude/skills')
+    expect(serializedResources).not.toContain('.hermes/skills')
+    expect(serializedResources).not.toContain('.mimo-work/skills')
+  })
+
+  it('validates bundled MiMo-Core before release artifacts are created', () => {
     const root = tempRoot()
     const context = createMacPackContext(root)
-    const unpackedRoot = afterPack._internals.unpackedAppRoot(context)
+    const resourcesRoot = afterPack._internals.packedResourcesDir(context)
 
-    for (const relativePath of afterPack.KUN_RUNTIME_REQUIRED_PATHS) {
-      touch(join(unpackedRoot, relativePath))
+    for (const relativePath of afterPack.MIMO_CORE_REQUIRED_PATHS) {
+      touch(join(resourcesRoot, relativePath))
     }
-    touch(join(unpackedRoot, 'node_modules/better-sqlite3/package.json'))
+    touch(join(afterPack._internals.unpackedAppRoot(context), 'node_modules/better-sqlite3/package.json'))
 
-    expect(() => afterPack._internals.validateBundledKunRuntime(context)).not.toThrow()
+    expect(() => afterPack._internals.validateBundledMimoRuntime(context)).not.toThrow()
 
-    rmSync(join(unpackedRoot, 'kun/node_modules/zod'), { recursive: true, force: true })
+    rmSync(join(resourcesRoot, 'MIMO-Work-Core/packages/opencode/dist'), { recursive: true, force: true })
 
-    expect(() => afterPack._internals.validateBundledKunRuntime(context)).toThrow(
-      /kun\/node_modules\/zod\/package\.json/
+    expect(() => afterPack._internals.validateBundledMimoRuntime(context)).toThrow(
+      /MIMO-Work-Core\/packages\/opencode\/dist/
     )
+  })
+
+  it('requires the Windows x64 MiMo-Code runtime binary in Windows packages', () => {
+    const root = tempRoot()
+    const context = createWinPackContext(root, 'x64')
+    const resourcesRoot = afterPack._internals.packedResourcesDir(context)
+
+    touch(join(resourcesRoot, 'MIMO-Work-Core/package.json'))
+    mkdirSync(join(resourcesRoot, 'MIMO-Work-Core/packages/opencode/dist'), { recursive: true })
+    touch(join(afterPack._internals.unpackedAppRoot(context), 'node_modules/better-sqlite3/package.json'))
+
+    expect(() => afterPack._internals.validateBundledMimoRuntime(context)).toThrow(
+      /mimocode-windows-x64.*mimo\.exe/
+    )
+
+    touch(join(
+      resourcesRoot,
+      'MIMO-Work-Core/packages/opencode/dist/mimocode-windows-x64-baseline/bin/mimo.exe'
+    ))
+
+    expect(() => afterPack._internals.validateBundledMimoRuntime(context)).not.toThrow()
+  })
+
+  it('does not treat Windows arm64 as a release target', () => {
+    const root = tempRoot()
+    const context = createWinPackContext(root, 'arm64')
+    const resourcesRoot = afterPack._internals.packedResourcesDir(context)
+
+    touch(join(resourcesRoot, 'MIMO-Work-Core/package.json'))
+    mkdirSync(join(resourcesRoot, 'MIMO-Work-Core/packages/opencode/dist'), { recursive: true })
+    touch(join(afterPack._internals.unpackedAppRoot(context), 'node_modules/better-sqlite3/package.json'))
+
+    expect(() => afterPack._internals.validateBundledMimoRuntime(context)).toThrow(
+      /Unsupported Windows architecture/
+    )
+  })
+
+  it('removes host-native optional canvas packages from Windows x64 app bundles', () => {
+    const root = tempRoot()
+    const context = createWinPackContext(root, 'x64')
+    const nativeRoot = join(afterPack._internals.unpackedAppRoot(context), 'node_modules/@napi-rs')
+    const linuxCanvas = join(nativeRoot, 'canvas-linux-x64-gnu/package.json')
+    const winArmCanvas = join(nativeRoot, 'canvas-win32-arm64-msvc/package.json')
+    const winX64Canvas = join(nativeRoot, 'canvas-win32-x64-msvc/package.json')
+
+    touch(linuxCanvas)
+    touch(winArmCanvas)
+    touch(winX64Canvas)
+
+    afterPack._internals.pruneWindowsHostNativeOptionalModules(context)
+
+    expect(existsSync(join(nativeRoot, 'canvas-linux-x64-gnu'))).toBe(false)
+    expect(existsSync(join(nativeRoot, 'canvas-win32-arm64-msvc'))).toBe(false)
+    expect(existsSync(join(nativeRoot, 'canvas-win32-x64-msvc'))).toBe(true)
   })
 
   it('runs npm through cmd.exe during Windows afterPack hooks', () => {
@@ -131,8 +235,8 @@ describe('electron-builder Kun packaging', () => {
     })
   })
 
-  it('uses the rounded Kun icon for Windows installers and shortcuts', () => {
-    expect(builderConfig.win.icon).toBe('./src/asset/img/kun_mac.png')
+  it('uses the generated Windows icon for installers and shortcuts', () => {
+    expect(builderConfig.win.icon).toBe('./build/icon.ico')
   })
 
   it('requires Apple secure timestamps when Developer ID signing is enabled', () => {
@@ -167,7 +271,7 @@ describe('electron-builder Kun packaging', () => {
     expect(macNotarize._internals.collectSignedCodeCandidates(appBundle)).toEqual([
       appBundle,
       framework,
-      mainExecutable,
+      ...(process.platform === 'win32' ? [] : [mainExecutable]),
       nativeAddon
     ])
   })

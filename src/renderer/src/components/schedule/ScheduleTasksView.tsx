@@ -960,7 +960,7 @@ function ScheduleTaskDialog({
           onSubmit()
         }}
         onMouseDown={(event) => event.stopPropagation()}
-        className="flex max-h-[calc(100vh-1rem)] w-full max-w-[760px] flex-col overflow-hidden rounded-[22px] border border-white/55 bg-ds-card shadow-[0_30px_90px_rgba(20,47,95,0.28)] dark:border-white/10"
+        className="flex max-h-[calc(100vh-1rem)] w-full max-w-[760px] flex-col overflow-hidden rounded-[22px] border border-white/55 bg-ds-card shadow-[0_30px_90px_rgba(31,35,41,0.28)] dark:border-white/10"
       >
         <div className="flex shrink-0 items-center justify-between gap-4 border-b border-ds-border-muted px-6 py-3">
           <div className="min-w-0">

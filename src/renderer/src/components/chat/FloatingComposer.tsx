@@ -13,9 +13,14 @@ import {
 import {
   Archive,
   BarChart3,
+  BookOpen,
+  Code2,
   FileEdit,
   FileText,
+  Folder,
+  Globe,
   GitFork,
+  Hash,
   ImagePlus,
   ListTodo,
   Loader2,
@@ -112,6 +117,8 @@ type Props = {
   onComposerModelChange: (modelId: string, providerId?: string) => void
   onComposerReasoningEffortChange?: (effort: ComposerReasoningEffort) => void
   onConfigureProviders?: () => void
+  onConfigureSpeechToText?: () => void
+  onOptimizeInput?: (text: string) => Promise<string | null | undefined>
   hideModelPicker?: boolean
   modelPickerMode?: 'select' | 'combobox'
   queuedMessages: QueuedComposerMessage[]
@@ -173,6 +180,14 @@ const EMPTY_ATTACHMENTS: AttachmentReference[] = []
 const EMPTY_FILE_REFERENCES: ComposerFileReference[] = []
 const EMPTY_CHANGED_FILES: ComposerChangedFile[] = []
 const EMPTY_SKILL_COMMANDS: SkillCommand[] = []
+const RULE_CONTEXT_REFERENCE_PATHS = [
+  'AGENTS.md',
+  'CLAUDE.md',
+  '.claude/CLAUDE.md',
+  '.codex/AGENTS.md',
+  '.cursor/rules',
+  '.windsurfrules'
+]
 
 type ComposerTransferItem = {
   kind?: string
@@ -245,6 +260,30 @@ function ComposerImageAttachmentPreview({
         onClose={() => setImagePreviewOpen(false)}
       />
     </span>
+  )
+}
+
+function ContextMenuRow({
+  icon,
+  label,
+  onClick
+}: {
+  icon: ReactElement
+  label: string
+  onClick: () => void
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      onMouseDown={(event) => event.preventDefault()}
+      onClick={onClick}
+      className="ds-no-drag flex h-9 w-full items-center gap-2.5 px-3 text-left transition hover:bg-ds-hover hover:text-ds-ink"
+    >
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center text-ds-faint">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1 truncate font-medium">{label}</span>
+    </button>
   )
 }
 
@@ -578,6 +617,8 @@ export function FloatingComposer({
   onComposerModelChange,
   onComposerReasoningEffortChange,
   onConfigureProviders,
+  onConfigureSpeechToText,
+  onOptimizeInput,
   hideModelPicker = false,
   modelPickerMode = 'select',
   queuedMessages,
@@ -646,16 +687,18 @@ export function FloatingComposer({
       }
     }
   })
-  const showVoiceDictation = Boolean(
+  const voiceDictationConfigured = Boolean(
     speechToTextSettings?.enabled &&
     speechToTextSettings.baseUrl.trim() &&
     speechToTextSettings.apiKey.trim() &&
     speechToTextSettings.model.trim()
   )
+  const showVoiceDictation = Boolean(voiceDictationConfigured || onConfigureSpeechToText)
   const activeClawChannel = useMemo(
     () => clawChannels.find((channel) => channel.id === activeClawChannelId) ?? null,
     [activeClawChannelId, clawChannels]
   )
+  const effectiveRoute = route === 'claw' && !activeClawChannel ? 'chat' : route
   const activeThreadWorkspace = activeThreadId
     ? threads.find((thread) => thread.id === activeThreadId)?.workspace
     : ''
@@ -663,13 +706,15 @@ export function FloatingComposer({
     ? threads.find((thread) => thread.id === activeThreadId) ?? null
     : null
   const activeThreadArchived = activeThread?.archived === true
-  const showThreadUsageFooter = !compact && route === 'chat' && Boolean(activeThreadId) && runtimeReady
+  const showThreadUsageFooter = !compact && effectiveRoute === 'chat' && Boolean(activeThreadId) && runtimeReady
   const threadUsageState = useThreadUsageState(
     activeThreadId,
     showThreadUsageFooter,
     `${activeThread?.updatedAt ?? ''}:${busy ? 'busy' : 'idle'}:${usageRefreshKey}`
   )
   const threadUsage = threadUsageState.usage
+  const [inputOptimizing, setInputOptimizing] = useState(false)
+  const [inputOptimizeError, setInputOptimizeError] = useState<string | null>(null)
   const effectiveWorkspaceRoot = normalizeWorkspaceRoot(activeThreadWorkspace || workspaceRootOverride || workspaceRoot)
   const clawAgentName =
     activeClawChannel?.agentProfile.name.trim()
@@ -683,9 +728,9 @@ export function FloatingComposer({
     activeClawChannel?.remoteSession?.chatId?.trim()
   )
 
-  const canEditComposer = route === 'claw' ? clawHasInboundConversation : true
+  const canEditComposer = effectiveRoute === 'claw' ? clawHasInboundConversation : true
   const canCompose = runtimeReady && (
-    route === 'claw'
+    effectiveRoute === 'claw'
       ? clawHasInboundConversation
       : (hasActiveThread || !!effectiveWorkspaceRoot)
   )
@@ -696,16 +741,19 @@ export function FloatingComposer({
     (fileReferenceEnabled && fileReferences.length > 0)
   )
   const canPickAttachment = canCompose && attachmentUploadEnabled && !attachmentUploadBusy
-  const showIntentToolbar = !compact && route === 'chat'
+  const showIntentToolbar = !compact && effectiveRoute === 'chat'
   const showComposerMenuButton = showIntentToolbar
   const canTogglePlanMode = canCompose && Boolean(onPlanCommand)
-  const canCreateNewThread = runtimeReady && route !== 'claw' && Boolean(effectiveWorkspaceRoot) && Boolean(onNewCommand)
-  const canOpenGoalPanel = canCompose && route !== 'claw'
-  const canRunReview = canCompose && route !== 'claw' && Boolean(onReviewCommand)
+  const canCreateNewThread = runtimeReady && effectiveRoute !== 'claw' && Boolean(effectiveWorkspaceRoot) && Boolean(onNewCommand)
+  const canOpenGoalPanel = canCompose && effectiveRoute !== 'claw'
+  const canRunReview = canCompose && effectiveRoute !== 'claw' && Boolean(onReviewCommand)
   const canOpenComposerMenu = showComposerMenuButton
     && (canTogglePlanMode || canCreateNewThread || canOpenGoalPanel || canRunReview)
+  const showContextMenuButton = showIntentToolbar && effectiveRoute === 'chat'
+  const canOpenContextMenu = showContextMenuButton && canCompose
+  const canOptimizeInput = Boolean(onOptimizeInput) && canCompose && input.trim().length > 0 && !inputOptimizing
   const showToolbarStartControls = showComposerMenuButton
-  const showChangeSummary = !compact && route === 'chat' && changedFiles.length > 0
+  const showChangeSummary = !compact && effectiveRoute === 'chat' && changedFiles.length > 0
   const effectiveChangedFileStats = changedFileStats ?? changedFiles.reduce(
     (stats, file) => ({
       added: stats.added + file.added,
@@ -726,22 +774,25 @@ export function FloatingComposer({
   const [selectedFileMentionIndex, setSelectedFileMentionIndex] = useState(0)
   const [dismissedFileMentionKey, setDismissedFileMentionKey] = useState<string | null>(null)
   const [composerMenuOpen, setComposerMenuOpen] = useState(false)
+  const [contextMenuOpen, setContextMenuOpen] = useState(false)
   const [goalPanelOpen, setGoalPanelOpen] = useState(false)
   const [goalRuntimeNowMs, setGoalRuntimeNowMs] = useState(() => Date.now())
   const composerRootRef = useRef<HTMLDivElement | null>(null)
   const composerMenuButtonRef = useRef<HTMLButtonElement | null>(null)
+  const contextMenuButtonRef = useRef<HTMLButtonElement | null>(null)
   const composerMenuPanelRef = useRef<HTMLDivElement | null>(null)
+  const contextMenuPanelRef = useRef<HTMLDivElement | null>(null)
   const goalPanelRef = useRef<HTMLDivElement | null>(null)
   const goalRuntimeStartedAtRef = useRef<number | null>(null)
   const placeholder = !runtimeReady
     ? t('runtimeActionNeedsConnection')
     : !hasActiveThread && !effectiveWorkspaceRoot
       ? t('workspaceRequiredToCreateThread')
-      : goalPanelOpen && route !== 'claw'
+    : goalPanelOpen && effectiveRoute !== 'claw'
         ? t('goalComposerPlaceholder')
       : busy
         ? t('composerQueuePlaceholder')
-        : route === 'claw'
+        : effectiveRoute === 'claw'
             ? clawHasInboundConversation
               ? t('clawPlaceholder', { name: clawAgentName })
               : t('clawPlaceholderNeedsInbound')
@@ -754,7 +805,7 @@ export function FloatingComposer({
     ? t('composerOfflineHint')
     : !hasActiveThread && !effectiveWorkspaceRoot
       ? t('composerWorkspaceHint')
-      : route === 'claw'
+      : effectiveRoute === 'claw'
           ? clawHasInboundConversation
             ? t('clawComposerHint')
             : t('clawComposerHintNeedsInbound')
@@ -764,7 +815,7 @@ export function FloatingComposer({
     const goalActionDisabled = !canOpenGoalPanel
     const disabledSkills = disabledSkillIdSet(disabledSkillIds)
     const commands: SlashCommand[] = []
-    if (route !== 'claw') {
+    if (effectiveRoute !== 'claw') {
       commands.push({
         id: 'new',
         title: t('slashCommandNewTitle'),
@@ -784,7 +835,7 @@ export function FloatingComposer({
       })
     }
 
-    if (route !== 'claw') {
+    if (effectiveRoute !== 'claw') {
       const dynamicSkillCommands = skillCommands
         .filter((skill) => skill.id.trim() && skill.name.trim())
         .filter((skill) => !disabledSkills.has(normalizeSkillCommandId(skill.id)))
@@ -906,7 +957,7 @@ export function FloatingComposer({
     canCreateNewThread,
     onPlanCommand,
     onReviewCommand,
-    route,
+    effectiveRoute,
     runtimeReady,
     skillCommands,
     disabledSkillIds,
@@ -946,7 +997,7 @@ export function FloatingComposer({
   const parsedGoalCommand = parseGoalCommand(input)
   const goalPanelDraftObjective = getGoalPanelDraftObjective(input, goalPanelOpen)
   const canSetGoalPanelDraft =
-    route !== 'claw'
+    effectiveRoute !== 'claw'
     && runtimeReady
     && canOpenGoalPanel
     && goalPanelDraftObjective.length > 0
@@ -994,7 +1045,10 @@ export function FloatingComposer({
   }, [activeFileMentionKey])
 
   useEffect(() => {
-    if (slashQuery != null || goalPanelOpen) setComposerMenuOpen(false)
+    if (slashQuery != null || goalPanelOpen) {
+      setComposerMenuOpen(false)
+      setContextMenuOpen(false)
+    }
   }, [goalPanelOpen, slashQuery])
 
   useEffect(() => {
@@ -1029,21 +1083,25 @@ export function FloatingComposer({
   }, [activeFileMention, effectiveWorkspaceRoot, fileReferences, showFileMentionMenu])
 
   useEffect(() => {
-    if (!composerMenuOpen && !goalPanelOpen) return
+    if (!composerMenuOpen && !contextMenuOpen && !goalPanelOpen) return
 
     const onPointerDown = (event: PointerEvent): void => {
       const target = event.target
       if (!(target instanceof Node)) return
       if (composerMenuButtonRef.current?.contains(target)) return
+      if (contextMenuButtonRef.current?.contains(target)) return
       if (composerMenuPanelRef.current?.contains(target)) return
+      if (contextMenuPanelRef.current?.contains(target)) return
       if (goalPanelRef.current?.contains(target)) return
       setComposerMenuOpen(false)
+      setContextMenuOpen(false)
       setGoalPanelOpen(false)
     }
 
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== 'Escape') return
       setComposerMenuOpen(false)
+      setContextMenuOpen(false)
       setGoalPanelOpen(false)
     }
 
@@ -1053,7 +1111,7 @@ export function FloatingComposer({
       window.removeEventListener('pointerdown', onPointerDown)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [composerMenuOpen, goalPanelOpen])
+  }, [composerMenuOpen, contextMenuOpen, goalPanelOpen])
 
   useEffect(() => {
     const shouldTimeGoal = busy && activeThreadGoal?.status === 'active'
@@ -1182,7 +1240,16 @@ export function FloatingComposer({
   const handleComposerMenuButtonClick = (): void => {
     if (!canOpenComposerMenu) return
     setGoalPanelOpen(false)
+    setContextMenuOpen(false)
     setComposerMenuOpen((open) => !open)
+    draft.focusComposer()
+  }
+
+  const handleContextMenuButtonClick = (): void => {
+    if (!canOpenContextMenu) return
+    setGoalPanelOpen(false)
+    setComposerMenuOpen(false)
+    setContextMenuOpen((open) => !open)
     draft.focusComposer()
   }
 
@@ -1373,7 +1440,7 @@ export function FloatingComposer({
   }
 
   useEffect(() => {
-    if (compact || route !== 'chat' || !canEditComposer) return
+    if (compact || effectiveRoute !== 'chat' || !canEditComposer) return
     const active = document.activeElement
     const activeIsExternalEditor =
       active instanceof HTMLElement &&
@@ -1393,7 +1460,7 @@ export function FloatingComposer({
     })
 
     return () => window.cancelAnimationFrame(frame)
-  }, [activeThreadId, canEditComposer, compact, route, runtimeReady, draft.textareaRef])
+  }, [activeThreadId, canEditComposer, compact, effectiveRoute, runtimeReady, draft.textareaRef])
 
   const handleAttachmentInput = (event: ChangeEvent<HTMLInputElement>): void => {
     const files = Array.from(event.target.files ?? [])
@@ -1443,6 +1510,70 @@ export function FloatingComposer({
     })
   }
 
+  const beginFileContextMention = (): void => {
+    setContextMenuOpen(false)
+    insertTextAtComposerCursor('@')
+  }
+
+  const addRuleContextReferences = async (): Promise<void> => {
+    setContextMenuOpen(false)
+    if (!effectiveWorkspaceRoot || !onAddFileReference) {
+      insertTextAtComposerCursor(t('composerContextRulesPrompt'))
+      return
+    }
+    try {
+      const index = await loadWorkspaceFileIndex(effectiveWorkspaceRoot)
+      const references = index.files.filter((file) =>
+        RULE_CONTEXT_REFERENCE_PATHS.some((path) =>
+          file.relativePath.toLowerCase() === path.toLowerCase() ||
+          file.relativePath.toLowerCase().endsWith(`/${path.toLowerCase()}`)
+        )
+      )
+      if (references.length === 0) {
+        insertTextAtComposerCursor(t('composerContextRulesPrompt'))
+        return
+      }
+      for (const reference of references.slice(0, 4)) {
+        onAddFileReference(reference)
+      }
+      draft.focusComposer()
+    } catch {
+      insertTextAtComposerCursor(t('composerContextRulesPrompt'))
+    }
+  }
+
+  const addContextInstruction = (text: string): void => {
+    setContextMenuOpen(false)
+    insertTextAtComposerCursor(text)
+  }
+
+  const handleOptimizeInput = async (): Promise<void> => {
+    if (!onOptimizeInput || inputOptimizing) return
+    const source = input.trim()
+    if (!source) return
+    setInputOptimizeError(null)
+    setInputOptimizing(true)
+    try {
+      const optimized = (await onOptimizeInput(source))?.trim()
+      if (optimized) {
+        setInput(optimized)
+        window.requestAnimationFrame(() => {
+          const el = draft.textareaRef.current
+          if (!el) return
+          el.focus()
+          el.setSelectionRange(optimized.length, optimized.length)
+          setComposerCursor(optimized.length)
+        })
+      }
+    } catch (error) {
+      setInputOptimizeError(t('composerOptimizeFailed', {
+        message: error instanceof Error ? error.message : String(error)
+      }))
+    } finally {
+      setInputOptimizing(false)
+    }
+  }
+
   const handleComposerDrop = (event: ReactDragEvent<HTMLDivElement>): void => {
     const imageFiles = canPickAttachment ? imageFilesFromTransfer(event.dataTransfer) : []
     const rawFiles = Array.from(event.dataTransfer.files ?? [])
@@ -1484,7 +1615,7 @@ export function FloatingComposer({
       <div className="relative">
         {showGoalFloater && activeThreadGoal ? (
           <div className="pointer-events-none absolute inset-x-3 bottom-full z-20 mb-2 flex justify-center">
-            <div className="pointer-events-auto flex min-h-11 w-full max-w-[46rem] items-center gap-2 rounded-full border border-ds-border bg-ds-card/95 px-3 py-1.5 text-ds-muted shadow-[0_12px_34px_rgba(20,47,95,0.10)] backdrop-blur-xl dark:bg-ds-card/90">
+            <div className="pointer-events-auto flex min-h-11 w-full max-w-[46rem] items-center gap-2 rounded-full border border-ds-border bg-ds-card/95 px-3 py-1.5 text-ds-muted shadow-[0_12px_34px_rgba(31,35,41,0.10)] backdrop-blur-xl dark:bg-ds-card/90">
               <Target className="h-3.5 w-3.5 shrink-0 text-ds-faint" strokeWidth={1.9} />
               <div className="flex min-w-0 flex-1 items-center gap-1.5 text-[13px] leading-5">
                 <span className="shrink-0 font-semibold text-ds-ink">
@@ -1541,10 +1672,61 @@ export function FloatingComposer({
           </div>
         ) : null}
 
+        {contextMenuOpen && slashQuery == null ? (
+          <div
+            ref={contextMenuPanelRef}
+            className="absolute bottom-12 left-1 z-40 w-[268px] overflow-hidden rounded-[18px] border border-ds-border bg-white py-1.5 text-[13px] text-ds-muted shadow-[0_18px_48px_rgba(31,35,41,0.16)] dark:bg-ds-card"
+          >
+            <div className="px-3 pb-1.5 pt-1 text-[11.5px] font-semibold text-ds-faint">
+              {t('composerContextMenuSearchHint')}
+            </div>
+            <ContextMenuRow
+              icon={<FileText className="h-4 w-4" strokeWidth={1.8} />}
+              label={t('composerContextFile')}
+              onClick={beginFileContextMention}
+            />
+            <ContextMenuRow
+              icon={<Folder className="h-4 w-4" strokeWidth={1.8} />}
+              label={t('composerContextFolder')}
+              onClick={() => addContextInstruction(t('composerContextFolderPrompt'))}
+            />
+            <ContextMenuRow
+              icon={<BookOpen className="h-4 w-4" strokeWidth={1.8} />}
+              label={t('composerContextDoc')}
+              onClick={beginFileContextMention}
+            />
+            <ContextMenuRow
+              icon={<Code2 className="h-4 w-4" strokeWidth={1.8} />}
+              label={t('composerContextCode')}
+              onClick={beginFileContextMention}
+            />
+            <ContextMenuRow
+              icon={<FileText className="h-4 w-4" strokeWidth={1.8} />}
+              label={t('composerContextRule')}
+              onClick={() => void addRuleContextReferences()}
+            />
+            <ContextMenuRow
+              icon={<Folder className="h-4 w-4" strokeWidth={1.8} />}
+              label={t('composerContextWorkspace')}
+              onClick={() => addContextInstruction(t('composerContextWorkspacePrompt'))}
+            />
+            <ContextMenuRow
+              icon={<BarChart3 className="h-4 w-4" strokeWidth={1.8} />}
+              label={t('composerContextProblems')}
+              onClick={() => addContextInstruction(t('composerContextProblemsPrompt'))}
+            />
+            <ContextMenuRow
+              icon={<Globe className="h-4 w-4" strokeWidth={1.8} />}
+              label={t('composerContextWeb')}
+              onClick={() => addContextInstruction(t('composerContextWebPrompt'))}
+            />
+          </div>
+        ) : null}
+
         {composerMenuOpen && slashQuery == null ? (
           <div
             ref={composerMenuPanelRef}
-            className="absolute bottom-12 left-1 z-40 w-48 overflow-hidden rounded-[18px] border border-ds-border bg-white py-1.5 text-[13px] text-ds-muted shadow-[0_18px_48px_rgba(20,47,95,0.16)] dark:bg-ds-card"
+            className="absolute bottom-12 left-1 z-40 w-48 overflow-hidden rounded-[18px] border border-ds-border bg-white py-1.5 text-[13px] text-ds-muted shadow-[0_18px_48px_rgba(31,35,41,0.16)] dark:bg-ds-card"
           >
             {attachmentUploadEnabled ? (
               <>
@@ -1584,7 +1766,7 @@ export function FloatingComposer({
                 <span
                   className={`absolute top-0.5 h-4 w-4 rounded-full bg-white ring-1 ring-black/5 transition ${
                     mode === 'plan' ? 'translate-x-[17px]' : 'translate-x-0.5'
-                  } shadow-[0_1px_4px_rgba(20,47,95,0.28)]`}
+                  } shadow-[0_1px_4px_rgba(31,35,41,0.28)]`}
                 />
               </span>
             </button>
@@ -1608,7 +1790,7 @@ export function FloatingComposer({
                 <span
                   className={`absolute top-0.5 h-4 w-4 rounded-full bg-white ring-1 ring-black/5 transition ${
                     goalMenuChecked ? 'translate-x-[17px]' : 'translate-x-0.5'
-                  } shadow-[0_1px_4px_rgba(20,47,95,0.28)]`}
+                  } shadow-[0_1px_4px_rgba(31,35,41,0.28)]`}
                 />
               </span>
             </button>
@@ -1616,7 +1798,7 @@ export function FloatingComposer({
         ) : null}
 
         {slashQuery != null ? (
-          <div className="ds-card-strong absolute bottom-full left-1/2 z-30 mb-2 w-[calc(100%_-_1rem)] max-w-[760px] -translate-x-1/2 overflow-hidden rounded-[16px] p-1.5 shadow-[0_18px_46px_rgba(20,47,95,0.14)]">
+          <div className="ds-card-strong absolute bottom-full left-1/2 z-30 mb-2 w-[calc(100%_-_1rem)] max-w-[760px] -translate-x-1/2 overflow-hidden rounded-[16px] p-1.5 shadow-[0_18px_46px_rgba(31,35,41,0.14)]">
             <div className="flex h-7 items-center px-2.5 text-[11.5px] font-semibold text-ds-muted">
               {t('slashCommandMenuTitle')}
             </div>
@@ -1633,7 +1815,7 @@ export function FloatingComposer({
                       disabled={command.disabled}
                       className={`flex min-h-[52px] w-full items-center gap-2.5 rounded-[12px] px-2.5 py-2 text-left transition disabled:cursor-not-allowed disabled:opacity-45 ${
                         active && !command.disabled
-                          ? 'bg-ds-hover text-ds-ink shadow-[inset_0_0_0_1px_rgba(20,47,95,0.06)]'
+                          ? 'bg-ds-hover text-ds-ink shadow-[inset_0_0_0_1px_rgba(31,35,41,0.06)]'
                           : 'text-ds-muted hover:bg-ds-hover hover:text-ds-ink disabled:hover:bg-transparent disabled:hover:text-ds-muted'
                       }`}
                     >
@@ -1675,7 +1857,7 @@ export function FloatingComposer({
         ) : null}
 
         {showFileMentionMenu ? (
-          <div className="ds-card-strong absolute bottom-full left-1/2 z-30 mb-2 w-[calc(100%_-_1rem)] max-w-[680px] -translate-x-1/2 overflow-hidden rounded-[16px] p-1.5 shadow-[0_18px_46px_rgba(20,47,95,0.14)]">
+          <div className="ds-card-strong absolute bottom-full left-1/2 z-30 mb-2 w-[calc(100%_-_1rem)] max-w-[680px] -translate-x-1/2 overflow-hidden rounded-[16px] p-1.5 shadow-[0_18px_46px_rgba(31,35,41,0.14)]">
             <div className="flex h-7 items-center gap-2 px-2.5 text-[11.5px] font-semibold text-ds-muted">
               <FileText className="h-3.5 w-3.5 text-ds-faint" strokeWidth={1.9} />
               <span>{t('composerFileMentionMenuTitle')}</span>
@@ -1695,7 +1877,7 @@ export function FloatingComposer({
                       onClick={() => applyFileMention(reference)}
                       className={`flex min-h-[46px] w-full items-center gap-2.5 rounded-[12px] px-2.5 py-2 text-left transition ${
                         active
-                          ? 'bg-ds-hover text-ds-ink shadow-[inset_0_0_0_1px_rgba(20,47,95,0.06)]'
+                          ? 'bg-ds-hover text-ds-ink shadow-[inset_0_0_0_1px_rgba(31,35,41,0.06)]'
                           : 'text-ds-muted hover:bg-ds-hover hover:text-ds-ink'
                       }`}
                     >
@@ -1732,7 +1914,7 @@ export function FloatingComposer({
         {goalPanelOpen && slashQuery == null ? (
           <div
             ref={goalPanelRef}
-            className="absolute inset-x-2 bottom-full z-30 mb-3 overflow-hidden rounded-[26px] border border-ds-border bg-ds-card/95 p-3 shadow-[0_18px_52px_rgba(20,47,95,0.14)] backdrop-blur-xl dark:bg-ds-card/90"
+            className="absolute inset-x-2 bottom-full z-30 mb-3 overflow-hidden rounded-[26px] border border-ds-border bg-ds-card/95 p-3 shadow-[0_18px_52px_rgba(31,35,41,0.14)] backdrop-blur-xl dark:bg-ds-card/90"
           >
             <div className="flex items-start gap-3">
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-ds-border-muted text-ds-muted">
@@ -1972,10 +2154,10 @@ export function FloatingComposer({
               onChange={handleAttachmentInput}
             />
           ) : null}
-          {dictation.error ? (
+          {dictation.error || inputOptimizeError ? (
             <div className="px-1">
               <span className="min-w-0 break-words text-[12px] font-medium text-red-600 dark:text-red-300">
-                {dictation.error}
+                {dictation.error || inputOptimizeError}
               </span>
             </div>
           ) : null}
@@ -1986,6 +2168,21 @@ export function FloatingComposer({
           >
             {showToolbarStartControls ? (
               <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto overflow-y-hidden">
+                {showContextMenuButton ? (
+                  <button
+                    ref={contextMenuButtonRef}
+                    type="button"
+                    disabled={!canOpenContextMenu}
+                    onClick={handleContextMenuButtonClick}
+                    className={`ds-no-drag flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-ds-muted transition hover:bg-ds-hover hover:text-ds-ink disabled:cursor-not-allowed disabled:opacity-45 ${
+                      contextMenuOpen ? 'bg-ds-hover text-ds-ink' : ''
+                    }`}
+                    aria-label={t('composerContextMenuTitle')}
+                    title={t('composerContextMenuTitle')}
+                  >
+                    <Hash className="h-4 w-4" strokeWidth={1.9} />
+                  </button>
+                ) : null}
                 {showComposerMenuButton ? (
                   <>
                     <button
@@ -2046,7 +2243,7 @@ export function FloatingComposer({
                   <button
                     type="button"
                     onClick={() => dictation.stop('send')}
-                    className="ds-no-drag flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-white shadow-[0_10px_22px_rgba(20,47,95,0.22)] transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                    className="ds-no-drag flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-white shadow-[0_10px_22px_rgba(31,35,41,0.22)] transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
                     aria-label={t('composerVoiceSend')}
                     title={t('composerVoiceSend')}
                   >
@@ -2071,21 +2268,47 @@ export function FloatingComposer({
                   onConfigureProviders={onConfigureProviders}
                 />
               )}
+              {onOptimizeInput ? (
+                <button
+                  type="button"
+                  disabled={!canOptimizeInput}
+                  onClick={() => void handleOptimizeInput()}
+                  className="ds-no-drag flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ds-muted transition hover:bg-ds-hover hover:text-ds-ink disabled:cursor-not-allowed disabled:opacity-55"
+                  aria-label={inputOptimizing ? t('composerOptimizeInputBusy') : t('composerOptimizeInput')}
+                  title={inputOptimizing ? t('composerOptimizeInputBusy') : t('composerOptimizeInput')}
+                >
+                  {inputOptimizing ? (
+                    <Loader2 className="h-4 w-4 animate-spin" strokeWidth={2.2} />
+                  ) : (
+                    <Sparkles className="h-4 w-4" strokeWidth={2} />
+                  )}
+                </button>
+              ) : null}
               {showVoiceDictation ? (
                 <button
                   type="button"
                   disabled={dictation.status === 'transcribing' || !canEditComposer}
-                  onClick={dictation.toggle}
+                  onClick={() => {
+                    if (voiceDictationConfigured) {
+                      dictation.toggle()
+                      return
+                    }
+                    onConfigureSpeechToText?.()
+                  }}
                   className="ds-no-drag flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ds-muted transition hover:bg-ds-hover hover:text-ds-ink disabled:cursor-not-allowed disabled:opacity-60"
                   aria-label={
                     dictation.status === 'transcribing'
                       ? t('composerVoiceTranscribing')
-                      : t('composerVoiceStart')
+                      : voiceDictationConfigured
+                        ? t('composerVoiceStart')
+                        : t('composerVoiceConfigure')
                   }
                   title={
                     dictation.status === 'transcribing'
                       ? t('composerVoiceTranscribing')
-                      : t('composerVoiceStart')
+                      : voiceDictationConfigured
+                        ? t('composerVoiceStart')
+                        : t('composerVoiceConfigure')
                   }
                 >
                   {dictation.status === 'transcribing' ? (
@@ -2099,7 +2322,7 @@ export function FloatingComposer({
                 <button
                   type="button"
                   onClick={() => onInterrupt()}
-                  className="ds-no-drag flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-white shadow-[0_10px_22px_rgba(20,47,95,0.22)] transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
+                  className="ds-no-drag flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-white shadow-[0_10px_22px_rgba(31,35,41,0.22)] transition hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200"
                   aria-label={t('interrupt')}
                   title={t('interrupt')}
                 >
@@ -2110,7 +2333,7 @@ export function FloatingComposer({
                 type="button"
                 disabled={primaryActionDisabled}
                 onClick={handlePrimaryAction}
-                className="ds-no-drag flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-white shadow-[0_10px_22px_rgba(20,47,95,0.22)] transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-ds-card disabled:text-ds-faint disabled:shadow-none dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:disabled:bg-ds-card dark:disabled:text-ds-faint"
+                className="ds-no-drag flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-950 text-white shadow-[0_10px_22px_rgba(31,35,41,0.22)] transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:bg-ds-card disabled:text-ds-faint disabled:shadow-none dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 dark:disabled:bg-ds-card dark:disabled:text-ds-faint"
                 aria-label={primaryActionLabel}
                 title={primaryActionLabel}
               >
@@ -2129,7 +2352,7 @@ export function FloatingComposer({
       {compact ? null : (
         <div className="ds-composer-footer mt-1 flex min-h-7 flex-wrap items-center justify-between gap-x-2.5 gap-y-1.5 px-3">
           <div className="ds-composer-footer-left flex min-w-0 flex-1 flex-wrap items-center gap-2">
-            {route === 'chat' ? (
+            {effectiveRoute === 'chat' ? (
               <WorkspaceProjectPicker currentWorkspaceRoot={effectiveWorkspaceRoot} />
             ) : null}
             <GitBranchPicker workspaceRoot={effectiveWorkspaceRoot} />

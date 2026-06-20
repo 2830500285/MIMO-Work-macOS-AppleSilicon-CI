@@ -1,6 +1,3 @@
-// 必须是第一个 import:把旧品牌前缀的 localStorage 键拷贝到新前缀,
-// 后面的 store 模块在 import 阶段就会读这些键。
-import './lib/legacy-local-storage-migration'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import './index.css'

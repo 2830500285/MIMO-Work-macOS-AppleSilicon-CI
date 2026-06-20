@@ -40,8 +40,8 @@ beforeEach(() => {
   vi.doMock('electron', () => ({
     app: {
       isPackaged: true,
-      getAppPath: () => '/tmp/deepseek-gui-updater-test-app',
-      getPath: () => '/tmp/deepseek-gui-updater-test-user-data',
+      getAppPath: () => '/tmp/mimo-work-updater-test-app',
+      getPath: () => '/tmp/mimo-work-updater-test-user-data',
       getVersion: () => '0.1.0'
     },
     autoUpdater: nativeUpdater,
@@ -71,7 +71,7 @@ function platformManifestName(): string {
 
 describe('checkGuiUpdate feed URL', () => {
   it('prefers the kun-agent update feed when metadata is reachable', async () => {
-    process.env.DEEPSEEK_GUI_ALLOW_UNSIGNED_UPDATES = '1'
+    process.env.MIMO_WORK_ALLOW_UNSIGNED_UPDATES = '1'
     const fetchMock = vi.fn().mockResolvedValue({ ok: true })
     vi.stubGlobal('fetch', fetchMock)
     updater.checkForUpdates.mockResolvedValue({
@@ -88,17 +88,17 @@ describe('checkGuiUpdate feed URL', () => {
       hasUpdate: true
     })
     expect(fetchMock).toHaveBeenCalledWith(
-      `https://www.kun-agent.com/api/r2/deepseek-gui/channels/stable/latest/${platformManifestName()}`,
+      `https://www.kun-agent.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
       expect.objectContaining({ method: 'HEAD' })
     )
     expect(updater.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://www.kun-agent.com/api/r2/deepseek-gui/channels/stable/latest/'
+      url: 'https://www.kun-agent.com/api/r2/mimo-work/channels/stable/latest/'
     })
   })
 
   it('falls back to the bare kun-agent feed before the legacy feed', async () => {
-    process.env.DEEPSEEK_GUI_ALLOW_UNSIGNED_UPDATES = '1'
+    process.env.MIMO_WORK_ALLOW_UNSIGNED_UPDATES = '1'
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: false, status: 404 })
       .mockResolvedValueOnce({ ok: true })
@@ -118,22 +118,22 @@ describe('checkGuiUpdate feed URL', () => {
     })
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      `https://www.kun-agent.com/api/r2/deepseek-gui/channels/stable/latest/${platformManifestName()}`,
+      `https://www.kun-agent.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
       expect.objectContaining({ method: 'HEAD' })
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      `https://kun-agent.com/api/r2/deepseek-gui/channels/stable/latest/${platformManifestName()}`,
+      `https://kun-agent.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
       expect.objectContaining({ method: 'HEAD' })
     )
     expect(updater.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://kun-agent.com/api/r2/deepseek-gui/channels/stable/latest/'
+      url: 'https://kun-agent.com/api/r2/mimo-work/channels/stable/latest/'
     })
   })
 
-  it('falls back to the legacy deepseek-gui feed when both kun-agent feeds are unavailable', async () => {
-    process.env.DEEPSEEK_GUI_ALLOW_UNSIGNED_UPDATES = '1'
+  it('falls back to the legacy mimo-work feed when both kun-agent feeds are unavailable', async () => {
+    process.env.MIMO_WORK_ALLOW_UNSIGNED_UPDATES = '1'
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: false, status: 404 })
       .mockResolvedValueOnce({ ok: false, status: 404 })
@@ -154,22 +154,22 @@ describe('checkGuiUpdate feed URL', () => {
     })
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      `https://www.kun-agent.com/api/r2/deepseek-gui/channels/stable/latest/${platformManifestName()}`,
+      `https://www.kun-agent.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
       expect.objectContaining({ method: 'HEAD' })
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      `https://kun-agent.com/api/r2/deepseek-gui/channels/stable/latest/${platformManifestName()}`,
+      `https://kun-agent.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
       expect.objectContaining({ method: 'HEAD' })
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
-      `https://deepseek-gui.com/api/r2/deepseek-gui/channels/stable/latest/${platformManifestName()}`,
+      `https://mimo-work.com/api/r2/mimo-work/channels/stable/latest/${platformManifestName()}`,
       expect.objectContaining({ method: 'HEAD' })
     )
     expect(updater.setFeedURL).toHaveBeenLastCalledWith({
       provider: 'generic',
-      url: 'https://deepseek-gui.com/api/r2/deepseek-gui/channels/stable/latest/'
+      url: 'https://mimo-work.com/api/r2/mimo-work/channels/stable/latest/'
     })
   })
 })

@@ -12,7 +12,6 @@ import {
   type AppSettingsV1
 } from '../../shared/app-settings'
 import {
-  upstreamDeepSeekFimCompletionsUrl,
   upstreamOpenAiCustomEndpointUrl,
   upstreamOpenAiChatCompletionsUrl
 } from '../../shared/openai-compat-url'
@@ -59,12 +58,7 @@ type ChatCompletionMessage = {
   content: string
 }
 
-type WriteInlineProviderResponseFormat = ModelEndpointFormat | 'fim_completions'
-
-function shouldDisableThinkingForInlineCompletion(model: string): boolean {
-  const normalized = model.trim().toLowerCase()
-  return normalized.startsWith('deepseek-v4') || normalized === 'deepseek-reasoner'
-}
+type WriteInlineProviderResponseFormat = ModelEndpointFormat
 
 const inlineCompletionDebugEntries: WriteInlineCompletionDebugEntry[] = []
 
@@ -311,7 +305,7 @@ export function buildWriteInlineCompletionPrompt(
 ): string {
   const mode = resolveMode(request)
   const lines = [
-    '<!-- Kun inline completion.',
+    '<!-- MIMO Work inline completion.',
     'Complete the text at the cursor.',
     'The boundary blocks below identify local context, but the response must be plain insertable text only.',
     'Return only the text to insert at the cursor.',
@@ -386,7 +380,7 @@ export function buildWriteInlineCompletionChatMessages(
     {
       role: 'system',
       content: [
-        'You are Kun inline writing. You perform local writing completion and in-place text edits.',
+        'You are MIMO Work inline writing. You perform local writing completion and in-place text edits.',
         'For edit tasks, reason from <<<PREFIX ... >>>, <<<EDIT_SCOPE ... >>>, and <<<SUFFIX ... >>>, then return only the replacement inside <<<EDIT ... >>>.',
         'Do not include explanations, markdown fences outside the marked action, before/after labels, or unchanged surrounding text outside the chosen action.'
       ].join('\n')
@@ -430,24 +424,6 @@ function stripKnownModelEndpointPath(baseUrl: string): string {
     }
   }
   return baseUrl
-}
-
-function isDeepSeekInlineCompletionBaseUrl(baseUrl: string): boolean {
-  const hostname = baseUrlHostname(baseUrl)
-  return hostname === 'deepseek.com' || hostname.endsWith('.deepseek.com')
-}
-
-function baseUrlHostname(baseUrl: string): string {
-  const trimmed = baseUrl.trim()
-  if (!trimmed) return ''
-  for (const candidate of [trimmed, `https://${trimmed}`]) {
-    try {
-      return new URL(candidate).hostname.toLowerCase()
-    } catch {
-      // Try the next normalized form.
-    }
-  }
-  return ''
 }
 
 function trimTrailingSlashes(value: string): string {
@@ -502,14 +478,6 @@ function buildProviderRequestBody(input: {
   suffix: string
   maxTokens: number
 }): Record<string, unknown> {
-  if (input.responseFormat === 'fim_completions') {
-    return {
-      model: input.model,
-      prompt: input.prompt,
-      suffix: input.suffix,
-      max_tokens: input.maxTokens
-    }
-  }
   const messages = input.messages ?? [
     { role: 'user' as const, content: input.prompt }
   ]
@@ -535,10 +503,7 @@ function buildProviderRequestBody(input: {
   return {
     model: input.model,
     messages,
-    max_tokens: input.maxTokens,
-    ...(shouldDisableThinkingForInlineCompletion(input.model)
-      ? { thinking: { type: 'disabled' } }
-      : {})
+    max_tokens: input.maxTokens
   }
 }
 
@@ -761,16 +726,8 @@ export async function requestWriteInlineCompletion(
       message: 'Custom full endpoint URL must end with /chat/completions, /completions, /responses, or /messages.'
     }
   }
-  const useFimCompletions =
-    !useChatCompletions &&
-    configuredEndpointFormat === 'chat_completions' &&
-    isDeepSeekInlineCompletionBaseUrl(baseUrl)
-  const responseFormat: WriteInlineProviderResponseFormat = useFimCompletions
-    ? 'fim_completions'
-    : endpointFormat
-  const url = useFimCompletions
-    ? upstreamDeepSeekFimCompletionsUrl(baseUrl)
-    : compatibleModelEndpointUrl(baseUrl, configuredEndpointFormat)
+  const responseFormat: WriteInlineProviderResponseFormat = endpointFormat
+  const url = compatibleModelEndpointUrl(baseUrl, configuredEndpointFormat)
   const maxTokens = mode === 'long' || mode === 'edit' || actionMayEdit
     ? settings.write.inlineCompletion.longMaxTokens || settings.write.inlineCompletion.maxTokens || DEFAULT_WRITE_INLINE_COMPLETION_MAX_TOKENS
     : settings.write.inlineCompletion.maxTokens || DEFAULT_WRITE_INLINE_COMPLETION_MAX_TOKENS
@@ -779,9 +736,7 @@ export async function requestWriteInlineCompletion(
     : await retrieveWriteInlineCompletionContext(request, {
         maxSnippets: mode === 'long' || mode === 'edit' || actionMayEdit ? 5 : 3
       }).catch(() => null)
-  const messages = useFimCompletions
-    ? null
-    : buildWriteInlineCompletionChatMessages(request, retrieval)
+  const messages = buildWriteInlineCompletionChatMessages(request, retrieval)
   const prompt = messages
     ? debugPromptFromMessages(messages)
     : buildWriteInlineCompletionPrompt(request, retrieval)

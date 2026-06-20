@@ -19,4 +19,10 @@ describe('secret redaction', () => {
       'Authorization=<redacted> token=<redacted>'
     )
   })
+
+  it('redacts naked MiMo Tokenplan keys', () => {
+    expect(redactSecretText('failed with tp-123456789012345678901234')).toBe(
+      'failed with <redacted>'
+    )
+  })
 })

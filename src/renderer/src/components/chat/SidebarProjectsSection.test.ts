@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { NormalizedThread } from '../../agent/types'
 import type { SddDraftHistoryItem } from '../../sdd/sdd-draft-history'
 import {
+  buildSidebarChatThreads,
   buildSidebarDraftWorkspacePaths,
   buildSidebarWorkspaceGroups,
   filterEmptySddAssistantThreadsFromSidebar,
@@ -90,61 +91,72 @@ describe('SidebarProjectsSection groups', () => {
     ).toEqual(['/Users/zxy/project-a'])
   })
 
-  it('shows the default workspace while filtering write workspaces from code project groups', () => {
+  it('hides the default chat workspace while filtering write workspaces from code project groups', () => {
     const groups = buildSidebarWorkspaceGroups({
       threads: [
         thread({ id: 'code-current', workspace: '/Users/zxy/project-a' }),
-        thread({ id: 'default-code', workspace: '/Users/zxy/.deepseekgui/default_workspace' }),
-        thread({ id: 'write-assistant', workspace: '~/.deepseekgui/write_workspace' })
+        thread({ id: 'default-code', workspace: '/Users/zxy/.mimo-work/default_workspace' }),
+        thread({ id: 'write-assistant', workspace: '~/.mimo-work/write_workspace' })
       ],
       searchQuery: '',
       showArchived: false,
       workspaceRoot: '/Users/zxy/project-a',
       workspaceRoots: [
         '/Users/zxy/project-a',
-        '/Users/zxy/.deepseekgui/default_workspace',
-        '~/.deepseekgui/write_workspace'
+        '/Users/zxy/.mimo-work/default_workspace',
+        '~/.mimo-work/write_workspace'
       ]
     })
 
     expect(groups.map(([workspace]) => workspace)).toEqual([
-      '/Users/zxy/project-a',
-      '/Users/zxy/.deepseekgui/default_workspace'
+      '/Users/zxy/project-a'
     ])
-    expect(groups[1]?.[1].map((item) => item.id)).toEqual(['default-code'])
   })
 
-  it('merges default workspace aliases into one sidebar group', () => {
+  it('shows default workspace threads in the chat section instead of projects', () => {
+    const chats = buildSidebarChatThreads({
+      threads: [
+        thread({ id: 'code-current', workspace: '/Users/zxy/project-a' }),
+        thread({ id: 'default-code', workspace: '/Users/zxy/.mimo-work/default_workspace' }),
+        thread({ id: 'default-short', workspace: '~/.mimo-work/default_workspace' }),
+        thread({ id: 'write-assistant', workspace: '~/.mimo-work/write_workspace' })
+      ],
+      searchQuery: '',
+      showArchived: false
+    })
+
+    expect(chats.map((item) => item.id)).toEqual(['default-code', 'default-short'])
+  })
+
+  it('does not create a project group for default workspace aliases', () => {
     const groups = buildSidebarWorkspaceGroups({
       threads: [
-        thread({ id: 'default-short', workspace: '~/.deepseekgui/default_workspace' }),
-        thread({ id: 'default-absolute', workspace: 'C:\\Users\\zxy\\.deepseekgui\\default_workspace' })
+        thread({ id: 'default-short', workspace: '~/.mimo-work/default_workspace' }),
+        thread({ id: 'default-absolute', workspace: 'C:\\Users\\zxy\\.mimo-work\\default_workspace' })
       ],
       searchQuery: '',
       showArchived: false,
-      workspaceRoot: 'C:\\Users\\zxy\\.deepseekgui\\default_workspace',
+      workspaceRoot: 'C:\\Users\\zxy\\.mimo-work\\default_workspace',
       workspaceRoots: [
-        '~/.deepseekgui/default_workspace',
-        'C:\\Users\\zxy\\.deepseekgui\\default_workspace'
+        '~/.mimo-work/default_workspace',
+        'C:\\Users\\zxy\\.mimo-work\\default_workspace'
       ]
     })
 
-    expect(groups).toHaveLength(1)
-    expect(groups[0]?.[0]).toBe('C:\\Users\\zxy\\.deepseekgui\\default_workspace')
-    expect(groups[0]?.[1].map((item) => item.id)).toEqual(['default-short', 'default-absolute'])
+    expect(groups).toEqual([])
   })
 
   it('loads requirement histories from all known project workspaces while searching', () => {
     const workspaces = buildSidebarDraftWorkspacePaths({
       threads: [
         thread({ id: 'code-current', workspace: '/Users/zxy/project-a' }),
-        thread({ id: 'write-assistant', workspace: '~/.deepseekgui/write_workspace' })
+        thread({ id: 'write-assistant', workspace: '~/.mimo-work/write_workspace' })
       ],
       workspaceRoot: '/Users/zxy/project-a',
       workspaceRoots: [
         '/Users/zxy/project-a',
         '/Users/zxy/project-b',
-        '~/.deepseekgui/write_workspace'
+        '~/.mimo-work/write_workspace'
       ]
     })
 

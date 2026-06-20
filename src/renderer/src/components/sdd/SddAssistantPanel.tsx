@@ -148,7 +148,7 @@ export function SddAssistantPanel({
           </div>
         ) : (
           <div className="sdd-assistant-empty flex min-h-full flex-col justify-end px-5 py-5">
-            <div className="sdd-assistant-empty-card mb-auto rounded-[20px] border border-ds-border bg-ds-card/95 p-4 shadow-sm">
+            <div className="sdd-assistant-empty-card mb-auto rounded-[8px] border border-ds-border bg-ds-card/95 p-4 shadow-sm">
               <div className="sdd-assistant-empty-icon flex h-11 w-11 items-center justify-center rounded-2xl bg-accent/10 text-accent">
                 <FileQuestion className="h-5 w-5" strokeWidth={1.9} />
               </div>
@@ -179,7 +179,7 @@ export function SddAssistantPanel({
                 onClick={() => setAssistantPrompt(t('sddAssistantResearchPrompt'))}
                 className="sdd-assistant-action flex items-center gap-3 rounded-2xl border border-ds-border bg-ds-card px-3 py-3 text-left transition hover:border-accent/25 hover:bg-ds-hover"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-300">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[var(--ds-accent-soft)] text-ds-ink dark:bg-[rgba(251,129,71,0.16)] dark:text-[#ffad7f]">
                   <Search className="h-4 w-4" strokeWidth={1.9} />
                 </span>
                 <span className="min-w-0">
@@ -192,7 +192,7 @@ export function SddAssistantPanel({
                 onClick={() => setAssistantPrompt(t('sddAssistantStructurePrompt'))}
                 className="sdd-assistant-action flex items-center gap-3 rounded-2xl border border-ds-border bg-ds-card px-3 py-3 text-left transition hover:border-accent/25 hover:bg-ds-hover"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-300">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-ds-skill-soft text-ds-skill">
                   <ListChecks className="h-4 w-4" strokeWidth={1.9} />
                 </span>
                 <span className="min-w-0">

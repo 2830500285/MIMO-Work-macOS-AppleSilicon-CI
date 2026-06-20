@@ -46,12 +46,19 @@ export function splitThink(text: string): { think: string; content: string } {
 }
 
 export function blockHasPendingRuntimeWork(block: ChatBlock): boolean {
-  if (block.kind === 'tool') return block.status === 'running'
+  if (block.kind === 'tool') return block.status === 'running' && !isPendingQuestionTool(block)
   if (block.kind === 'compaction') return block.status === 'running'
   if (block.kind === 'review') return block.status === 'running'
   if (block.kind === 'approval') return block.status === 'pending'
   if (block.kind === 'user_input') return block.status === 'pending'
   return false
+}
+
+function isPendingQuestionTool(block: Extract<ChatBlock, { kind: 'tool' }>): boolean {
+  const toolName = typeof block.meta?.toolName === 'string' ? block.meta.toolName.trim().toLowerCase() : ''
+  if (toolName === 'question') return true
+  const summary = block.summary.trim().toLowerCase()
+  return summary === 'question' || summary === 'question question'
 }
 
 export function isProcessBlock(block: ChatBlock): boolean {

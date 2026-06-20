@@ -221,7 +221,7 @@
   opacity: 0.85;
 }
 
-/* iKun 专属配色:小鸡黄 #facc15 / 篮球橙 #d8730d / 金黄 #f2b13d / 暖炭外套 #16110d / 奶油晨练场底色 */
+/* Retired alternate palette kept only for legacy selector compatibility. */
 [data-ikun-mode='on'] {
   --bg-app: #faf3e4;
   --bg-sidebar: #f5edd9;
@@ -303,7 +303,7 @@
   opacity: 0.8;
 }
 
-/* iKun 夜场球馆:暖炭底 + 金黄高亮,同时覆盖全局 dark 与 workbench-shell 两层 token */
+/* Retired dark alternate palette kept only for legacy selector compatibility. */
 [data-theme='dark'][data-ikun-mode='on'],
 [data-theme='dark'][data-ikun-mode='on'] .ds-workbench-shell {
   --bg-app: #16110d;
@@ -2644,21 +2644,22 @@ pre {
 
 .timeline-jump-rail {
   position: sticky;
-  top: 0.75rem;
+  top: 42%;
   z-index: 30;
   display: flex;
-  max-height: min(48vh, 22rem);
+  width: 1.75rem;
+  max-height: min(46vh, 22rem);
   flex-direction: column;
-  gap: 0.25rem;
-  align-self: flex-end;
-  overflow-y: auto;
-  margin: 0.65rem 0.65rem -0.65rem 0;
-  border: 1px solid var(--ds-border-muted);
+  gap: 0.58rem;
+  align-self: flex-start;
+  overflow: visible;
+  margin: 5.75rem 0 -5.75rem clamp(1.2rem, calc((100% - 56rem) / 2 - 3rem), 4rem);
+  border: 0;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--ds-surface-card) 88%, transparent);
-  padding: 0.3rem;
-  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(18px);
+  background: transparent;
+  padding: 0.25rem 0.2rem;
+  box-shadow: none;
+  backdrop-filter: none;
   scrollbar-width: none;
 }
 
@@ -2667,30 +2668,74 @@ pre {
 }
 
 .timeline-jump-rail-button {
+  position: relative;
   display: inline-flex;
-  min-width: 1.55rem;
-  height: 1.55rem;
+  width: 1.15rem;
+  height: 1.15rem;
   align-items: center;
   justify-content: center;
   border: 0;
   border-radius: 999px;
   background: transparent;
-  color: var(--ds-text-faint);
-  font-size: 0.72rem;
-  font-weight: 700;
-  line-height: 1;
   transition:
-    background 140ms ease,
-    color 140ms ease,
+    opacity 140ms ease,
     transform 140ms ease;
 }
 
 .timeline-jump-rail-button:hover,
 .timeline-jump-rail-button:focus-visible {
-  background: var(--ds-accent-soft);
-  color: var(--ds-accent);
-  transform: translateY(-1px);
+  transform: translateX(1px);
   outline: none;
+}
+
+.timeline-jump-rail-dot {
+  display: block;
+  width: 0.46rem;
+  height: 0.46rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ds-text-faint) 56%, transparent);
+  transition:
+    background 140ms ease,
+    box-shadow 140ms ease,
+    transform 140ms ease;
+}
+
+.timeline-jump-rail-button:hover .timeline-jump-rail-dot,
+.timeline-jump-rail-button:focus-visible .timeline-jump-rail-dot {
+  background: var(--ds-text-muted);
+  box-shadow: 0 0 0 5px color-mix(in srgb, var(--ds-text-faint) 10%, transparent);
+  transform: scale(1.22);
+}
+
+.timeline-jump-rail-tooltip {
+  position: absolute;
+  left: calc(100% + 0.65rem);
+  top: 50%;
+  z-index: 1;
+  width: max-content;
+  max-width: min(28rem, calc(100vw - 18rem));
+  padding: 0.58rem 0.72rem;
+  border-radius: 8px;
+  background: rgba(28, 28, 28, 0.94);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 500;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(-0.2rem, -50%, 0);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.timeline-jump-rail-button:hover .timeline-jump-rail-tooltip,
+.timeline-jump-rail-button:focus-visible .timeline-jump-rail-tooltip {
+  opacity: 1;
+  transform: translate3d(0, -50%, 0);
 }
 
 .ds-plan-panel-overlay {
@@ -3057,6 +3102,71 @@ pre {
   margin-bottom: 1.35rem;
   place-items: center;
   width: min(560px, 100%);
+}
+
+.ds-mimo-wordmark-hero {
+  background: #fffefa;
+  border: 1px solid #e8e2dc;
+  border-radius: 8px;
+  box-shadow: 0 22px 70px rgba(31, 35, 41, 0.08);
+  display: grid;
+  height: 156px;
+  margin-bottom: 2rem;
+  padding: 0 2rem;
+  place-items: center;
+  width: min(500px, calc(100vw - 56px));
+}
+
+.ds-runtime-wake-stage .ds-mimo-wordmark-hero {
+  margin-bottom: 0;
+}
+
+.is-waking .ds-mimo-wordmark-hero {
+  animation: ds-mimo-wordmark-wake 2.8s ease-in-out infinite;
+}
+
+.ds-mimo-wordmark-svg {
+  display: block;
+  height: auto;
+  max-width: 438px;
+  width: 100%;
+}
+
+.ds-mimo-mini-mark {
+  align-items: center;
+  background: #fffefa;
+  border: 1px solid #e8e2dc;
+  border-radius: 8px;
+  box-shadow: 0 6px 18px rgba(31, 35, 41, 0.08);
+  display: inline-flex;
+  height: 24px;
+  justify-content: center;
+  overflow: hidden;
+  width: 24px;
+}
+
+.ds-mimo-mini-mark img {
+  display: block;
+  height: 18px;
+  object-fit: contain;
+  width: 18px;
+}
+
+.ds-mimo-mini-mark.is-active {
+  animation: ds-mimo-mini-mark-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes ds-mimo-mini-mark-pulse {
+  0%,
+  100% {
+    opacity: 0.94;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
 }
 
 .ds-runtime-wake-shell {
@@ -3573,7 +3683,20 @@ pre {
   }
 }
 
-/* ---------- 泳动模式轮播:推进中(propel,默认) / 冲刺中(sprint) / 潜入中(dive) / 冲浪中(surf) ---------- */
+@keyframes ds-mimo-wordmark-wake {
+  0%,
+  100% {
+    opacity: 0.98;
+    transform: translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+
+/* ---------- 状态轮播:熬粥中(propel,默认) / 开火中(sprint) / 淘米中(dive) / 咕嘟中(surf) ---------- */
 /* 小鸟朝左:-x = 前进,+rotate = 抬头(逆向即低头),水花/尾迹在 +x 一侧(身后) */
 
 .ds-work-logo.ds-work-logo-mode-sprint {
@@ -3704,7 +3827,7 @@ pre {
   }
 }
 
-/* 冲浪中:素材自带浪板浪花,做左右刻浪的压浪动作 */
+/* 咕嘟中:素材自带浪板浪花,做左右刻浪的压浪动作 */
 .ds-work-logo.ds-work-logo-mode-surf {
   --work-logo-duration: 1.9s;
   --work-logo-body-duration: 0.95s;
@@ -3817,7 +3940,7 @@ pre {
   }
 }
 
-/* iKun 模式下静态场景换成 iKun 形象,姿态语义沿用:greet 蹦跳 / sleep 打盹 / sit 慢摇 */
+/* Legacy alternate figures are no longer activated by MIMO Work. */
 .ds-kun-state .ds-ikun-state-figure {
   position: absolute;
   inset: 0;
@@ -3939,7 +4062,7 @@ pre {
   }
 }
 
-/* ---------- iKun 出没:主会话两侧不定时冒出的坤鸡彩蛋(指针穿透) ---------- */
+/* ---------- Retired decorative cameo layer, kept for legacy CSS compatibility ---------- */
 
 .ds-ikun-cameo-layer {
   position: absolute;
@@ -4180,7 +4303,7 @@ pre {
   }
 }
 
-/* ---------- 任务完成庆祝:回合结束随机来一段(双形象,iKun 模式自动换坤鸡) ---------- */
+/* ---------- Retired completion celebration layer, kept for legacy CSS compatibility ---------- */
 
 .ds-kun-celebration-layer {
   position: absolute;
@@ -4388,7 +4511,7 @@ pre {
   }
 }
 
-/* iKun 模式开关上的坤鸡立绘:关闭时蹲灰度,打开点亮 */
+/* Retired theme switch figure styling. */
 .ds-ikun-toggle-figure {
   height: 16px;
   width: 16px;
@@ -4427,7 +4550,7 @@ pre {
     inset 0 1px 0 rgba(151, 192, 235, 0.09);
 }
 
-/* iKun 模式:hero 舞台的蓝绿点缀改为篮球橙 + 金黄 */
+/* Retired alternate hero accents. */
 [data-ikun-mode='on'] .ds-runtime-wake-shell {
   background:
     linear-gradient(180deg, rgba(255, 253, 246, 0.96), rgba(252, 246, 233, 0.9)),
@@ -4720,7 +4843,7 @@ pre {
   }
 }
 
-/* Focus mode removes decorative Kun / iKun mascots without hiding essential loading indicators. */
+/* Focus mode removes decorative mascots without hiding essential loading indicators. */
 [data-focus-mode='on'] .ds-ikun-cameo-layer,
 [data-focus-mode='on'] .ds-kun-celebration-layer,
 [data-focus-mode='on'] .ds-kun-state,
@@ -4729,4 +4852,296 @@ pre {
 [data-focus-mode='on'] .ds-work-logo-slot:has(.ds-work-logo),
 [data-focus-mode='on'] .ds-ikun-toggle-figure {
   display: none !important;
+}
+
+/* MIMO Work uses a product-console visual language, so legacy mascot layers stay hidden. */
+.ds-ikun-cameo-layer,
+.ds-kun-celebration-layer,
+.ds-kun-state,
+.ds-runtime-wake-zzz,
+.ds-work-logo,
+.ds-work-logo-slot:has(.ds-work-logo),
+.ds-ikun-toggle-figure {
+  display: none !important;
+}
+
+/* MIMO Work console theme: aligned with the Xiaomi MiMo platform console. */
+:root,
+:root[data-ikun-mode='on'] {
+  --ds-mimo-orange: #fb8147;
+  --ds-mimo-warm-bg: #fcfaf8;
+  --ds-mimo-card: #faf7f3;
+  --ds-mimo-section: #f3eee8;
+  --ds-mimo-border: #f0ebe5;
+  --ds-mimo-strong-border: #d9d1c7;
+  --ds-mimo-text: #1f2329;
+  --ds-mimo-muted: #646a73;
+  --ds-mimo-faint: rgba(31, 35, 41, 0.48);
+
+  --bg-app: #fcfaf8;
+  --bg-sidebar: #f6f3ec;
+  --bg-canvas: #fcfaf8;
+  --surface-1: rgba(250, 247, 243, 0.96);
+  --surface-2: #ffffff;
+  --surface-3: #ffffff;
+  --border-soft: rgba(31, 35, 41, 0.1);
+  --border-strong: rgba(31, 35, 41, 0.16);
+  --text-primary: var(--ds-mimo-text);
+  --text-secondary: var(--ds-mimo-muted);
+  --text-tertiary: var(--ds-mimo-faint);
+  --text-placeholder: rgba(31, 35, 41, 0.36);
+
+  --ds-bg-main: var(--bg-app);
+  --ds-bg-sidebar: var(--bg-sidebar);
+  --ds-bg-canvas: var(--bg-canvas);
+  --ds-surface-card: var(--surface-1);
+  --ds-surface-elevated: var(--surface-2);
+  --ds-surface-subtle: var(--ds-mimo-section);
+  --ds-surface-hover: #f5efe6;
+  --ds-border: var(--ds-mimo-border);
+  --ds-border-muted: rgba(31, 35, 41, 0.08);
+  --ds-border-strong: var(--ds-mimo-strong-border);
+  --ds-text: var(--ds-mimo-text);
+  --ds-text-muted: var(--ds-mimo-muted);
+  --ds-text-faint: var(--ds-mimo-faint);
+  --ds-bubble-user: #fff6ed;
+  --ds-bubble-user-fg: var(--ds-mimo-text);
+  --ds-accent: #000000;
+  --ds-accent-soft: #fff6ed;
+  --ds-success: #128a4a;
+  --ds-danger: #d92d20;
+  --ds-diff-added: #128a4a;
+  --ds-diff-added-soft: rgba(18, 138, 74, 0.1);
+  --ds-diff-removed: #d92d20;
+  --ds-diff-removed-soft: rgba(217, 45, 32, 0.1);
+  --ds-skill: var(--ds-mimo-orange);
+  --ds-skill-soft: #fff6ed;
+  --ds-success-soft: rgba(18, 138, 74, 0.12);
+  --ds-warning-soft: rgba(251, 129, 71, 0.16);
+  --ds-danger-soft: rgba(217, 45, 32, 0.12);
+  --ds-shadow-shell: 0 12px 30px rgba(31, 35, 41, 0.06);
+  --ds-shadow-panel: 0 16px 44px rgba(31, 35, 41, 0.06);
+  --ds-shadow-composer: 0 14px 38px rgba(31, 35, 41, 0.08);
+  --ds-stage-gradient: linear-gradient(180deg, #fcfaf8 0%, #ffffff 100%);
+  --ds-topbar-bg: linear-gradient(180deg, rgba(252, 250, 248, 0.94), rgba(252, 250, 248, 0.72));
+  --ds-topbar-shadow: inset 0 -1px 0 var(--ds-mimo-border);
+  --ds-sidebar-gradient: linear-gradient(180deg, #f8f5ef 0%, #f6f3ec 100%);
+  --ds-sidebar-haze: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0) 34%);
+  --ds-sidebar-border: var(--ds-mimo-border);
+  --ds-sidebar-shadow: none;
+  --ds-sidebar-row-hover: #f5efe6;
+  --ds-sidebar-row-active: #eee8df;
+  --ds-sidebar-row-ring: rgba(31, 35, 41, 0.12);
+  --ds-sidebar-field-bg: #faf7f3;
+  --ds-sidebar-field-focus: #ffffff;
+  --ds-sidebar-divider: var(--ds-mimo-border);
+  --ds-card-soft: rgba(250, 247, 243, 0.88);
+  --ds-card-strong: #ffffff;
+  --ds-card-muted: #f3eee8;
+  --ds-card-ghost: rgba(250, 247, 243, 0.72);
+  --ds-card-hover: #ffffff;
+  --ds-chip-bg: #ffffff;
+  --ds-chip-muted-bg: #f3eee8;
+  --ds-chip-hover: #f5efe6;
+  --ds-chip-border: var(--ds-mimo-border);
+  --ds-chip-active: linear-gradient(180deg, #fff6ed, #f9ede0);
+  --ds-kbd-bg: #f3eee8;
+  --ds-code-bg: #f5f5f5;
+  --ds-inline-code-bg: #f3eee8;
+  --ds-inline-code-hover-bg: #eee8df;
+  --ds-pre-bg: #f5f5f5;
+  --ds-table-head-bg: #f3eee8;
+  --ds-scrollbar-thumb: rgba(31, 35, 41, 0.18);
+  --ds-scrollbar-thumb-hover: rgba(31, 35, 41, 0.28);
+  --ds-selection: rgba(251, 129, 71, 0.22);
+  --ds-shadow-card-soft: 0 10px 28px rgba(31, 35, 41, 0.05);
+  --ds-shadow-card-strong: 0 14px 36px rgba(31, 35, 41, 0.08);
+  --ds-shadow-chip: none;
+}
+
+:root[data-theme='dark'],
+:root[data-theme='dark'][data-ikun-mode='on'],
+:root[data-theme='dark'] .ds-workbench-shell {
+  --ds-mimo-orange: #fb8147;
+  --bg-app: #15120f;
+  --bg-sidebar: #1b1712;
+  --bg-canvas: #15120f;
+  --surface-1: rgba(35, 30, 24, 0.94);
+  --surface-2: #241f18;
+  --surface-3: #2b251d;
+  --border-soft: rgba(255, 246, 237, 0.1);
+  --border-strong: rgba(255, 246, 237, 0.16);
+  --text-primary: #f7f2eb;
+  --text-secondary: #cfc3b5;
+  --text-tertiary: rgba(247, 242, 235, 0.54);
+  --text-placeholder: rgba(247, 242, 235, 0.38);
+
+  --ds-bg-main: var(--bg-app);
+  --ds-bg-sidebar: var(--bg-sidebar);
+  --ds-bg-canvas: var(--bg-canvas);
+  --ds-surface-card: var(--surface-1);
+  --ds-surface-elevated: var(--surface-2);
+  --ds-surface-subtle: #241f18;
+  --ds-surface-hover: rgba(255, 246, 237, 0.08);
+  --ds-border: var(--border-soft);
+  --ds-border-muted: rgba(255, 246, 237, 0.08);
+  --ds-border-strong: var(--border-strong);
+  --ds-text: var(--text-primary);
+  --ds-text-muted: var(--text-secondary);
+  --ds-text-faint: var(--text-tertiary);
+  --ds-bubble-user: rgba(251, 129, 71, 0.14);
+  --ds-bubble-user-fg: var(--text-primary);
+  --ds-accent: #fb8147;
+  --ds-accent-soft: rgba(251, 129, 71, 0.16);
+  --ds-success: #40c977;
+  --ds-danger: #ff6b61;
+  --ds-diff-added: #40c977;
+  --ds-diff-added-soft: rgba(64, 201, 119, 0.16);
+  --ds-diff-removed: #ff6b61;
+  --ds-diff-removed-soft: rgba(255, 107, 97, 0.16);
+  --ds-skill: #fb8147;
+  --ds-skill-soft: rgba(251, 129, 71, 0.16);
+  --ds-success-soft: rgba(64, 201, 119, 0.16);
+  --ds-warning-soft: rgba(251, 129, 71, 0.18);
+  --ds-danger-soft: rgba(255, 107, 97, 0.16);
+  --ds-shadow-shell: 0 38px 96px rgba(0, 0, 0, 0.48);
+  --ds-shadow-panel: 0 22px 58px rgba(0, 0, 0, 0.32);
+  --ds-shadow-composer: 0 24px 68px rgba(0, 0, 0, 0.36);
+  --ds-stage-gradient: linear-gradient(180deg, #1b1712 0%, #15120f 100%);
+  --ds-topbar-bg: linear-gradient(180deg, rgba(35, 30, 24, 0.9), rgba(21, 18, 15, 0.72));
+  --ds-topbar-shadow: inset 0 -1px 0 rgba(255, 246, 237, 0.08);
+  --ds-sidebar-gradient: linear-gradient(180deg, #211c16 0%, #1b1712 100%);
+  --ds-sidebar-haze: linear-gradient(180deg, rgba(255, 246, 237, 0.04), rgba(255, 246, 237, 0) 34%);
+  --ds-sidebar-border: rgba(255, 246, 237, 0.08);
+  --ds-sidebar-row-hover: rgba(255, 246, 237, 0.07);
+  --ds-sidebar-row-active: rgba(251, 129, 71, 0.13);
+  --ds-sidebar-row-ring: rgba(251, 129, 71, 0.18);
+  --ds-sidebar-field-bg: rgba(255, 246, 237, 0.05);
+  --ds-sidebar-field-focus: rgba(255, 246, 237, 0.08);
+  --ds-sidebar-divider: rgba(255, 246, 237, 0.08);
+  --ds-card-soft: rgba(35, 30, 24, 0.88);
+  --ds-card-strong: #241f18;
+  --ds-card-muted: rgba(255, 246, 237, 0.05);
+  --ds-card-ghost: rgba(21, 18, 15, 0.72);
+  --ds-card-hover: #2b251d;
+  --ds-chip-bg: #241f18;
+  --ds-chip-muted-bg: rgba(255, 246, 237, 0.05);
+  --ds-chip-hover: rgba(255, 246, 237, 0.08);
+  --ds-chip-border: rgba(255, 246, 237, 0.1);
+  --ds-chip-active: linear-gradient(180deg, rgba(251, 129, 71, 0.2), rgba(251, 129, 71, 0.12));
+  --ds-kbd-bg: rgba(255, 246, 237, 0.06);
+  --ds-code-bg: #201b15;
+  --ds-inline-code-bg: rgba(255, 246, 237, 0.07);
+  --ds-inline-code-hover-bg: rgba(255, 246, 237, 0.1);
+  --ds-pre-bg: #181410;
+  --ds-table-head-bg: #241f18;
+  --ds-scrollbar-thumb: rgba(247, 242, 235, 0.2);
+  --ds-scrollbar-thumb-hover: rgba(247, 242, 235, 0.3);
+  --ds-selection: rgba(251, 129, 71, 0.28);
+  --ds-shadow-card-soft: 0 16px 42px rgba(0, 0, 0, 0.2);
+  --ds-shadow-card-strong: 0 22px 56px rgba(0, 0, 0, 0.28);
+  --ds-shadow-chip: none;
+}
+
+body {
+  font-family:
+    Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+}
+
+body::before,
+:root[data-ikun-mode='on'] body::before {
+  background: linear-gradient(180deg, #fcfaf8 0%, #f6f3ec 100%);
+}
+
+body::after,
+:root[data-ikun-mode='on'] body::after {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(255, 255, 255, 0) 28%),
+    linear-gradient(120deg, rgba(243, 238, 232, 0.68), rgba(243, 238, 232, 0) 46%);
+  opacity: 0.82;
+}
+
+:root[data-theme='dark'] body::before,
+:root[data-theme='dark'][data-ikun-mode='on'] body::before {
+  background: linear-gradient(180deg, #15120f 0%, #1b1712 100%);
+}
+
+:root[data-theme='dark'] body::after,
+:root[data-theme='dark'][data-ikun-mode='on'] body::after {
+  background:
+    linear-gradient(180deg, rgba(255, 246, 237, 0.05), rgba(255, 246, 237, 0) 28%),
+    linear-gradient(120deg, rgba(251, 129, 71, 0.08), rgba(251, 129, 71, 0) 42%);
+  opacity: 0.82;
+}
+
+.ds-windows-titlebar {
+  background: var(--ds-topbar-bg), var(--ds-bg-main);
+}
+
+.ds-composer-shell::before,
+:root[data-theme='dark'] .ds-composer-shell::before,
+:root[data-theme='dark'][data-ikun-mode='on'] .ds-composer-shell::before {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 36%);
+}
+
+.ds-composer-shell::after,
+:root[data-theme='dark'] .ds-composer-shell::after,
+:root[data-theme='dark'][data-ikun-mode='on'] .ds-composer-shell::after {
+  border-color: var(--ds-border-muted);
+}
+
+.ds-chat-composer {
+  border-radius: 8px;
+  background: var(--ds-surface-elevated);
+  border-color: var(--ds-border);
+  box-shadow: var(--ds-shadow-composer);
+}
+
+.ds-chat-composer-focus {
+  border-color: var(--ds-border-strong);
+  box-shadow:
+    0 0 0 3px rgba(251, 129, 71, 0.12),
+    var(--ds-shadow-composer);
+}
+
+:root[data-theme='dark'] .ds-chat-composer {
+  background: var(--ds-surface-elevated);
+  border-color: var(--ds-border);
+  box-shadow: var(--ds-shadow-composer);
+}
+
+:root[data-theme='dark'] .ds-chat-composer-focus {
+  border-color: rgba(251, 129, 71, 0.42);
+  box-shadow:
+    0 0 0 3px rgba(251, 129, 71, 0.14),
+    var(--ds-shadow-composer);
+}
+
+.ds-composer-toolbar,
+:root[data-theme='dark'] .ds-composer-toolbar {
+  border-top-color: var(--ds-border-muted);
+}
+
+.ds-card,
+.ds-panel,
+.ds-shell,
+.ds-composer-shell {
+  border-color: var(--ds-border);
+}
+
+[class*='rounded-[14px]'],
+[class*='rounded-[16px]'],
+[class*='rounded-[18px]'],
+[class*='rounded-[20px]'],
+[class*='rounded-[22px]'],
+[class*='rounded-[24px]'],
+[class*='rounded-[26px]'],
+[class*='rounded-[28px]'],
+[class*='rounded-[32px]'] {
+  border-radius: 8px !important;
+}
+
+[class*='tracking-[-'] {
+  letter-spacing: 0 !important;
 }

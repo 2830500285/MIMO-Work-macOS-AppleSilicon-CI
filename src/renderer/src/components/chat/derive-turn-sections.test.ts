@@ -87,7 +87,7 @@ describe('deriveTurnSections', () => {
         summary: 'web_fetch: issue',
         status: 'success',
         toolKind: 'tool_call',
-        detail: 'https://github.com/XingYu-Zhong/DeepSeek-GUI/issues/96'
+        detail: 'https://github.com/XingYu-Zhong/MIMO-Work/issues/96'
       },
       { kind: 'assistant', id: 'next', text: 'The issue link above should still be visible.' }
     ])
@@ -128,7 +128,7 @@ describe('deriveTurnSections', () => {
         toolKind: 'tool_call',
         meta: {
           attachments: [{ id: 'att_img', name: 'img.png', mimeType: 'image/png' }],
-          generatedFiles: [{ relativePath: '.deepseekgui-images/img.png', mimeType: 'image/png' }]
+          generatedFiles: [{ relativePath: '.mimo-work-images/img.png', mimeType: 'image/png' }]
         }
       },
       {
@@ -156,7 +156,7 @@ describe('deriveTurnSections', () => {
           meta: {
             generatedFiles: [
               {
-                relativePath: '.deepseekgui-images/img.png',
+                relativePath: '.mimo-work-images/img.png',
                 mimeType: 'image/png'
               }
             ]

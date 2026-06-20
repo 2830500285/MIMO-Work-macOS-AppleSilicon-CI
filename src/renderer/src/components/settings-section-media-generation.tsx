@@ -273,7 +273,7 @@ export function MediaGenerationSettingsSection({ ctx }: { ctx: Record<string, an
                       onChange={(e) => updateMusicGeneration({ protocol: e.target.value })}
                     >
                       {MUSIC_GENERATION_PROTOCOLS.map((protocol) => (
-                        <option key={protocol} value={protocol}>{t('musicGenerationProtocolMiniMax')}</option>
+                        <option key={protocol} value={protocol}>{t('musicGenerationProtocolCustom')}</option>
                       ))}
                     </select>
                   }
@@ -344,7 +344,7 @@ export function MediaGenerationSettingsSection({ ctx }: { ctx: Record<string, an
                       onChange={(e) => updateVideoGeneration({ protocol: e.target.value })}
                     >
                       {VIDEO_GENERATION_PROTOCOLS.map((protocol) => (
-                        <option key={protocol} value={protocol}>{t('videoGenerationProtocolMiniMax')}</option>
+                        <option key={protocol} value={protocol}>{t('videoGenerationProtocolCustom')}</option>
                       ))}
                     </select>
                   }
@@ -647,7 +647,6 @@ function textToSpeechProtocolLabel(
   t: (key: string) => string,
   protocol: string
 ): string {
-  if (protocol === 'minimax-t2a') return t('textToSpeechProtocolMiniMax')
   if (protocol === 'mimo-tts') return t('textToSpeechProtocolMimo')
   return t('textToSpeechProtocolOpenAi')
 }

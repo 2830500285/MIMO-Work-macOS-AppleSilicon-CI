@@ -9,6 +9,7 @@ import type {
   UserInputAnswer
 } from './types'
 import { getKunRuntimeSettings } from '@shared/app-settings'
+import { redactSecretText } from '@shared/secret-redaction'
 import {
   KUN_ATTACHMENT_DIAGNOSTICS_PATH,
   KUN_ATTACHMENTS_PATH,
@@ -79,6 +80,27 @@ function readRuntimeError(body: string, fallback: string): RuntimeError {
   return parseRuntimeErrorBody(body, fallback)
 }
 
+function runtimeErrorForSseFailure(
+  streamId: string,
+  message?: string,
+  status?: number
+): { code: string; message: string } {
+  if (status !== undefined) {
+    return {
+      code: 'runtime_sse_http_error',
+      message: `MIMO Work 运行时事件流连接失败（HTTP ${status}）。当前回复没有完成，请检查本地运行时或模型供应商后重试。`
+    }
+  }
+  const detail = redactSecretText(message?.trim() || 'unknown')
+  const terminated = detail.toLowerCase() === 'terminated'
+  return {
+    code: terminated ? 'runtime_sse_terminated' : 'runtime_sse_error',
+    message: terminated
+      ? 'MIMO Work 运行时事件流已中断，当前回复没有完成。通常是模型供应商、自定义路由或本地运行时提前终止，请检查后重试。'
+      : `MIMO Work 运行时事件流出错，当前回复没有完成。请检查本地运行时或模型供应商后重试。详情：${detail}（stream ${streamId}）`
+  }
+}
+
 function normalizeApprovalPolicy(value: string | undefined): NormalizedThread['approvalPolicy'] {
   switch (value) {
     case 'auto':
@@ -109,7 +131,7 @@ function readRuntimeJson<T>(body: string, fallback: string): T {
  */
 export class KunRuntimeProvider implements AgentProvider {
   readonly id = 'kun' as const
-  readonly displayName = 'Kun'
+  readonly displayName = 'MIMO Work'
 
   getCapabilities(): {
     interrupt: boolean
@@ -814,7 +836,15 @@ export class KunRuntimeProvider implements AgentProvider {
       })
       const offErr = rendererRuntimeClient.onSseError(({ streamId: sid, message, status }) => {
         if (sid !== streamId) return
-        sink.onError(new Error(message ?? `sse error ${status ?? ''}`))
+        const runtimeError = runtimeErrorForSseFailure(streamId, message, status)
+        sink.onRuntimeError?.({
+          itemId: `runtime_sse_error_${streamId}`,
+          createdAt: new Date().toISOString(),
+          message: runtimeError.message,
+          code: runtimeError.code,
+          severity: 'error'
+        })
+        sink.onError(new Error(runtimeError.message), { terminal: true })
         finish()
       })
       const offEnd = rendererRuntimeClient.onSseEnd(({ streamId: sid }) => {

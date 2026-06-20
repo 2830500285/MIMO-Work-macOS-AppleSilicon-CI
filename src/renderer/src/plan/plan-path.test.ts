@@ -32,7 +32,7 @@ describe('plan-path', () => {
 
   it('accepts only direct markdown files inside the GUI plan directory', () => {
     expect(isGuiPlanRelativePath('.kunsdd/plan/login.md')).toBe(true)
-    expect(isGuiPlanRelativePath('.deepseekgui/plan/login.md')).toBe(true)
+    expect(isGuiPlanRelativePath('.mimo-work/plan/login.md')).toBe(true)
     expect(isGuiPlanRelativePath('.kunsdd/plan/nested/login.md')).toBe(false)
     expect(isGuiPlanRelativePath('../.kunsdd/plan/login.md')).toBe(false)
     expect(isGuiPlanRelativePath('.kunsdd/plan/login.txt')).toBe(false)

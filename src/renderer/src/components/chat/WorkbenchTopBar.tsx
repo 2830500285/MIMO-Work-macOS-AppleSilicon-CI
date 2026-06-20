@@ -7,16 +7,15 @@ import {
   Check,
   ChevronDown,
   Code2,
-  ClipboardList,
   Download,
   ExternalLink,
   FileEdit,
   FolderOpen,
   Globe2,
-  ListTodo,
   Loader2,
   MessageCircleMore,
   RefreshCw,
+  SlidersHorizontal,
   Terminal
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -27,7 +26,6 @@ export type RightPanelMode = 'todo' | 'changes' | 'browser' | 'file' | 'plan' | 
 type Props = {
   rightPanelMode: RightPanelMode
   onToggleRightPanelMode: (mode: Exclude<RightPanelMode, null>) => void
-  planPanelEnabled?: boolean
   sideChatCount?: number
   sideChatRunningCount?: number
   sideChatOpen?: boolean
@@ -38,7 +36,6 @@ type Props = {
 export function WorkbenchTopBar({
   rightPanelMode,
   onToggleRightPanelMode,
-  planPanelEnabled = false,
   sideChatCount = 0,
   sideChatRunningCount = 0,
   sideChatOpen = false,
@@ -49,16 +46,12 @@ export function WorkbenchTopBar({
   const [editors, setEditors] = useState<EditorInfo[]>([])
   const [selectedEditorId, setSelectedEditorId] = useState(() => readPreferredEditorId() ?? '')
   const [editorMenuOpen, setEditorMenuOpen] = useState(false)
+  const [toolMenuOpen, setToolMenuOpen] = useState(false)
   const [failedIconIds, setFailedIconIds] = useState<Set<string>>(() => new Set())
   const [guiUpdateState, setGuiUpdateState] = useState<GuiUpdateState>({ status: 'idle' })
   const [applyingGuiUpdate, setApplyingGuiUpdate] = useState(false)
   const editorMenuRef = useRef<HTMLDivElement>(null)
-  const items = [
-    { mode: 'todo' as const, label: t('rightPanelTodo'), icon: ListTodo },
-    ...(planPanelEnabled ? [{ mode: 'plan' as const, label: t('rightPanelPlan'), icon: ClipboardList }] : []),
-    { mode: 'changes' as const, label: t('rightPanelChanges'), icon: FileEdit },
-    { mode: 'browser' as const, label: t('rightPanelBrowser'), icon: Globe2 }
-  ]
+  const toolMenuRef = useRef<HTMLDivElement>(null)
   const selectedEditor = useMemo(
     () => editors.find((editor) => editor.id === selectedEditorId) ?? editors[0],
     [editors, selectedEditorId]
@@ -98,6 +91,24 @@ export function WorkbenchTopBar({
     window.addEventListener('pointerdown', onPointerDown)
     return () => window.removeEventListener('pointerdown', onPointerDown)
   }, [editorMenuOpen])
+
+  useEffect(() => {
+    if (!toolMenuOpen) return
+    const onPointerDown = (event: PointerEvent): void => {
+      const target = event.target
+      if (target instanceof Node && toolMenuRef.current?.contains(target)) return
+      setToolMenuOpen(false)
+    }
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setToolMenuOpen(false)
+    }
+    window.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('keydown', onKeyDown)
+    return () => {
+      window.removeEventListener('pointerdown', onPointerDown)
+      window.removeEventListener('keydown', onKeyDown)
+    }
+  }, [toolMenuOpen])
 
   useEffect(() => {
     if (typeof window.kunGui?.onGuiUpdateState !== 'function') return
@@ -169,6 +180,17 @@ export function WorkbenchTopBar({
       next.add(editorId)
       return next
     })
+  }
+
+  const openPanelMode = (mode: Exclude<RightPanelMode, null>): void => {
+    setToolMenuOpen(false)
+    onToggleRightPanelMode(mode)
+  }
+
+  const openSideChatFromMenu = (): void => {
+    if (!onOpenSideChat || !sideChatEnabled) return
+    setToolMenuOpen(false)
+    onOpenSideChat()
   }
 
   const renderEditorIcon = (editor: EditorInfo | null | undefined, className: string): ReactElement => {
@@ -280,7 +302,7 @@ export function WorkbenchTopBar({
         </button>
 
         {editorMenuOpen ? (
-          <div className="ds-card-strong absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-[18px] border border-ds-border py-1.5 shadow-[0_18px_52px_rgba(20,47,95,0.18)] backdrop-blur-xl dark:shadow-[0_22px_58px_rgba(0,0,0,0.38)]">
+          <div className="ds-card-strong absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-[18px] border border-ds-border py-1.5 shadow-[0_18px_52px_rgba(31,35,41,0.18)] backdrop-blur-xl dark:shadow-[0_22px_58px_rgba(0,0,0,0.38)]">
             <div className="border-b border-ds-border-muted px-3 pb-2 pt-1.5 text-[11px] font-semibold text-ds-faint">
               {t('editorPickerMenuTitle')}
             </div>
@@ -312,53 +334,119 @@ export function WorkbenchTopBar({
         ) : null}
       </div>
 
-      {onOpenSideChat ? (
+      <div ref={toolMenuRef} className="relative">
         <button
           type="button"
-          onClick={onOpenSideChat}
-          disabled={!sideChatEnabled}
-          className={`relative rounded-full border px-2.5 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] transition disabled:cursor-not-allowed disabled:opacity-45 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] ${
-            sideChatOpen
+          onClick={() => {
+            setEditorMenuOpen(false)
+            setToolMenuOpen((open) => !open)
+          }}
+          className={`relative rounded-full border px-2.5 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] transition dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] ${
+            toolMenuOpen || rightPanelMode || sideChatOpen
               ? 'border-ds-border-strong bg-white/70 text-ds-ink dark:bg-white/10'
               : 'border-transparent bg-white/38 text-ds-faint opacity-90 hover:border-ds-border-muted hover:bg-white/55 hover:text-ds-ink hover:opacity-100 dark:bg-white/4 dark:hover:bg-white/8'
           }`}
-          aria-label={t('sidePanelOpen')}
-          aria-pressed={sideChatOpen}
-          title={t('sidePanelOpen')}
+          aria-label={t('toolMenuOpen')}
+          aria-expanded={toolMenuOpen}
+          title={t('toolMenuOpen')}
         >
-          <MessageCircleMore className="h-4 w-4" strokeWidth={1.75} />
-          {sideChatCount > 0 ? (
-            <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold leading-none text-white">
-              {Math.min(sideChatCount, 9)}
-            </span>
-          ) : null}
+          <SlidersHorizontal className="h-4 w-4" strokeWidth={1.75} />
           {sideChatRunningCount > 0 ? (
             <span className="absolute -bottom-0.5 -right-0.5 h-2 w-2 animate-pulse rounded-full bg-emerald-500 shadow-[0_0_0_2px_rgba(16,185,129,0.18)]" />
           ) : null}
         </button>
-      ) : null}
 
-      {items.map((item) => {
-        const active = rightPanelMode === item.mode
-        const Icon = item.icon
-        return (
-          <button
-            key={item.mode}
-            type="button"
-            onClick={() => onToggleRightPanelMode(item.mode)}
-            className={`rounded-full border px-2.5 py-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] transition dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] ${
-              active
-                ? 'border-ds-border-strong bg-white/70 text-ds-ink dark:bg-white/10'
-                : 'border-transparent bg-white/38 text-ds-faint opacity-90 hover:border-ds-border-muted hover:bg-white/55 hover:text-ds-ink hover:opacity-100 dark:bg-white/4 dark:hover:bg-white/8'
-            }`}
-            aria-label={item.label}
-            aria-pressed={active}
-            title={item.label}
-          >
-            <Icon className="h-4 w-4" strokeWidth={1.75} />
-          </button>
-        )
-      })}
+        {toolMenuOpen ? (
+          <div className="ds-card-strong absolute right-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-[18px] border border-ds-border py-2 shadow-[0_18px_52px_rgba(31,35,41,0.18)] backdrop-blur-xl dark:shadow-[0_22px_58px_rgba(0,0,0,0.38)]">
+            <div className="px-3 pb-2 pt-1 text-[11px] font-semibold text-ds-faint">
+              {t('toolMenuTitle')}
+            </div>
+            <ToolMenuRow
+              icon={<FileEdit className="h-4 w-4" strokeWidth={1.75} />}
+              label={t('toolMenuReview')}
+              active={rightPanelMode === 'changes'}
+              onClick={() => openPanelMode('changes')}
+            />
+            <ToolMenuRow
+              icon={<Terminal className="h-4 w-4" strokeWidth={1.75} />}
+              label={t('toolMenuTerminal')}
+              disabled
+              title={t('toolMenuTerminalUnavailable')}
+            />
+            <ToolMenuRow
+              icon={<Globe2 className="h-4 w-4" strokeWidth={1.75} />}
+              label={t('toolMenuBrowser')}
+              active={rightPanelMode === 'browser'}
+              onClick={() => openPanelMode('browser')}
+              shortcut="⌘T"
+            />
+            <ToolMenuRow
+              icon={<FolderOpen className="h-4 w-4" strokeWidth={1.75} />}
+              label={t('toolMenuFiles')}
+              active={rightPanelMode === 'file'}
+              onClick={() => openPanelMode('file')}
+              shortcut="⌘P"
+            />
+            <ToolMenuRow
+              icon={<MessageCircleMore className="h-4 w-4" strokeWidth={1.75} />}
+              label={t('toolMenuSideChat')}
+              active={sideChatOpen}
+              disabled={!onOpenSideChat || !sideChatEnabled}
+              onClick={openSideChatFromMenu}
+              badge={sideChatCount > 0 ? String(Math.min(sideChatCount, 9)) : undefined}
+              shortcut="⌥⌘S"
+            />
+          </div>
+        ) : null}
+      </div>
     </div>
+  )
+}
+
+function ToolMenuRow({
+  icon,
+  label,
+  active = false,
+  disabled = false,
+  title,
+  shortcut,
+  badge,
+  onClick
+}: {
+  icon: ReactElement
+  label: string
+  active?: boolean
+  disabled?: boolean
+  title?: string
+  shortcut?: string
+  badge?: string
+  onClick?: () => void
+}): ReactElement {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      className={`flex min-h-[44px] w-full items-center gap-3 px-4 py-2 text-left text-[14px] transition disabled:cursor-not-allowed disabled:opacity-45 ${
+        active
+          ? 'bg-ds-hover text-ds-ink'
+          : 'text-ds-muted hover:bg-ds-hover/70 hover:text-ds-ink'
+      }`}
+      title={title ?? label}
+      aria-pressed={active}
+    >
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-ds-faint">{icon}</span>
+      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {badge ? (
+        <span className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-semibold leading-none text-white">
+          {badge}
+        </span>
+      ) : null}
+      {shortcut ? (
+        <span className="shrink-0 rounded-md bg-ds-hover px-1.5 py-0.5 font-mono text-[10.5px] text-ds-faint">
+          {shortcut}
+        </span>
+      ) : null}
+    </button>
   )
 }

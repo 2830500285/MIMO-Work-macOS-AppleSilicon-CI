@@ -69,31 +69,31 @@ describe('MediaGenerationSettingsSection', () => {
         updateKun: vi.fn(),
         provider: {
           providers: [{
-            id: 'minimax',
-            name: 'MiniMax',
+            id: 'mimo',
+            name: 'MIMO',
             apiKey: 'sk-test',
             textToSpeech: {
-              protocol: 'minimax-t2a',
-              baseUrl: 'https://api.minimax.io',
+              protocol: 'mimo-t2a',
+              baseUrl: 'https://api.mimo.io',
               models: ['speech-2.8-hd', 'speech-2.8-turbo']
             },
             music: {
-              protocol: 'minimax-music',
-              baseUrl: 'https://api.minimax.io',
+              protocol: 'mimo-music',
+              baseUrl: 'https://api.mimo.io',
               models: ['music-2.6']
             },
             video: {
-              protocol: 'minimax-video',
-              baseUrl: 'https://api.minimax.io',
-              models: ['MiniMax-Hailuo-2.3']
+              protocol: 'mimo-video',
+              baseUrl: 'https://api.mimo.io',
+              models: ['MIMO-Hailuo-2.3']
             }
           }]
         },
         kun: {
           textToSpeech: {
             enabled: true,
-            providerId: 'minimax',
-            protocol: 'minimax-t2a',
+            providerId: 'mimo',
+            protocol: 'mimo-t2a',
             baseUrl: '',
             apiKey: '',
             model: 'speech-2.8-hd',
@@ -103,8 +103,8 @@ describe('MediaGenerationSettingsSection', () => {
           },
           musicGeneration: {
             enabled: true,
-            providerId: 'minimax',
-            protocol: 'minimax-music',
+            providerId: 'mimo',
+            protocol: 'mimo-music',
             baseUrl: '',
             apiKey: '',
             model: 'music-2.6',
@@ -113,11 +113,11 @@ describe('MediaGenerationSettingsSection', () => {
           },
           videoGeneration: {
             enabled: true,
-            providerId: 'minimax',
-            protocol: 'minimax-video',
+            providerId: 'mimo',
+            protocol: 'mimo-video',
             baseUrl: '',
             apiKey: '',
-            model: 'MiniMax-Hailuo-2.3',
+            model: 'MIMO-Hailuo-2.3',
             defaultDuration: 6,
             defaultResolution: '1080P',
             timeoutMs: 900000,
@@ -133,6 +133,6 @@ describe('MediaGenerationSettingsSection', () => {
     expect(html).toContain('Music generation')
     expect(html).toContain('music-2.6')
     expect(html).toContain('Video generation')
-    expect(html).toContain('MiniMax-Hailuo-2.3')
+    expect(html).toContain('MIMO-Hailuo-2.3')
   })
 })

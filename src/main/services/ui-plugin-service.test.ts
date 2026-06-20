@@ -110,8 +110,8 @@ describe('removeUiPlugin', () => {
   })
 })
 
-describe('seedUiPlugin (bundled plugins like ikun)', () => {
-  it('seeds a plugin from in-memory bytes and it lists/loads like any other', async () => {
+describe('seedUiPlugin', () => {
+  it('rejects the retired iKun bundled plugin id', async () => {
     const result = await seedUiPlugin(
       userDataDir,
       {
@@ -123,16 +123,7 @@ describe('seedUiPlugin (bundled plugins like ikun)', () => {
       },
       { swim: PNG_BYTES, greet: PNG_BYTES }
     )
-    expect(result.ok, JSON.stringify(result)).toBe(true)
-
-    const plugins = await listUiPlugins(userDataDir)
-    expect(plugins.map((p) => p.manifest.id)).toContain('ikun')
-
-    const loaded = await loadUiPluginFigures(userDataDir, 'ikun')
-    expect(loaded.ok).toBe(true)
-    if (!loaded.ok) return
-    expect(loaded.figures.swim?.startsWith('data:image/png;base64,')).toBe(true)
-    expect(loaded.manifest.features?.cameos).toBe(true)
+    expect(result.ok).toBe(false)
   })
 
   it('rejects seeding when figure bytes are missing', async () => {
@@ -154,7 +145,7 @@ describe('bundled starlight example', () => {
     const loaded = await loadUiPluginFigures(userDataDir, 'starlight')
     expect(loaded.ok).toBe(true)
     if (!loaded.ok) return
-    expect(loaded.manifest.name).toBe('星夜 Kun')
+    expect(loaded.manifest.name).toBe('星夜 MIMO Work')
     expect(loaded.figures.swim?.startsWith('data:image/png;base64,')).toBe(true)
     expect(loaded.manifest.features?.cameos).toBe(true)
     expect(loaded.manifest.tokens?.light?.['--ds-accent']).toBe('#7a5fd0')

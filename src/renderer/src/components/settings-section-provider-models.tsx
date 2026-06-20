@@ -45,7 +45,6 @@ const textInputClass =
   'w-full min-w-0 rounded-xl border border-ds-border bg-ds-card px-3 py-2 text-[14px] font-normal text-ds-ink shadow-sm focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/30'
 
 const REASONING_PROTOCOL_LABEL_KEYS: Record<ModelReasoningRequestProtocol, string> = {
-  'deepseek-chat-completions': 'providerModelReasoningProtocolDeepseek',
   'glm-chat-completions': 'providerModelReasoningProtocolGlm',
   'mimo-chat-completions': 'providerModelReasoningProtocolMimo',
   'openai-responses': 'providerModelReasoningProtocolResponses',
@@ -205,7 +204,7 @@ function ModelName({ modelId }: { modelId: string }): ReactElement {
       <span className="block truncate font-mono text-[12.5px] text-ds-ink">{modelId}</span>
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute left-0 top-full z-30 mt-1 max-w-[min(28rem,calc(100vw-3rem))] break-all rounded-lg border border-ds-border bg-white px-2.5 py-1.5 font-mono text-[12px] leading-5 text-ds-ink opacity-0 shadow-[0_12px_32px_rgba(20,47,95,0.16)] transition group-hover/model-name:opacity-100 dark:bg-ds-card"
+        className="pointer-events-none absolute left-0 top-full z-30 mt-1 max-w-[min(28rem,calc(100vw-3rem))] break-all rounded-lg border border-ds-border bg-white px-2.5 py-1.5 font-mono text-[12px] leading-5 text-ds-ink opacity-0 shadow-[0_12px_32px_rgba(31,35,41,0.16)] transition group-hover/model-name:opacity-100 dark:bg-ds-card"
       >
         {modelId}
       </span>

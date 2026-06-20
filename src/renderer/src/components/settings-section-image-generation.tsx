@@ -124,7 +124,7 @@ export function ImageGenerationSettingsSection({ ctx }: { ctx: Record<string, an
                   >
                     {IMAGE_GENERATION_PROTOCOLS.map((protocol) => (
                       <option key={protocol} value={protocol}>
-                        {t(protocol === 'minimax-image' ? 'imageGenProtocolMiniMax' : 'imageGenProtocolOpenAi')}
+                        {t('imageGenProtocolOpenAi')}
                       </option>
                     ))}
                   </select>

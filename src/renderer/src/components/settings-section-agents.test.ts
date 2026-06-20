@@ -58,7 +58,7 @@ const labels: Record<string, string> = {
   modelProviderImageDisable: 'Disable image',
   imageGenProtocol: 'Image protocol',
   imageGenProtocolOpenAi: 'OpenAI Images',
-  imageGenProtocolMiniMax: 'MiniMax image_generation',
+  imageGenProtocolMIMO: 'MIMO image_generation',
   imageGenBaseUrl: 'Image base URL',
   imageGenModel: 'Image model',
   imageGenBaseUrlPlaceholder: 'https://api.example.com/v1',
@@ -79,6 +79,26 @@ const labels: Record<string, string> = {
   kunAssistantAdvancedDesc: 'Assistant advanced settings description',
   autoStart: 'Auto start',
   autoStartDesc: 'Auto start description',
+  runtimeEngine: 'Runtime engine',
+  runtimeEngineDesc: 'Runtime engine description',
+  runtimeEngineKun: 'Kun runtime',
+  runtimeEngineMimoWork: 'MIMO Work runtime',
+  mimoCredentialMode: 'MiMo access',
+  mimoCredentialModeDesc: 'MiMo access description',
+  mimoCredentialModeTokenplan: 'Tokenplan',
+  mimoCredentialModeRecharge: 'Recharge',
+  mimoTokenplanRegion: 'Tokenplan region',
+  mimoTokenplanRegionDesc: 'Tokenplan region description',
+  mimoTokenplanRegionCn: 'China',
+  mimoTokenplanRegionSgp: 'Singapore',
+  mimoTokenplanRegionAms: 'Amsterdam',
+  mimoApiKey: 'MiMo API key',
+  mimoApiKeyDesc: 'MiMo API key description',
+  mimoApiKeyTokenplanWarning: 'Tokenplan keys usually start with tp-',
+  mimoBaseUrl: 'MiMo base URL',
+  mimoBaseUrlDesc: 'MiMo base URL description',
+  mimoModel: 'MiMo model',
+  mimoModelDesc: 'MiMo model description',
   port: 'Port',
   portDesc: 'Port description',
   kunBinary: 'Kun binary',
@@ -414,39 +434,39 @@ describe('AgentsSettingsSection Kun diagnostics smoke', () => {
     }))
   })
 
-  it('defaults MiniMax media generation when adding a configured MiniMax provider', () => {
+  it('defaults MIMO media generation when adding a configured MIMO provider', () => {
     const provider = defaultModelProviderSettings()
-    const minimax = getModelProviderPreset('minimax')
-    expect(minimax).not.toBeNull()
-    const minimaxProvider = modelProviderPresetProfile(minimax!, 'sk-minimax')
+    const mimo = getModelProviderPreset('mimo')
+    expect(mimo).not.toBeNull()
+    const mimoProvider = modelProviderPresetProfile(mimo!, 'sk-mimo')
 
     const patch = modelProvidersSettingsPatch({
       provider,
-      providers: [...provider.providers, minimaxProvider],
+      providers: [...provider.providers, mimoProvider],
       currentKun: defaultKunRuntimeSettings(),
       kun: {
-        providerId: minimaxProvider.id,
-        model: minimaxProvider.models[0]
+        providerId: mimoProvider.id,
+        model: mimoProvider.models[0]
       }
     })
 
     expect(patch.agents?.kun).toEqual(expect.objectContaining({
-      providerId: 'minimax',
-      model: minimaxProvider.models[0],
+      providerId: 'mimo',
+      model: mimoProvider.models[0],
       textToSpeech: expect.objectContaining({
         enabled: true,
-        providerId: 'minimax',
+        providerId: 'mimo',
         model: 'speech-2.8-hd'
       }),
       musicGeneration: expect.objectContaining({
         enabled: true,
-        providerId: 'minimax',
+        providerId: 'mimo',
         model: 'music-2.6'
       }),
       videoGeneration: expect.objectContaining({
         enabled: true,
-        providerId: 'minimax',
-        model: 'MiniMax-Hailuo-2.3'
+        providerId: 'mimo',
+        model: 'MIMO-Hailuo-2.3'
       })
     }))
   })
@@ -488,12 +508,12 @@ describe('AgentsSettingsSection Kun diagnostics smoke', () => {
     expect(html).toContain('Add provider')
     expect(html).toContain('Test connection')
     expect(html).toContain('Fetch from API')
-    expect(html).toContain('Danger zone')
+    expect(html).toContain('Remove provider')
     expect(html).toContain('In use')
     expect(html).toContain('No API key')
   })
 
-  it('locks preset and default provider ids and shows the danger zone only for removable providers', () => {
+  it('locks preset and default provider ids and shows the delete action only for removable providers', () => {
     const provider = defaultModelProviderSettings()
     const xiaomi = getModelProviderPreset('xiaomi')
     expect(xiaomi).not.toBeNull()
@@ -515,10 +535,10 @@ describe('AgentsSettingsSection Kun diagnostics smoke', () => {
     expect(providerIdInput).toBeTruthy()
     expect(providerIdInput?.toLowerCase()).toContain('readonly')
     expect(html).toContain('Provider ID locked')
-    expect(html).toContain('Danger zone')
+    expect(html).toContain('Remove provider')
   })
 
-  it('hides the danger zone for the default provider', () => {
+  it('hides the delete action for the default provider', () => {
     const html = renderToStaticMarkup(createElement(ProvidersSettingsSection, {
       ctx: {
         ...baseCtx(),
@@ -527,7 +547,7 @@ describe('AgentsSettingsSection Kun diagnostics smoke', () => {
       }
     }))
 
-    expect(html).not.toContain('Danger zone')
+    expect(html).not.toContain('Remove provider')
     expect(html).toContain('Test connection')
   })
 
@@ -538,6 +558,25 @@ describe('AgentsSettingsSection Kun diagnostics smoke', () => {
     expect(html).toContain('Storage, model context, and tool guards')
     expect(html).toContain('MCP advanced settings')
     expect(html).not.toContain('<details open')
+  })
+
+  it('renders MIMO Work runtime credential controls when selected', () => {
+    const html = renderToStaticMarkup(createElement(AgentsSettingsSection, {
+      ctx: {
+        ...baseCtx(),
+        kun: {
+          ...defaultKunRuntimeSettings(),
+          runtimeEngine: 'mimo-work'
+        }
+      }
+    }))
+
+    expect(html).toContain('MIMO Work runtime')
+    expect(html).toContain('MiMo access')
+    expect(html).toContain('Tokenplan')
+    expect(html).toContain('MiMo API key')
+    expect(html).toContain('https://token-plan-cn.xiaomimimo.com/v1')
+    expect(html).toContain('mimo-v2.5-pro')
   })
 
   it('does not render image generation settings inside the agent section', () => {
@@ -565,11 +604,11 @@ describe('AgentsSettingsSection Kun diagnostics smoke', () => {
     expect(html).toContain('Pure JSONL file storage')
   })
 
-  it('shows DeepSeek V4 model compaction thresholds from the model profile', () => {
+  it('shows MIMO V4 model compaction thresholds from the model profile', () => {
     const html = renderToStaticMarkup(createElement(AgentsSettingsSection, { ctx: baseCtx() }))
 
     expect(html).toContain('Current model context policy')
-    expect(html).toContain('deepseek-v4-pro')
+    expect(html).toContain('mimo-v4-pro')
     expect(html).toContain('Built-in model config')
     expect(html).toContain('1,000,000')
     expect(html).toContain('980,000')
@@ -583,7 +622,7 @@ describe('AgentsSettingsSection Kun diagnostics smoke', () => {
       runtimeInfo: {
         pid: 123,
         capabilities: {
-          model: { id: 'deepseek-chat' },
+          model: { id: 'mimo-chat' },
           mcp: { status: 'available', configuredServers: 2, connectedServers: 2 },
           web: { status: 'available', provider: 'brave-search' },
           skills: { status: 'available' },
@@ -630,7 +669,7 @@ describe('AgentsSettingsSection Kun diagnostics smoke', () => {
     expect(html).toContain('External tool config path')
     expect(html).toContain('/tmp/project/.kun/mcp.json')
     expect(html).toContain('Model and API credentials do not live in this MCP file')
-    expect(html).not.toContain('DeepSeek auth')
+    expect(html).not.toContain('MIMO auth')
     expect(html).not.toContain('Base URL are stored in this file')
     expect(html).not.toContain('config.toml')
   })

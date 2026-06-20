@@ -89,15 +89,15 @@ describe('chat-store Claw helpers', () => {
         '/Users/zxy/project-a',
         '/Users/zxy/project-a/',
         '/tmp/transient',
-        '/Users/zxy/.deepseekgui/claw/agent/conversations/chat',
-        '/Users/zxy/.deepseekgui/default_workspace',
-        '~/.deepseekgui/write_workspace',
+        '/Users/zxy/.mimo-work/claw/agent/conversations/chat',
+        '/Users/zxy/.mimo-work/default_workspace',
+        '~/.mimo-work/write_workspace',
         '',
         '/Users/zxy/project-b'
       ])
     ).toEqual([
       '/Users/zxy/project-a',
-      '/Users/zxy/.deepseekgui/default_workspace',
+      '/Users/zxy/.mimo-work/default_workspace',
       '/Users/zxy/project-b'
     ])
   })
@@ -105,11 +105,11 @@ describe('chat-store Claw helpers', () => {
   it('deduplicates default workspace aliases', () => {
     expect(
       compactCodeWorkspaceRoots([
-        '~/.deepseekgui/default_workspace',
-        'C:\\Users\\zxy\\.deepseekgui\\default_workspace',
-        'C:\\Users\\zxy\\.deepseekgui\\default_workspace\\'
+        '~/.mimo-work/default_workspace',
+        'C:\\Users\\zxy\\.mimo-work\\default_workspace',
+        'C:\\Users\\zxy\\.mimo-work\\default_workspace\\'
       ])
-    ).toEqual(['~/.deepseekgui/default_workspace'])
+    ).toEqual(['~/.mimo-work/default_workspace'])
   })
 
   it('caps code workspace roots while keeping the newest unique roots first', () => {
@@ -170,7 +170,7 @@ describe('chat-store Claw helpers', () => {
 
   it('recognizes Claw managed prompt summaries as Claw sessions', () => {
     expect(
-      clawThreadTitleLooksManaged(`${CLAW_MANAGED_INSTRUCTIONS_HEADING} DeepSeek GUI scheduled-task tools`)
+      clawThreadTitleLooksManaged(`${CLAW_MANAGED_INSTRUCTIONS_HEADING} MIMO Work scheduled-task tools`)
     ).toBe(true)
     expect(isClawThread({ id: 'kun-leaked', title: '[Claw:Feishu Agent]' })).toBe(true)
   })
@@ -189,17 +189,17 @@ describe('chat-store Claw helpers', () => {
 
     expect(pick).not.toContain('auto')
     expect(pick).toContain('custom-model')
-    expect(pick).toContain('deepseek-v4-pro')
-    expect(pick).toContain('deepseek-v4-flash')
+    expect(pick).toContain('mimo-v4-pro')
+    expect(pick).toContain('mimo-v4-flash')
     expect(mergeComposerPickList(false, ['upstream-model'])).not.toContain('upstream-model')
   })
 
   it('falls back to the runtime default model, then known defaults', () => {
-    const pick = ['a-model', 'custom-model', 'deepseek-v4-flash', 'deepseek-v4-pro']
+    const pick = ['a-model', 'custom-model', 'mimo-v4-flash', 'mimo-v4-pro']
 
     expect(fallbackComposerModel(pick, 'custom-model')).toBe('custom-model')
-    expect(fallbackComposerModel(pick, 'auto')).toBe('deepseek-v4-pro')
-    expect(fallbackComposerModel(pick, 'missing-model')).toBe('deepseek-v4-pro')
+    expect(fallbackComposerModel(pick, 'auto')).toBe('mimo-v4-pro')
+    expect(fallbackComposerModel(pick, 'missing-model')).toBe('mimo-v4-pro')
     expect(fallbackComposerModel(['a-model'], '')).toBe('a-model')
     expect(fallbackComposerModel([], '')).toBe('')
   })
@@ -231,19 +231,19 @@ describe('chat-store Claw helpers', () => {
     }
     localStorage.setItem(TURN_MODEL_STORAGE_KEY, JSON.stringify(raw))
 
-    rememberTurnModel(' thread-new ', ' item-new ', ' deepseek-chat ')
+    rememberTurnModel(' thread-new ', ' item-new ', ' mimo-chat ')
 
     const stored = JSON.parse(localStorage.getItem(TURN_MODEL_STORAGE_KEY) ?? '{}') as Record<string, string>
     expect(Object.keys(stored)).toHaveLength(MAX_TURN_MODEL_LABELS)
     expect(stored['thread-0|item-0']).toBeUndefined()
-    expect(stored['thread-new|item-new']).toBe('deepseek-chat')
+    expect(stored['thread-new|item-new']).toBe('mimo-chat')
     expect(
       hydrateBlockModelLabels('thread-new', [
         { kind: 'user', id: 'item-new', text: 'hello' },
         { kind: 'assistant', id: 'assistant-1', text: 'hi' }
       ])
     ).toEqual([
-      { kind: 'user', id: 'item-new', text: 'hello', modelLabel: 'deepseek-chat' },
+      { kind: 'user', id: 'item-new', text: 'hello', modelLabel: 'mimo-chat' },
       { kind: 'assistant', id: 'assistant-1', text: 'hi' }
     ])
   })

@@ -198,6 +198,57 @@ describe('busy watchdog re-arming on live ticks (#goal-recovering-banner)', () =
 })
 
 describe('thread event sink runtime errors', () => {
+  it('settles the active turn when the runtime is waiting for user input', () => {
+    const { getState, set, get } = makeSinkHarness({
+      activeThreadId: 'thread-current',
+      busy: true,
+      currentTurnId: 'turn-ask',
+      currentTurnUserId: 'user-ask',
+      threads: [
+        {
+          id: 'thread-current',
+          title: 'Math modeling',
+          updatedAt: '2026-06-16T00:00:00.000Z',
+          model: 'mimo-v2.5',
+          mode: 'agent',
+          workspace: '/tmp/project',
+          status: 'running'
+        }
+      ],
+      watchTurnCompletion: { 'thread-current': true },
+      unreadThreadIds: { 'thread-current': true },
+      turnStartedAtByUserId: { 'user-ask': Date.now() - 1000 }
+    })
+    const sink = buildThreadEventSink(set, get, { threadId: 'thread-current' })
+
+    sink.onUserInput({
+      itemId: 'question-1',
+      requestId: 'req-1',
+      questions: [
+        {
+          id: 'q-1',
+          header: 'Type',
+          question: 'What contest type?',
+          options: []
+        }
+      ]
+    })
+
+    const state = getState()
+    expect(state.busy).toBe(false)
+    expect(state.currentTurnId).toBeNull()
+    expect(state.currentTurnUserId).toBeNull()
+    expect(state.watchTurnCompletion).toEqual({})
+    expect(state.unreadThreadIds).toEqual({})
+    expect(state.threads[0]?.status).toBe('waiting_for_user_input')
+    expect(state.blocks).toContainEqual(expect.objectContaining({
+      kind: 'user_input',
+      requestId: 'req-1',
+      status: 'pending'
+    }))
+    expect(state.turnDurationByUserId['user-ask']).toEqual(expect.any(Number))
+  })
+
   it('adds runtime error events to the timeline with details', () => {
     const { getState, set, get } = makeSinkHarness({
       activeThreadId: 'thread-current',

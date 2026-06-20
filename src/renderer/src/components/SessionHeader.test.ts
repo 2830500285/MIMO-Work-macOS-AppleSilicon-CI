@@ -18,9 +18,9 @@ describe('SessionHeader', () => {
         id: 'thread-1',
         title: 'Fix drag region',
         updatedAt: '2026-06-10T10:00:00.000Z',
-        model: 'deepseek-chat',
+        model: 'mimo-chat',
         mode: 'chat',
-        workspace: '/workspace/deepseek-gui'
+        workspace: '/workspace/mimo-work'
       }]
     })
   })

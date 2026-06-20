@@ -7,5 +7,7 @@ export function isKunHealthResponseBody(body: string): boolean {
   }
   if (!parsed || typeof parsed !== 'object') return false
   const record = parsed as Record<string, unknown>
-  return record.status === 'ok' && record.service === 'kun' && record.mode === 'serve'
+  if (record.status !== 'ok') return false
+  if (record.service === 'kun' && record.mode === 'serve') return true
+  return record.service === 'mimo-work' && record.mode === 'adapter'
 }

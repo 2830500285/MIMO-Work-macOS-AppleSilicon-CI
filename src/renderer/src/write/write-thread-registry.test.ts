@@ -105,11 +105,11 @@ describe('write-thread-registry', () => {
 
   it('hydrates leaked write assistant threads from configured write workspaces', () => {
     const leaked = {
-      ...thread('write-thread', '/Users/zxy/.deepseekgui/write_workspace'),
+      ...thread('write-thread', '/Users/zxy/.mimo-work/write_workspace'),
       title: WRITE_ASSISTANT_THREAD_TITLE
     }
     const normalCodeThread = {
-      ...thread('code-thread', '/Users/zxy/.deepseekgui/write_workspace'),
+      ...thread('code-thread', '/Users/zxy/.mimo-work/write_workspace'),
       title: 'Explain this project'
     }
     const sameTitleElsewhere = {
@@ -119,7 +119,7 @@ describe('write-thread-registry', () => {
 
     const registry = hydrateWriteThreadRegistry(
       [leaked, normalCodeThread, sameTitleElsewhere],
-      ['/Users/zxy/.deepseekgui/write_workspace'],
+      ['/Users/zxy/.mimo-work/write_workspace'],
       emptyWriteThreadRegistry()
     )
 
@@ -130,23 +130,23 @@ describe('write-thread-registry', () => {
 
   it('hydrates legacy tilde write assistant threads under the configured absolute workspace', () => {
     const legacyThread = {
-      ...thread('legacy-write-thread', '~/.deepseekgui/write_workspace'),
+      ...thread('legacy-write-thread', '~/.mimo-work/write_workspace'),
       title: WRITE_ASSISTANT_THREAD_TITLE
     }
 
     const registry = hydrateWriteThreadRegistry(
       [legacyThread],
-      ['/Users/zxy/.deepseekgui/write_workspace'],
+      ['/Users/zxy/.mimo-work/write_workspace'],
       emptyWriteThreadRegistry()
     )
 
     expect(isWriteThreadId('legacy-write-thread', registry)).toBe(true)
-    expect(registry.workspaces['/Users/zxy/.deepseekgui/write_workspace'].threadIds).toEqual([
+    expect(registry.workspaces['/Users/zxy/.mimo-work/write_workspace'].threadIds).toEqual([
       'legacy-write-thread'
     ])
     expect(
       activeWriteThreadForWorkspace(
-        '/Users/zxy/.deepseekgui/write_workspace',
+        '/Users/zxy/.mimo-work/write_workspace',
         [legacyThread],
         registry
       )?.id
@@ -155,21 +155,21 @@ describe('write-thread-registry', () => {
 
   it('hydrates Reasonix write-context threads even when the session list reports the default workspace', () => {
     const leaked = {
-      ...thread('reasonix-write-thread', '/Users/zxy/.deepseekgui/default_workspace'),
+      ...thread('reasonix-write-thread', '/Users/zxy/.mimo-work/default_workspace'),
       title: '[写作上下文] 交互限制：当前 GUI 无法提交 request_user_input'
     }
 
     const registry = hydrateWriteThreadRegistry(
       [leaked],
-      ['/Users/zxy/.deepseekgui/write_workspace'],
+      ['/Users/zxy/.mimo-work/write_workspace'],
       emptyWriteThreadRegistry()
     )
 
     expect(isWriteThreadId('reasonix-write-thread', registry)).toBe(true)
-    expect(writeWorkspaceForThreadId('reasonix-write-thread', registry)).toBe('/Users/zxy/.deepseekgui/write_workspace')
+    expect(writeWorkspaceForThreadId('reasonix-write-thread', registry)).toBe('/Users/zxy/.mimo-work/write_workspace')
     expect(
       activeWriteThreadForWorkspace(
-        '/Users/zxy/.deepseekgui/write_workspace',
+        '/Users/zxy/.mimo-work/write_workspace',
         [leaked],
         registry
       )?.id

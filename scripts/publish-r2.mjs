@@ -13,8 +13,8 @@ import { readdir, readFile, stat } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const PRODUCT_NAME = 'Kun'
-const DEFAULT_RELEASE_PREFIX = 'deepseek-gui'
+const PRODUCT_NAME = 'MIMO Work'
+const DEFAULT_RELEASE_PREFIX = 'mimo-work'
 const DEFAULT_RELEASE_CHANNEL = 'frontier'
 const PLATFORMS = ['mac', 'win', 'linux']
 const RELEASE_CHANNELS = ['frontier', 'stable']
@@ -24,15 +24,15 @@ const ROOT = resolve(SCRIPT_DIR, '..')
 const PLATFORM_SPECS = {
   mac: {
     updateFile: 'latest-mac.yml',
-    assetPattern: /^Kun-.+-mac-(arm64|x64)\.(dmg|zip)(\.blockmap)?$/
+    assetPattern: /^MIMO-Work-.+-mac-(arm64|x64)\.(dmg|zip)(\.blockmap)?$/
   },
   win: {
     updateFile: 'latest.yml',
-    assetPattern: /^Kun-.+-win-x64\.exe(\.blockmap)?$/
+    assetPattern: /^MIMO-Work-.+-win-x64(?:(?:-setup|-portable)\.exe|\.zip)(\.blockmap)?$/
   },
   linux: {
     updateFile: 'latest-linux.yml',
-    assetPattern: /^Kun-.+-linux-x86_64\.AppImage(\.blockmap)?$/
+    assetPattern: /^MIMO-Work-.+-linux-x86_64\.AppImage(\.blockmap)?$/
   }
 }
 
@@ -45,14 +45,14 @@ If --platforms is omitted, promote uses the platform manifests already uploaded 
 If --channel is omitted, the default channel is frontier.
 
 Environment:
-  KUN_RELEASE_ENV=scripts/release.local.env (legacy DEEPSEEK_GUI_RELEASE_ENV is also accepted)
+  KUN_RELEASE_ENV=scripts/release.local.env (legacy MIMO_WORK_RELEASE_ENV is also accepted)
   RELEASE_CHANNEL=frontier|stable
   R2_BUCKET or S3_BUCKET
   R2_ENDPOINT or S3_ENDPOINT
   R2_ACCESS_KEY_ID or S3_ACCESS_KEY_ID
   R2_SECRET_ACCESS_KEY or S3_SECRET_ACCESS_KEY
   R2_PUBLIC_BASE_URL
-  R2_RELEASE_PREFIX=deepseek-gui
+  R2_RELEASE_PREFIX=mimo-work
 `)
 }
 
@@ -76,7 +76,7 @@ function parseEnvFile(content) {
 }
 
 function loadLocalEnv() {
-  const configured = process.env.KUN_RELEASE_ENV?.trim() || process.env.DEEPSEEK_GUI_RELEASE_ENV?.trim()
+  const configured = process.env.KUN_RELEASE_ENV?.trim() || process.env.MIMO_WORK_RELEASE_ENV?.trim()
   const candidates = [
     configured,
     join(ROOT, 'scripts', 'release.local.env'),
@@ -153,7 +153,7 @@ function readChannel(flags) {
     flags.get('channel') ||
       process.env.RELEASE_CHANNEL ||
       process.env.KUN_UPDATE_CHANNEL ||
-      process.env.DEEPSEEK_GUI_UPDATE_CHANNEL ||
+      process.env.MIMO_WORK_UPDATE_CHANNEL ||
       DEFAULT_RELEASE_CHANNEL
   )
 }
@@ -337,7 +337,15 @@ function classifyDownload(fileName, platform) {
     }
   }
   if (platform === 'win') {
-    return { platform, arch: 'x64', format: extension, label: 'Windows x64 installer' }
+    const match = fileName.match(/-win-(x64)(?:-(setup|portable))?\.(exe|zip)$/)
+    const arch = match?.[1] ?? 'x64'
+    const kind = match?.[2] ?? (extension === 'zip' ? 'zip' : 'setup')
+    const labelKind = kind === 'setup'
+      ? 'installer'
+      : kind === 'portable'
+        ? 'portable'
+        : 'zip'
+    return { platform, arch, format: extension, label: `Windows ${arch} ${labelKind}` }
   }
   return { platform, arch: 'x64', format: extension, label: 'Linux x64 AppImage' }
 }
@@ -353,7 +361,7 @@ async function collectPlatformRelease({ distDir, platform, tag, channel, config 
   const tagVersion = tag.slice(1)
   if (updateMetadata.version !== tagVersion) {
     throw new Error(
-      `${spec.updateFile} version ${updateMetadata.version} does not match ${tag}. Rebuild with KUN_APP_VERSION=${tagVersion} (legacy DEEPSEEK_GUI_APP_VERSION is also accepted).`
+      `${spec.updateFile} version ${updateMetadata.version} does not match ${tag}. Rebuild with KUN_APP_VERSION=${tagVersion} (legacy MIMO_WORK_APP_VERSION is also accepted).`
     )
   }
 
@@ -633,7 +641,7 @@ async function promoteRelease({ flags, dryRun }) {
       tag,
       releaseDate,
       generatedAt: new Date().toISOString(),
-      githubReleaseUrl: `https://github.com/KunAgent/Kun/releases/tag/${tag}`,
+      githubReleaseUrl: `https://github.com/MIMO-Work/MIMO-Work/releases/tag/${tag}`,
       updateBaseUrl: joinUrl(config.publicBaseUrl, target.basePath, 'latest') + '/',
       updateMetadata: Object.fromEntries(
         platformManifests.map((manifest) => [

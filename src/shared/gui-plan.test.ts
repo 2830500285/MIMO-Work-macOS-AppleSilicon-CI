@@ -17,9 +17,9 @@ describe('gui-plan path validation', () => {
     expect(isGuiPlanRelativePath(`${GUI_PLAN_RELATIVE_DIR}/login.md`)).toBe(true)
     expect(isGuiPlanRelativePath(`  ${GUI_PLAN_RELATIVE_DIR}/Login.md  `)).toBe(true)
     expect(isGuiPlanRelativePath(`${GUI_PLAN_RELATIVE_DIR}\\login.md`)).toBe(true)
-    expect(isGuiPlanRelativePath('.deepseekgui/plan/login.md')).toBe(true)
+    expect(isGuiPlanRelativePath('.mimo-work/plan/login.md')).toBe(true)
     expect(isGuiPlanCurrentRelativePath(`${GUI_PLAN_RELATIVE_DIR}/login.md`)).toBe(true)
-    expect(isGuiPlanCurrentRelativePath('.deepseekgui/plan/login.md')).toBe(false)
+    expect(isGuiPlanCurrentRelativePath('.mimo-work/plan/login.md')).toBe(false)
   })
 
   it('rejects nested paths', () => {
@@ -53,8 +53,8 @@ describe('gui-plan path validation', () => {
     expect(buildGuiPlanId('/tmp/ws', '.kunsdd/plan/Login.md')).toBe(
       buildGuiPlanId('/tmp/ws', '.kunsdd/plan/login.md')
     )
-    expect(buildGuiPlanId('/tmp/ws', '.deepseekgui/plan/Login.md')).toBe(
-      buildGuiPlanId('/tmp/ws', '.deepseekgui/plan/login.md')
+    expect(buildGuiPlanId('/tmp/ws', '.mimo-work/plan/Login.md')).toBe(
+      buildGuiPlanId('/tmp/ws', '.mimo-work/plan/login.md')
     )
   })
 

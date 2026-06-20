@@ -2,24 +2,15 @@ import type { ReactElement } from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { QRCodeSVG } from 'qrcode.react'
 import {
-  AtSign,
-  Battery,
   CheckCircle2,
   ChevronLeft,
-  Image as ImageIcon,
   Loader2,
   LogOut,
-  Maximize2,
   MessageSquare,
-  Mic,
-  MoreHorizontal,
   Plus,
-  PlusCircle,
   QrCode,
   RefreshCw,
-  Settings,
-  Smile,
-  Wifi
+  Settings
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -58,6 +49,7 @@ type Props = {
   onAddProvider: AddClawPhoneChannel
   leftSidebarCollapsed: boolean
   onToggleSidebar: () => void
+  onBack: () => void
 }
 
 type FeishuInstallRequest = {
@@ -73,6 +65,76 @@ type WeixinInstallRequest = {
 type ConnectPhoneInstallRequest = FeishuInstallRequest | WeixinInstallRequest
 
 const CONNECT_PHONE_TARGETS: readonly ClawInstallTarget[] = ['feishu', 'lark', 'weixin']
+
+type ConnectPhoneRelayTarget = {
+  id: string
+  label: string
+  badgeKey: string
+  guideStepKeys: [string, string, string]
+}
+
+const CONNECT_PHONE_RELAY_TARGETS: readonly ConnectPhoneRelayTarget[] = [
+  {
+    id: 'wecom',
+    label: 'WeCom',
+    badgeKey: 'connectPhoneRelayBadge',
+    guideStepKeys: ['clawAddImGuideWecom1', 'clawAddImGuideWecom2', 'clawAddImGuideWecom3']
+  },
+  {
+    id: 'dingtalk',
+    label: 'DingTalk',
+    badgeKey: 'connectPhoneRelayBadge',
+    guideStepKeys: ['clawAddImGuideDingtalkOfficial1', 'clawAddImGuideDingtalkOfficial2', 'clawAddImGuideDingtalkOfficial3']
+  },
+  {
+    id: 'qq',
+    label: 'QQ',
+    badgeKey: 'connectPhoneBotBadge',
+    guideStepKeys: ['clawAddImGuideQq1', 'clawAddImGuideQq2', 'clawAddImGuideQq3']
+  },
+  {
+    id: 'nim',
+    label: 'NIM',
+    badgeKey: 'connectPhoneRelayBadge',
+    guideStepKeys: ['clawAddImGuideNim1', 'clawAddImGuideNim2', 'clawAddImGuideNim3']
+  },
+  {
+    id: 'popo',
+    label: 'POPO',
+    badgeKey: 'connectPhoneRelayBadge',
+    guideStepKeys: ['clawAddImGuidePopo1', 'clawAddImGuidePopo2', 'clawAddImGuidePopo3']
+  },
+  {
+    id: 'netease-bee',
+    label: 'Netease Bee',
+    badgeKey: 'connectPhoneRelayBadge',
+    guideStepKeys: ['clawAddImGuideNeteaseBee1', 'clawAddImGuideNeteaseBee2', 'clawAddImGuideNeteaseBee3']
+  },
+  {
+    id: 'telegram',
+    label: 'Telegram',
+    badgeKey: 'connectPhoneBotBadge',
+    guideStepKeys: ['clawAddImGuideTelegram1', 'clawAddImGuideTelegram2', 'clawAddImGuideTelegram3']
+  },
+  {
+    id: 'slack',
+    label: 'Slack',
+    badgeKey: 'connectPhoneBotBadge',
+    guideStepKeys: ['clawAddImGuideSlack1', 'clawAddImGuideSlack2', 'clawAddImGuideSlack3']
+  },
+  {
+    id: 'discord',
+    label: 'Discord',
+    badgeKey: 'connectPhoneBotBadge',
+    guideStepKeys: ['clawAddImGuideDiscord1', 'clawAddImGuideDiscord2', 'clawAddImGuideDiscord3']
+  },
+  {
+    id: 'webhook',
+    label: 'Webhook',
+    badgeKey: 'connectPhoneWebhookBadge',
+    guideStepKeys: ['clawAddImGuideWebhook1', 'clawAddImGuideWebhook2', 'clawAddImGuideWebhook3']
+  }
+]
 
 const INITIAL_QR_STATE: ClawInstallQrState = {
   status: 'idle',
@@ -175,10 +237,12 @@ export function ConnectPhoneView({
   channels,
   onAddProvider,
   leftSidebarCollapsed,
-  onToggleSidebar
+  onToggleSidebar,
+  onBack
 }: Props): ReactElement {
   const { t } = useTranslation('common')
   const [target, setTarget] = useState<ClawInstallTarget>('feishu')
+  const [relayTargetId, setRelayTargetId] = useState(CONNECT_PHONE_RELAY_TARGETS[0].id)
   const [installQr, setInstallQr] = useState<ClawInstallQrState>(INITIAL_QR_STATE)
   const [saving, setSaving] = useState(false)
   const installPollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -187,6 +251,8 @@ export function ConnectPhoneView({
   const installAttemptRef = useRef(0)
   const targetProvider = connectPhoneProviderForTarget(target)
   const hasExistingChannel = hasClawPhoneChannel(channels, targetProvider)
+  const relayTarget = CONNECT_PHONE_RELAY_TARGETS.find((item) => item.id === relayTargetId)
+    ?? CONNECT_PHONE_RELAY_TARGETS[0]
 
   const clearInstallTimers = (): void => {
     if (installPollTimerRef.current) {
@@ -401,19 +467,27 @@ export function ConnectPhoneView({
 
   return (
     <section className="ds-no-drag relative flex min-h-0 flex-1 overflow-hidden bg-transparent">
-      {leftSidebarCollapsed ? (
-        <div className="absolute left-4 top-4 z-20">
+      <div className="absolute left-4 top-4 z-20 flex items-center gap-2">
+        {leftSidebarCollapsed ? (
           <SidebarTitlebarToggleButton
             onClick={onToggleSidebar}
             title={t('sidebarExpand')}
             ariaLabel={t('sidebarExpand')}
           />
-        </div>
-      ) : null}
+        ) : null}
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex min-h-8 items-center gap-1.5 rounded-lg border border-ds-border bg-ds-card/85 px-2.5 py-1.5 text-[12.5px] font-medium text-ds-muted shadow-sm backdrop-blur transition hover:bg-ds-hover hover:text-ds-ink"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" strokeWidth={1.9} />
+          {t('back')}
+        </button>
+      </div>
 
-      <div className="grid min-h-0 w-full grid-cols-1 gap-8 px-5 py-4 lg:grid-cols-[minmax(520px,1fr)_minmax(430px,0.76fr)] lg:px-4">
-        <div className="flex min-h-0 items-center justify-center pb-4 pt-2">
-          <div className="w-full max-w-[560px] text-center">
+      <div className="flex min-h-0 w-full justify-center overflow-y-auto px-5 py-8 lg:px-8">
+        <div className="flex min-h-full w-full max-w-[760px] items-center justify-center pb-4 pt-8">
+          <div className="w-full text-center">
             <h1 className="text-[28px] font-semibold tracking-normal text-ds-ink">
               {t('connectPhoneTitle')}
             </h1>
@@ -527,74 +601,61 @@ export function ConnectPhoneView({
                 <div className="mt-1">{t('connectPhoneDisabledConnectionHint')}</div>
               ) : null}
             </div>
-          </div>
-        </div>
 
-        <div className="hidden min-h-0 items-stretch justify-center lg:flex">
-          <div className="flex h-full max-h-[860px] w-full items-center justify-center rounded-[24px] border border-white/70 bg-[#98cef0] px-8 py-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_22px_48px_rgba(71,117,151,0.12)]">
-            <div className="relative aspect-[0.54] h-[min(80vh,720px)] min-h-[560px] rounded-[48px] border-[7px] border-[#151718] bg-[#151718] shadow-[0_26px_52px_rgba(26,38,50,0.22)]">
-              <div className="absolute -left-[11px] top-[156px] h-10 w-[5px] rounded-l-full bg-[#25282c]" />
-              <div className="absolute -left-[11px] top-[216px] h-12 w-[5px] rounded-l-full bg-[#25282c]" />
-              <div className="absolute -right-[11px] top-[210px] h-20 w-[5px] rounded-r-full bg-[#25282c]" />
-              <div className="absolute left-1/2 top-[13px] z-20 h-[30px] w-[92px] -translate-x-1/2 rounded-full bg-black" />
-              <div className="absolute right-[74px] top-[20px] z-30 h-3 w-3 rounded-full bg-[#151a1f]" />
-              <div className="flex h-full flex-col overflow-hidden rounded-[40px] bg-[#fffefa]">
-                <div className="flex h-[54px] shrink-0 items-end justify-between px-6 pb-2 text-[#111827]">
-                  <span className="text-[13px] font-semibold">9:41</span>
-                  <span className="flex items-center gap-1.5">
-                    <Wifi className="h-4 w-4" strokeWidth={2} />
-                    <Battery className="h-4 w-4" strokeWidth={2} />
+            <div className="mx-auto mt-9 w-full max-w-[720px] text-left">
+              <div className="flex flex-wrap items-end justify-between gap-3 border-b border-ds-border-muted pb-3">
+                <div>
+                  <h2 className="text-[16px] font-semibold text-ds-ink">
+                    {t('connectPhoneMoreTitle')}
+                  </h2>
+                  <p className="mt-1 text-[12.5px] leading-5 text-ds-faint">
+                    {t('connectPhoneMoreSubtitle')}
+                  </p>
+                </div>
+                <span className="rounded-full border border-ds-border-muted bg-ds-main/60 px-2.5 py-1 text-[11px] font-medium text-ds-faint">
+                  {t('connectPhoneOfficialQrBadge')}
+                </span>
+              </div>
+
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {CONNECT_PHONE_RELAY_TARGETS.map((item) => {
+                  const active = relayTarget.id === item.id
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => setRelayTargetId(item.id)}
+                      className={`rounded-[12px] border px-3 py-2.5 text-left transition ${
+                        active
+                          ? 'border-accent/35 bg-accent/10 text-ds-ink'
+                          : 'border-ds-border-muted bg-ds-card/70 text-ds-muted hover:border-ds-border hover:bg-ds-hover hover:text-ds-ink'
+                      }`}
+                    >
+                      <span className="flex items-center justify-between gap-2">
+                        <span className="truncate text-[13px] font-semibold">{item.label}</span>
+                        <span className="shrink-0 rounded-md bg-ds-hover px-1.5 py-0.5 text-[10.5px] font-medium text-ds-faint">
+                          {t(item.badgeKey)}
+                        </span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="mt-3 rounded-[14px] border border-ds-border bg-ds-card/85 px-4 py-3 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[13px] font-semibold text-ds-ink">
+                    {t('connectPhoneGuideTitle', { name: relayTarget.label })}
+                  </div>
+                  <span className="rounded-md bg-ds-hover px-1.5 py-0.5 text-[10.5px] font-medium text-ds-faint">
+                    {t(relayTarget.badgeKey)}
                   </span>
                 </div>
-                <div className="relative flex h-12 shrink-0 items-center justify-between border-b border-[#f0f1ef] px-4 text-[#111827]">
-                  <ChevronLeft className="h-6 w-6" strokeWidth={1.8} />
-                  <div className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5 text-[14px] font-semibold">
-                    <span>kun</span>
-                    <span className="rounded-[4px] bg-[#eee7ff] px-1.5 py-0.5 text-[10px] font-semibold text-[#8b5cf6]">AI</span>
-                  </div>
-                  <MoreHorizontal className="h-5 w-5" strokeWidth={2} />
-                </div>
-                <div className="min-h-0 flex-1 bg-[#fffefa] px-5 pt-6">
-                  <div className="ml-auto flex max-w-[248px] items-start gap-2">
-                    <div className="rounded-[8px] bg-[#d6ebfb] px-4 py-3 text-left text-[13px] font-medium leading-5 text-[#1f2937]">
-                      {t('connectPhonePreviewUser')}
-                    </div>
-                    <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#f6d75d] text-[12px] font-bold text-[#695000]">
-                      K
-                    </div>
-                  </div>
-                  <div className="mt-5 flex max-w-[274px] items-start gap-2">
-                    <span className="mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#dbeafe] bg-[#f1f7fd] text-[12px] font-bold text-[#2563eb]">
-                      K
-                    </span>
-                    <div className="overflow-hidden rounded-[8px] border border-[#dfe6e9] bg-[#fffefa] text-left shadow-sm">
-                      <div className="flex items-center gap-2 bg-[#d2f5db] px-3 py-2">
-                        <span className="text-[12px] font-semibold text-[#15803d]">kun</span>
-                        <span className="rounded-[4px] bg-[#bff0cf] px-1.5 py-0.5 text-[10px] font-semibold text-[#15803d]">
-                          {t('connectPhonePreviewDone')}
-                        </span>
-                      </div>
-                      <div className="px-3 py-3 text-[13px] font-medium leading-5 text-[#3f4147]">
-                        {t('connectPhonePreviewAssistant')}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="shrink-0 bg-[#f3f4f2] px-3 pb-3 pt-2">
-                  <div className="mb-2 flex h-10 items-center gap-2 rounded-[7px] bg-[#fffefa] px-3 text-[13px] text-[#a3a3a3] shadow-sm">
-                    <span className="flex-1">{t('connectPhonePreviewInput')}</span>
-                    <Maximize2 className="h-4 w-4 text-[#777]" strokeWidth={1.8} />
-                  </div>
-                  <div className="flex h-8 items-center justify-between px-1 text-[#70757a]">
-                    <Smile className="h-5 w-5" strokeWidth={1.8} />
-                    <AtSign className="h-5 w-5" strokeWidth={1.8} />
-                    <Mic className="h-5 w-5" strokeWidth={1.8} />
-                    <ImageIcon className="h-5 w-5" strokeWidth={1.8} />
-                    <span className="text-[15px] font-semibold">Aa</span>
-                    <PlusCircle className="h-5 w-5" strokeWidth={1.8} />
-                  </div>
-                  <div className="mx-auto mt-2 h-1 w-24 rounded-full bg-black" />
-                </div>
+                <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-[12.5px] leading-5 text-ds-muted">
+                  {relayTarget.guideStepKeys.map((key) => (
+                    <li key={key}>{t(key)}</li>
+                  ))}
+                </ol>
               </div>
             </div>
           </div>

@@ -4,8 +4,10 @@ import type { NormalizedThread } from '../agent/types'
 import type { ChatState } from './chat-store-types'
 import {
   findReusableEmptyThreadId,
+  hasActiveRuntimeWork,
   hasPendingRuntimeWork,
   settlePendingRuntimeWorkAfterInterrupt,
+  threadHasActiveRuntimeWork,
   threadHasPendingRuntimeWork,
   threadSnapshotLooksRunning
 } from './chat-store-runtime-helpers'
@@ -80,6 +82,46 @@ describe('chat-store-runtime-helpers compaction state', () => {
     expect(threadSnapshotLooksRunning(blocks)).toBe(true)
   })
 
+  it('treats pending user input as waiting, not active runtime work', () => {
+    const inputBlock: ChatBlock = {
+      kind: 'user_input',
+      id: 'input-pending',
+      requestId: 'input-1',
+      questions: [],
+      status: 'pending'
+    }
+    const blocks: ChatBlock[] = [
+      { kind: 'user', id: 'user-1', text: 'Run the task' },
+      inputBlock
+    ]
+
+    expect(hasPendingRuntimeWork(inputBlock)).toBe(true)
+    expect(hasActiveRuntimeWork(inputBlock)).toBe(false)
+    expect(threadHasPendingRuntimeWork(blocks)).toBe(true)
+    expect(threadHasActiveRuntimeWork(blocks)).toBe(false)
+  })
+
+  it('treats MiMo question tool snapshots as waiting instead of running work', () => {
+    const questionTool: ChatBlock = {
+      kind: 'tool',
+      id: 'tool-question',
+      summary: 'Question question',
+      status: 'running',
+      toolKind: 'tool_call',
+      meta: { toolName: 'question' }
+    }
+    const blocks: ChatBlock[] = [
+      { kind: 'user', id: 'user-1', text: 'Run the task' },
+      questionTool
+    ]
+
+    expect(hasPendingRuntimeWork(questionTool)).toBe(false)
+    expect(hasActiveRuntimeWork(questionTool)).toBe(false)
+    expect(threadHasPendingRuntimeWork(blocks)).toBe(false)
+    expect(threadHasActiveRuntimeWork(blocks)).toBe(false)
+    expect(threadSnapshotLooksRunning(blocks)).toBe(false)
+  })
+
   it('does not let stale pending work from an older turn block new input', () => {
     const blocks: ChatBlock[] = [
       { kind: 'user', id: 'user-1', text: 'First task' },
@@ -148,7 +190,7 @@ describe('findReusableEmptyThreadId', () => {
     id: 'thread',
     title: '新会话',
     updatedAt: '2026-06-14T00:00:00.000Z',
-    model: 'deepseek',
+    model: 'mimo',
     mode: 'agent',
     workspace,
     ...overrides

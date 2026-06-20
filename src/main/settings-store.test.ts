@@ -33,11 +33,11 @@ describe('JsonSettingsStore', () => {
     expect(loaded.write.inlineCompletion.enabled).toBe(true)
     expect(loaded.write.inlineCompletion.retrievalEnabled).toBe(true)
     expect(loaded.write.inlineCompletion.longCompletionEnabled).toBe(true)
-    expect(loaded.provider.baseUrl).toBe('https://api.deepseek.com')
+    expect(loaded.provider.baseUrl).toBe('https://api.mimo.com')
     expect(loaded.write.inlineCompletion.apiKey).toBe('')
     expect(loaded.write.inlineCompletion.baseUrl).toBe('')
     expect(loaded.write.inlineCompletion.inheritModel).toBe(true)
-    expect(loaded.write.inlineCompletion.model).toBe('deepseek-v4-flash')
+    expect(loaded.write.inlineCompletion.model).toBe('mimo-v4-flash')
     expect(loaded.write.inlineCompletion.longMaxTokens).toBe(256)
     expect(await readFile(join(loaded.write.defaultWorkspaceRoot, 'welcome.md'), 'utf8')).toContain('Welcome to Write')
   })
@@ -46,12 +46,12 @@ describe('JsonSettingsStore', () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
 
     await writeFile(
-      join(userDataDir, 'deepseek-gui-settings.json'),
+      join(userDataDir, 'mimo-work-settings.json'),
       JSON.stringify({
         version: 1,
         write: {
           inlineCompletion: {
-            model: 'deepseek-v4-pro'
+            model: 'mimo-v4-pro'
           }
         }
       }),
@@ -62,14 +62,14 @@ describe('JsonSettingsStore', () => {
     const loaded = await store.load()
 
     expect(loaded.write.inlineCompletion.inheritModel).toBe(false)
-    expect(loaded.write.inlineCompletion.model).toBe('deepseek-v4-pro')
+    expect(loaded.write.inlineCompletion.model).toBe('mimo-v4-pro')
   })
 
   it('preserves disabled Skill IDs when settings are reloaded', async () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
 
     await writeFile(
-      join(userDataDir, 'deepseek-gui-settings.json'),
+      join(userDataDir, 'mimo-work-settings.json'),
       JSON.stringify({
         version: 1,
         disabledSkillIds: ['test-skill-08', '/skill:test-skill-09', '']
@@ -87,12 +87,12 @@ describe('JsonSettingsStore', () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
 
     await writeFile(
-      join(userDataDir, 'deepseek-gui-settings.json'),
+      join(userDataDir, 'mimo-work-settings.json'),
       JSON.stringify({
         version: 1,
         write: {
           inlineCompletion: {
-            model: 'deepseek-v4-flash'
+            model: 'mimo-v4-flash'
           }
         }
       }),
@@ -103,20 +103,20 @@ describe('JsonSettingsStore', () => {
     const loaded = await store.load()
 
     expect(loaded.write.inlineCompletion.inheritModel).toBe(true)
-    expect(loaded.write.inlineCompletion.model).toBe('deepseek-v4-flash')
+    expect(loaded.write.inlineCompletion.model).toBe('mimo-v4-flash')
   })
 
-  it('migrates legacy deepseek.autoStart=false into Kun', async () => {
+  it('migrates legacy mimo.autoStart=false into Kun', async () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
     const workspaceRoot = join(userDataDir, 'workspace')
     await mkdir(workspaceRoot, { recursive: true })
 
     await writeFile(
-      join(userDataDir, 'deepseek-gui-settings.json'),
+      join(userDataDir, 'mimo-work-settings.json'),
       JSON.stringify({
         version: 1,
         workspaceRoot,
-        deepseek: {
+        mimo: {
           autoStart: false
         }
       }),
@@ -133,7 +133,7 @@ describe('JsonSettingsStore', () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
 
     await writeFile(
-      join(userDataDir, 'deepseek-gui-settings.json'),
+      join(userDataDir, 'mimo-work-settings.json'),
       JSON.stringify({
         version: 1,
         agents: {
@@ -157,17 +157,17 @@ describe('JsonSettingsStore', () => {
 
   it('keeps custom model providers when migrated settings are reloaded', async () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
-    const settingsPath = join(userDataDir, 'deepseek-gui-settings.json')
+    const settingsPath = join(userDataDir, 'mimo-work-settings.json')
     const provider = defaultModelProviderSettings()
 
     await writeFile(
       settingsPath,
       JSON.stringify({
         version: 1,
-        agentProvider: 'deepseek-runtime',
+        agentProvider: 'mimo-runtime',
         provider: {
           apiKey: 'sk-default',
-          baseUrl: 'https://api.deepseek.com',
+          baseUrl: 'https://api.mimo.com',
           providers: [
             ...provider.providers,
             {
@@ -227,13 +227,13 @@ describe('JsonSettingsStore', () => {
 
   it('loads settings from the legacy lowercase userData directory and writes them into the current path', async () => {
     const supportRoot = await mkdtemp(join(tmpdir(), 'ds-gui-settings-compat-'))
-    const legacyUserDataDir = join(supportRoot, 'deepseek-gui')
+    const legacyUserDataDir = join(supportRoot, 'mimo-work')
     const currentUserDataDir = join(supportRoot, 'Kun')
     const currentSettingsPath = join(currentUserDataDir, 'kun-settings.json')
 
     await mkdir(legacyUserDataDir, { recursive: true })
     await writeFile(
-      join(legacyUserDataDir, 'deepseek-gui-settings.json'),
+      join(legacyUserDataDir, 'mimo-work-settings.json'),
       JSON.stringify({
         version: 1,
         provider: {
@@ -255,7 +255,7 @@ describe('JsonSettingsStore', () => {
     const workspaceRoot = join(userDataDir, 'missing-workspace')
 
     await writeFile(
-      join(userDataDir, 'deepseek-gui-settings.json'),
+      join(userDataDir, 'mimo-work-settings.json'),
       JSON.stringify({
         version: 1,
         workspaceRoot
@@ -270,15 +270,15 @@ describe('JsonSettingsStore', () => {
     expect((await stat(workspaceRoot)).isDirectory()).toBe(true)
   })
 
-  it('migrates legacy deepseek-runtime agentProvider to Kun', async () => {
+  it('migrates legacy mimo-runtime agentProvider to Kun', async () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
 
     await writeFile(
-      join(userDataDir, 'deepseek-gui-settings.json'),
+      join(userDataDir, 'mimo-work-settings.json'),
       JSON.stringify({
         version: 1,
-        agentProvider: 'deepseek-runtime',
-        deepseek: { port: 8787 }
+        agentProvider: 'mimo-runtime',
+        mimo: { port: 8787 }
       }),
       'utf8'
     )
@@ -291,13 +291,13 @@ describe('JsonSettingsStore', () => {
 
   it('backs up invalid JSON and replaces it with defaults', async () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
-    const settingsPath = join(userDataDir, 'deepseek-gui-settings.json')
+    const settingsPath = join(userDataDir, 'mimo-work-settings.json')
     await writeFile(settingsPath, '{ invalid json', 'utf8')
 
     const store = new JsonSettingsStore(userDataDir)
     const loaded = await store.load()
     const files = await readdir(userDataDir)
-    const backupName = files.find((file) => file.startsWith('deepseek-gui-settings.invalid-'))
+    const backupName = files.find((file) => file.startsWith('mimo-work-settings.invalid-'))
 
     expect(loaded.workspaceRoot.length).toBeGreaterThan(0)
     expect(backupName).toBeTruthy()
@@ -311,7 +311,7 @@ describe('JsonSettingsStore', () => {
     // userData 整目录迁移后的常见形态:目录已经叫 Kun,里面还是旧文件名。
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
     await writeFile(
-      join(userDataDir, 'deepseek-gui-settings.json'),
+      join(userDataDir, 'mimo-work-settings.json'),
       JSON.stringify({ version: 1, provider: { apiKey: 'sk-migrated' } }),
       'utf8'
     )
@@ -323,12 +323,12 @@ describe('JsonSettingsStore', () => {
     const rewritten = await readFile(join(userDataDir, 'kun-settings.json'), 'utf8')
     expect(rewritten).toContain('sk-migrated')
     // 旧文件保留,回滚老版本时仍可读。
-    expect(await readFile(join(userDataDir, 'deepseek-gui-settings.json'), 'utf8')).toContain('sk-migrated')
+    expect(await readFile(join(userDataDir, 'mimo-work-settings.json'), 'utf8')).toContain('sk-migrated')
   })
 
   it('throws for non-recoverable read errors', async () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
-    const settingsPath = join(userDataDir, 'deepseek-gui-settings.json')
+    const settingsPath = join(userDataDir, 'mimo-work-settings.json')
     await mkdir(settingsPath, { recursive: true })
 
     const store = new JsonSettingsStore(userDataDir)
@@ -344,13 +344,13 @@ describe('JsonSettingsStore', () => {
     const saved = await store.patch({
       agents: {
         kun: {
-          model: 'deepseek-reasoner',
+          model: 'mimo-reasoner',
           approvalPolicy: 'on-request'
         }
       }
     })
 
-    expect(saved.agents.kun.model).toBe('deepseek-reasoner')
+    expect(saved.agents.kun.model).toBe('mimo-reasoner')
     expect(saved.agents.kun.approvalPolicy).toBe('on-request')
   })
 
@@ -392,7 +392,7 @@ describe('JsonSettingsStore', () => {
     await store.patch({
       agents: {
         kun: {
-          model: 'deepseek-chat'
+          model: 'mimo-chat'
         }
       }
     })
@@ -402,7 +402,7 @@ describe('JsonSettingsStore', () => {
     expect('agentProvider' in persisted).toBe(false)
     expect(persisted.agents).toEqual(
       expect.objectContaining({
-        kun: expect.objectContaining({ model: 'deepseek-chat' })
+        kun: expect.objectContaining({ model: 'mimo-chat' })
       })
     )
   })
@@ -411,7 +411,7 @@ describe('JsonSettingsStore', () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
 
     await writeFile(
-      join(userDataDir, 'deepseek-gui-settings.json'),
+      join(userDataDir, 'mimo-work-settings.json'),
       JSON.stringify({
         version: 1,
         claw: {
@@ -451,7 +451,7 @@ describe('JsonSettingsStore', () => {
     const userDataDir = await mkdtemp(join(tmpdir(), 'ds-gui-settings-'))
 
     await writeFile(
-      join(userDataDir, 'deepseek-gui-settings.json'),
+      join(userDataDir, 'mimo-work-settings.json'),
       JSON.stringify({
         version: 1,
         claw: {

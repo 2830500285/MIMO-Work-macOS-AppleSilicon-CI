@@ -970,7 +970,7 @@ export function SddDraftEditorView({
                 aria-live="polite"
                 className={`sdd-status-pill inline-flex min-w-[72px] items-center justify-center gap-1.5 rounded-lg px-2.5 py-1 text-[11.5px] font-semibold ${
                   readOnly
-                    ? 'is-upgrading bg-sky-500/12 text-sky-700 dark:text-sky-300'
+                    ? 'is-upgrading bg-[rgba(251,129,71,0.12)] text-[var(--ds-mimo-orange)] dark:bg-[rgba(251,129,71,0.16)] dark:text-[#ffad7f]'
                     : saveStatus === 'error'
                       ? 'bg-red-500/12 text-red-600 dark:text-red-300'
                       : saveStatus === 'dirty'
@@ -1035,7 +1035,7 @@ export function SddDraftEditorView({
 
       <div ref={editorPaneRef} className="min-h-0 min-w-0 flex-1 overflow-hidden pb-3 pt-2">
         <div
-          className={`sdd-editor-card relative h-full min-h-0 overflow-hidden rounded-[18px] border border-ds-border bg-ds-card/88 shadow-[0_20px_56px_rgba(20,47,95,0.06)] ${
+          className={`sdd-editor-card relative h-full min-h-0 overflow-hidden rounded-[18px] border border-ds-border bg-ds-card/88 shadow-[0_20px_56px_rgba(31,35,41,0.06)] ${
             upgrading ? 'is-upgrading' : ''
           }`}
         >
@@ -1128,13 +1128,13 @@ export function SddDraftEditorView({
       ) : null}
 
       {error ? (
-        <div className="sdd-error-toast pointer-events-none fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-full border border-red-200/70 bg-red-50/92 px-4 py-2 text-[13px] text-red-700 shadow-[0_14px_32px_rgba(20,47,95,0.12)] dark:border-red-900/60 dark:bg-red-950/84 dark:text-red-200">
+        <div className="sdd-error-toast pointer-events-none fixed bottom-5 left-1/2 z-40 -translate-x-1/2 rounded-full border border-red-200/70 bg-red-50/92 px-4 py-2 text-[13px] text-red-700 shadow-[0_14px_32px_rgba(31,35,41,0.12)] dark:border-red-900/60 dark:bg-red-950/84 dark:text-red-200">
           {error}
         </div>
       ) : null}
       {notice ? (
         <div
-          className="pointer-events-none fixed left-1/2 z-40 -translate-x-1/2 rounded-full border border-emerald-200/80 bg-emerald-50/92 px-4 py-2 text-[13px] text-emerald-700 shadow-[0_14px_32px_rgba(20,47,95,0.12)] dark:border-emerald-900/60 dark:bg-emerald-950/84 dark:text-emerald-200"
+          className="pointer-events-none fixed left-1/2 z-40 -translate-x-1/2 rounded-full border border-emerald-200/80 bg-emerald-50/92 px-4 py-2 text-[13px] text-emerald-700 shadow-[0_14px_32px_rgba(31,35,41,0.12)] dark:border-emerald-900/60 dark:bg-emerald-950/84 dark:text-emerald-200"
           style={{ bottom: error ? 68 : 20 }}
         >
           {notice.message}

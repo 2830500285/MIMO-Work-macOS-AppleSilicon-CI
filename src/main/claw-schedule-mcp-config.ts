@@ -3,8 +3,8 @@ import { homedir } from 'node:os'
 import { basename, dirname, join, posix } from 'node:path'
 import type { AppSettingsV1 } from '../shared/app-settings'
 
-const CLAW_SCHEDULE_MCP_MARKER_START = '# DeepSeek GUI plugin:mcp:claw-schedule START'
-const CLAW_SCHEDULE_MCP_MARKER_END = '# DeepSeek GUI plugin:mcp:claw-schedule END'
+const CLAW_SCHEDULE_MCP_MARKER_START = '# MIMO Work plugin:mcp:claw-schedule START'
+const CLAW_SCHEDULE_MCP_MARKER_END = '# MIMO Work plugin:mcp:claw-schedule END'
 export const GUI_SCHEDULE_MCP_SERVER_NAME = 'gui_schedule'
 const LEGACY_CLAW_SCHEDULE_MCP_SERVER_NAME = 'claw_schedule'
 const GUI_SCHEDULE_MCP_NODE_ENTRY = 'out/main/claw-schedule-mcp-node-entry.js'
@@ -24,15 +24,11 @@ type ClawScheduleMcpConfigPaths = {
 }
 
 export function resolveKunConfigPath(): string {
-  return join(homedir(), '.kun', 'config.toml')
-}
-
-export function resolveDeepseekConfigPath(): string {
-  return resolveKunConfigPath()
+  return join(homedir(), '.mimo-work', 'config.toml')
 }
 
 export function resolveKunMcpJsonPath(): string {
-  return join(homedir(), '.kun', 'mcp.json')
+  return join(homedir(), '.mimo-work', 'mcp.json')
 }
 
 function isRecord(value: unknown): value is JsonRecord {
@@ -194,7 +190,7 @@ async function readJsonFile(path: string): Promise<unknown | null> {
     return JSON.parse(raw) as unknown
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    throw new Error(`Failed to parse Kun MCP config at ${path}: ${message}`, { cause: error })
+    throw new Error(`Failed to parse MIMO Work MCP config at ${path}: ${message}`, { cause: error })
   }
 }
 

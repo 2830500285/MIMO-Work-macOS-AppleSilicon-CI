@@ -2,19 +2,19 @@ import { appendFile, mkdir, readdir, stat, unlink } from 'node:fs/promises'
 import { join } from 'node:path'
 
 export type LogLevel = 'error' | 'warn' | 'info'
-export type ManagedLogFilePrefix = 'deepseek-gui' | 'kun'
+export type ManagedLogFilePrefix = 'mimo-work'
 
 type LoggerConfig = {
   /** Directory where log files are stored. */
   dir: string
   /** Whether logging is enabled. */
   enabled: boolean
-  /** Delete log files older than this many days. */
+  /** Delete log files older than this many days. 0 means keep forever. */
   retentionDays: number
 }
 
-let cfg: LoggerConfig = { dir: '', enabled: true, retentionDays: 2 }
-const MANAGED_LOG_FILE_PREFIXES: ManagedLogFilePrefix[] = ['deepseek-gui', 'kun']
+let cfg: LoggerConfig = { dir: '', enabled: true, retentionDays: 7 }
+const MANAGED_LOG_FILE_PREFIXES: ManagedLogFilePrefix[] = ['mimo-work']
 
 export function configureLogger(config: Partial<LoggerConfig>): void {
   cfg = { ...cfg, ...config }
@@ -36,6 +36,7 @@ function isManagedLogFile(entry: string): boolean {
  * tidy without a dedicated timer.
  */
 async function pruneOldLogs(): Promise<void> {
+  if (cfg.retentionDays <= 0) return
   try {
     const entries = await readdir(cfg.dir)
     const cutoff = Date.now() - cfg.retentionDays * 24 * 60 * 60 * 1000
@@ -76,7 +77,7 @@ export async function appendManagedLogLine(
 async function writeLogLine(level: LogLevel, category: string, message: string): Promise<void> {
   const stamp = new Date().toISOString()
   const line = `[${stamp}] [${level.toUpperCase()}] [${category}] ${message}\n`
-  await appendManagedLogLine('kun', line)
+  await appendManagedLogLine('mimo-work', line)
 }
 
 export function logError(category: string, message: string, detail?: unknown): void {
@@ -102,7 +103,9 @@ export function logInfo(category: string, message: string): void {
  */
 export async function pruneOnStartup(): Promise<void> {
   await pruneOldLogs()
-  logInfo('logger', `Pruned logs older than ${cfg.retentionDays} day(s) on startup`)
+  logInfo('logger', cfg.retentionDays <= 0
+    ? 'Log pruning disabled on startup'
+    : `Pruned logs older than ${cfg.retentionDays} day(s) on startup`)
 }
 
 function safeStringify(value: unknown): string {

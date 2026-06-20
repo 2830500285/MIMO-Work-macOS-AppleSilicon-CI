@@ -31,7 +31,13 @@ function createMemoryStorage(): Storage {
 }
 
 type FetchModelsResult =
-  | { ok: true; modelIds: string[]; defaultModelId?: string; modelGroups?: ChatState['composerModelGroups'] }
+  | {
+    ok: true
+    modelIds: string[]
+    defaultModelId?: string
+    defaultProviderId?: string
+    modelGroups?: ChatState['composerModelGroups']
+  }
   | { ok: false; message: string }
 
 function buildHarness(fetchModelsResult: FetchModelsResult): {
@@ -91,55 +97,87 @@ describe('chat-store app actions composer model loading', () => {
   })
 
   it('restores the previously selected custom model after the full model list loads', async () => {
-    localStorage.setItem(COMPOSER_MODEL_STORAGE_KEY, 'MiniMax-M2')
+    localStorage.setItem(COMPOSER_MODEL_STORAGE_KEY, 'MIMO-M2')
     const { actions, state } = buildHarness({
       ok: true,
-      modelIds: ['MiniMax-M2'],
-      defaultModelId: 'deepseek-v4-pro',
+      modelIds: ['MIMO-M2'],
+      defaultModelId: 'mimo-v2.5-pro',
       modelGroups: [{
-        providerId: 'minimax',
-        label: 'MiniMax',
-        modelIds: ['MiniMax-M2']
+        providerId: 'mimo',
+        label: 'MIMO',
+        modelIds: ['MIMO-M2']
       }]
     })
 
     await actions.loadComposerModels()
 
-    expect(state.composerModel).toBe('MiniMax-M2')
-    expect(state.composerProviderId).toBe('minimax')
-    expect(localStorage.getItem(COMPOSER_MODEL_STORAGE_KEY)).toBe('MiniMax-M2')
-    expect(localStorage.getItem(COMPOSER_PROVIDER_STORAGE_KEY)).toBe('minimax')
+    expect(state.composerModel).toBe('MIMO-M2')
+    expect(state.composerProviderId).toBe('mimo')
+    expect(localStorage.getItem(COMPOSER_MODEL_STORAGE_KEY)).toBe('MIMO-M2')
+    expect(localStorage.getItem(COMPOSER_PROVIDER_STORAGE_KEY)).toBe('mimo')
   })
 
   it('updates the composer provider when the picker supplies a provider id', () => {
     const { actions, state } = buildHarness({
       ok: true,
-      modelIds: ['MiniMax-M2'],
-      defaultModelId: 'deepseek-v4-pro',
+      modelIds: ['MIMO-M2'],
+      defaultModelId: 'mimo-v2.5-pro',
       modelGroups: [{
-        providerId: 'minimax',
-        label: 'MiniMax',
-        modelIds: ['MiniMax-M2']
+        providerId: 'mimo',
+        label: 'MIMO',
+        modelIds: ['MIMO-M2']
       }]
     })
     state.composerModelGroups = [{
-      providerId: 'minimax',
-      label: 'MiniMax',
-      modelIds: ['MiniMax-M2']
+      providerId: 'mimo',
+      label: 'MIMO',
+      modelIds: ['MIMO-M2']
     }]
 
-    actions.setComposerModel('MiniMax-M2', 'minimax')
+    actions.setComposerModel('MIMO-M2', 'mimo')
 
-    expect(state.composerModel).toBe('MiniMax-M2')
-    expect(state.composerProviderId).toBe('minimax')
-    expect(localStorage.getItem(COMPOSER_PROVIDER_STORAGE_KEY)).toBe('minimax')
+    expect(state.composerModel).toBe('MIMO-M2')
+    expect(state.composerProviderId).toBe('mimo')
+    expect(localStorage.getItem(COMPOSER_PROVIDER_STORAGE_KEY)).toBe('mimo')
     expect(window.kunGui.saveSettingsSilent).toHaveBeenCalledWith({
-      agents: { kun: { model: 'MiniMax-M2' } }
+      agents: { kun: { model: 'MIMO-M2', providerId: 'mimo' } }
     })
   })
 
+  it('follows the runtime default provider from settings instead of an older composer cache', async () => {
+    localStorage.setItem(COMPOSER_MODEL_STORAGE_KEY, 'mimo-v2.5-pro')
+    localStorage.setItem(COMPOSER_PROVIDER_STORAGE_KEY, 'mimo')
+    const { actions, state } = buildHarness({
+      ok: true,
+      modelIds: ['mimo-v2.5-pro', 'due/default'],
+      defaultModelId: 'due/default',
+      defaultProviderId: 'custom-provider-2',
+      modelGroups: [
+        {
+          providerId: 'mimo',
+          label: 'MIMO',
+          modelIds: ['mimo-v2.5-pro']
+        },
+        {
+          providerId: 'custom-provider-2',
+          label: '自定义供应商 2',
+          modelIds: ['due/default']
+        }
+      ]
+    })
+    state.composerModel = 'mimo-v2.5-pro'
+    state.composerProviderId = 'mimo'
+
+    await actions.loadComposerModels()
+
+    expect(state.composerModel).toBe('due/default')
+    expect(state.composerProviderId).toBe('custom-provider-2')
+    expect(localStorage.getItem(COMPOSER_MODEL_STORAGE_KEY)).toBe('due/default')
+    expect(localStorage.getItem(COMPOSER_PROVIDER_STORAGE_KEY)).toBe('custom-provider-2')
+  })
+
   it('does not overwrite a stored custom model when only fallback models are available', async () => {
-    localStorage.setItem(COMPOSER_MODEL_STORAGE_KEY, 'MiniMax-M2')
+    localStorage.setItem(COMPOSER_MODEL_STORAGE_KEY, 'MIMO-M2')
     const { actions, state } = buildHarness({
       ok: false,
       message: 'upstream unavailable'
@@ -147,7 +185,7 @@ describe('chat-store app actions composer model loading', () => {
 
     await actions.loadComposerModels()
 
-    expect(state.composerModel).toBe('deepseek-v4-pro')
-    expect(localStorage.getItem(COMPOSER_MODEL_STORAGE_KEY)).toBe('MiniMax-M2')
+    expect(state.composerModel).toBe('mimo-v2.5-pro')
+    expect(localStorage.getItem(COMPOSER_MODEL_STORAGE_KEY)).toBe('MIMO-M2')
   })
 })

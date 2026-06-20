@@ -1,5 +1,5 @@
 /**
- * UI 插件(形象工坊)规范 v1。
+ * UI 插件规范 v1。
  *
  * 一个 UI 插件 = 一个文件夹:manifest.json + 若干图片。
  * 纯声明式 —— 不允许任何 JS / HTML / 自定义 CSS 执行;
@@ -9,7 +9,7 @@
 
 export const UI_PLUGIN_MANIFEST_FILENAME = 'manifest.json'
 
-/** 形象槽位:缺失的槽位回退默认 Kun 美术(允许"半皮肤") */
+/** 形象槽位:缺失的槽位回退 MIMO Work 默认美术(允许"半皮肤") */
 export const UI_PLUGIN_FIGURE_SLOTS = [
   'swim',
   'surf',
@@ -77,13 +77,10 @@ export const UI_PLUGIN_LIMITS = {
 const UI_PLUGIN_ID_PATTERN = /^[a-z0-9][a-z0-9-]{1,39}$/
 /**
  * 与内置模式、DOM 属性值保留字互斥。
- * 注意:'ikun' 不在保留字里 —— 内置的 iKun 模式本身就是一个预装 UI 插件
- * (见 src/main/ui-plugin-bundled.ts),id 为 'ikun' 时额外点亮
- * data-ikun-mode 的手工 CSS 机制。
  */
-const UI_PLUGIN_RESERVED_IDS = new Set(['default', 'kun', 'on', 'off', 'none'])
+const UI_PLUGIN_RESERVED_IDS = new Set(['default', 'kun', 'ikun', 'on', 'off', 'none'])
 
-/** 预装示例插件(iKun)的 id:激活时会同时启用 data-ikun-mode 手工动画机制 */
+/** 旧版预装示例插件 id:保留常量用于迁移旧配置,不再作为可选形象展示。 */
 export const UI_PLUGIN_BUNDLED_IKUN_ID = 'ikun'
 const UI_PLUGIN_VERSION_PATTERN = /^\d+\.\d+\.\d+(?:[-+][\w.-]{0,40})?$/
 const UI_PLUGIN_FIGURE_PATH_PATTERN = /^[\w][\w./-]{0,200}$/

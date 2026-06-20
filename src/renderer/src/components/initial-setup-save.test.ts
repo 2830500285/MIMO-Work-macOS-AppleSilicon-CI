@@ -4,6 +4,8 @@ import {
   getKunRuntimeSettings,
   getModelProviderSettings,
   normalizeAppSettings,
+  resolveKunSpeechToTextSettings,
+  resolveKunTextToSpeechSettings,
   type AppSettingsV1
 } from '@shared/app-settings'
 import {
@@ -22,8 +24,8 @@ function settings(patch: Record<string, unknown> = {}): AppSettingsV1 {
 function settingsWithActiveXiaomiWithoutKey(): AppSettingsV1 {
   return settings({
     provider: {
-      apiKey: 'sk-deepseek-key',
-      baseUrl: 'https://api.deepseek.com',
+      apiKey: 'sk-mimo-key',
+      baseUrl: 'https://api.mimo.com',
       providers: [
         { id: 'xiaomi', name: 'Xiaomi', baseUrl: 'https://api.xiaomimimo.com/v1', models: ['mimo-v2.5'] }
       ]
@@ -39,29 +41,27 @@ describe('initialSetupSelection', () => {
   })
 
   it('preselects the token plan mode for token plan profiles', () => {
-    const current = settings({ agents: { kun: { providerId: 'minimax-token-plan' } } })
-    expect(initialSetupSelection(current)).toEqual({ presetId: 'minimax', mode: 'token-plan' })
+    const current = settings({ agents: { kun: { providerId: 'xiaomi-token-plan' } } })
+    expect(initialSetupSelection(current)).toEqual({ presetId: 'xiaomi', mode: 'token-plan' })
   })
 
-  it('falls back to deepseek for unknown or empty active providers', () => {
-    expect(initialSetupSelection(settings())).toEqual({ presetId: 'deepseek', mode: 'api' })
+  it('falls back to xiaomi token plan for unknown or empty active providers', () => {
+    expect(initialSetupSelection(settings())).toEqual({ presetId: 'xiaomi', mode: 'token-plan' })
     expect(initialSetupSelection(settings({ agents: { kun: { providerId: 'custom-provider-2' } } })))
-      .toEqual({ presetId: 'deepseek', mode: 'api' })
+      .toEqual({ presetId: 'xiaomi', mode: 'token-plan' })
     expect(initialSetupSelection(settings({ agents: { kun: { providerId: 'litellm' } } })))
-      .toEqual({ presetId: 'deepseek', mode: 'api' })
+      .toEqual({ presetId: 'xiaomi', mode: 'token-plan' })
   })
 })
 
 describe('initialSetupDrafts', () => {
   it('seeds drafts from saved profiles and preset defaults', () => {
     const drafts = initialSetupDrafts(settingsWithActiveXiaomiWithoutKey())
-    expect(drafts.deepseek).toEqual({ apiKey: 'sk-deepseek-key', baseUrl: 'https://api.deepseek.com' })
-    expect(drafts.xiaomi.apiKey).toBe('')
+    expect(drafts.xiaomi).toEqual({ apiKey: '', baseUrl: 'https://api.xiaomimimo.com/v1' })
     expect(drafts['xiaomi-token-plan']).toEqual({
-      apiKey: '',
-      baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1'
+      apiKey: 'sk-mimo-key',
+      baseUrl: 'https://api.mimo.com'
     })
-    expect(drafts['minimax-token-plan'].baseUrl).toBe('https://api.minimaxi.com/anthropic')
   })
 
   it('does not seed LiteLLM as an onboarding provider', () => {
@@ -79,47 +79,48 @@ describe('initialSetupDrafts', () => {
     ]
     const drafts = initialSetupDrafts(settings())
 
-    expect(INITIAL_SETUP_PROVIDER_PRESETS.map((preset) => preset.id)).toEqual(['xiaomi', 'minimax'])
+    expect(INITIAL_SETUP_PROVIDER_PRESETS.map((preset) => preset.id)).toEqual(['xiaomi'])
     for (const id of excludedIds) {
       expect(drafts[id]).toBeUndefined()
       expect(initialSetupSelection(settings({ agents: { kun: { providerId: id } } })))
-        .toEqual({ presetId: 'deepseek', mode: 'api' })
+        .toEqual({ presetId: 'xiaomi', mode: 'token-plan' })
     }
   })
 })
 
 describe('buildInitialSetupSettings', () => {
-  it('activates deepseek so the boot gate sees the key the user typed', () => {
-    const current = settingsWithActiveXiaomiWithoutKey()
+  it('activates xiaomi so the boot gate sees the key the user typed', () => {
+    const current = settings()
     const drafts = initialSetupDrafts(current)
-    const next = buildInitialSetupSettings(current, drafts, { presetId: 'deepseek', mode: 'api' })
+    drafts.xiaomi = { ...drafts.xiaomi, apiKey: 'sk-mimo-key' }
+    const next = buildInitialSetupSettings(current, drafts, { presetId: 'xiaomi', mode: 'api' })
 
-    expect(getKunRuntimeSettings(next).providerId).toBe('deepseek')
-    expect(getActiveAgentApiKey(next)).toBe('sk-deepseek-key')
+    expect(getKunRuntimeSettings(next).providerId).toBe('xiaomi')
+    expect(getActiveAgentApiKey(next)).toBe('sk-mimo-key')
   })
 
-  it('syncs the deepseek draft into the provider profile used by settings', () => {
+  it('syncs the xiaomi draft into the provider profile used by settings', () => {
     const current = settings({
       provider: {
         apiKey: 'sk-old',
         baseUrl: 'https://old.example/v1'
       },
-      agents: { kun: { providerId: 'deepseek' } }
+      agents: { kun: { providerId: 'xiaomi' } }
     })
     const drafts = initialSetupDrafts(current)
-    drafts.deepseek = {
+    drafts.xiaomi = {
       apiKey: 'sk-new',
       baseUrl: 'https://new.example/v1'
     }
 
-    const next = buildInitialSetupSettings(current, drafts, { presetId: 'deepseek', mode: 'api' })
+    const next = buildInitialSetupSettings(current, drafts, { presetId: 'xiaomi', mode: 'api' })
     const provider = getModelProviderSettings(next)
-    const deepseek = provider.providers.find((profile) => profile.id === 'deepseek')
+    const xiaomi = provider.providers.find((profile) => profile.id === 'xiaomi')
 
-    expect(provider.apiKey).toBe('sk-new')
-    expect(provider.baseUrl).toBe('https://new.example/v1')
-    expect(deepseek?.apiKey).toBe('sk-new')
-    expect(deepseek?.baseUrl).toBe('https://new.example/v1')
+    expect(provider.apiKey).toBe('sk-old')
+    expect(provider.baseUrl).toBe('https://old.example/v1')
+    expect(xiaomi?.apiKey).toBe('sk-new')
+    expect(xiaomi?.baseUrl).toBe('https://new.example/v1')
   })
 
   it('creates a token plan profile and activates it', () => {
@@ -146,56 +147,53 @@ describe('buildInitialSetupSettings', () => {
     }))
     const runtime = getKunRuntimeSettings(next)
     expect(runtime.providerId).toBe('xiaomi-token-plan')
-    expect(runtime.model).toBe(profile?.models[0])
+    expect(runtime.model).toBe('mimo-v2.5-pro')
     expect(getActiveAgentApiKey(next)).toBe('tp-subscription-key')
   })
 
-  it('auto-wires speech and image to filled pay-as-you-go profiles', () => {
+  it('auto-wires speech to a filled pay-as-you-go profile', () => {
     const current = settings()
     const drafts = initialSetupDrafts(current)
     drafts.xiaomi = { ...drafts.xiaomi, apiKey: 'sk-mimo-key' }
-    drafts.minimax = { ...drafts.minimax, apiKey: 'mm-key' }
     const next = buildInitialSetupSettings(current, drafts, { presetId: 'xiaomi', mode: 'api' })
 
     const runtime = getKunRuntimeSettings(next)
     expect(runtime.speechToText.enabled).toBe(true)
     expect(runtime.speechToText.providerId).toBe('xiaomi')
     expect(runtime.imageGeneration.enabled).toBe(true)
-    expect(runtime.imageGeneration.providerId).toBe('minimax')
+    expect(runtime.imageGeneration.providerId).toBe('')
     expect(getModelProviderSettings(next).providers.find((p) => p.id === 'xiaomi')?.speech?.protocol)
       .toBe('mimo-asr')
   })
 
-  it('wires speech from a xiaomi token plan key and image from a minimax token plan key', () => {
-    const tokenPlanOnly = initialSetupDrafts(settings())
-    tokenPlanOnly['xiaomi-token-plan'] = { ...tokenPlanOnly['xiaomi-token-plan'], apiKey: 'tp-key' }
-    tokenPlanOnly['minimax-token-plan'] = { ...tokenPlanOnly['minimax-token-plan'], apiKey: 'mm-tp-key' }
-    expect(initialSetupAutoWirePlan(settings(), tokenPlanOnly))
-      .toEqual({ speechProviderId: 'xiaomi-token-plan', imageProviderId: 'minimax-token-plan' })
+  it('keeps media features enabled and resolves them from provider capabilities by default', () => {
+    const current = settings({
+      provider: { apiKey: 'tp-key' }
+    })
+    const runtime = getKunRuntimeSettings(current)
+    expect(runtime.imageGeneration.enabled).toBe(true)
+    expect(runtime.speechToText.enabled).toBe(true)
+    expect(runtime.textToSpeech.enabled).toBe(true)
+    expect(runtime.musicGeneration.enabled).toBe(true)
+    expect(runtime.videoGeneration.enabled).toBe(true)
+
+    expect(resolveKunSpeechToTextSettings(current)).toEqual(expect.objectContaining({
+      providerId: 'xiaomi-token-plan',
+      apiKey: 'tp-key',
+      model: 'mimo-v2.5-asr'
+    }))
+    expect(resolveKunTextToSpeechSettings(current)).toEqual(expect.objectContaining({
+      providerId: 'xiaomi-token-plan',
+      apiKey: 'tp-key',
+      model: 'mimo-v2.5-tts'
+    }))
   })
 
-  it('creates a MiniMax token plan profile with image generation and activates it', () => {
-    const current = settings()
-    const drafts = initialSetupDrafts(current)
-    drafts['minimax-token-plan'] = {
-      apiKey: 'mm-tp-key',
-      baseUrl: 'https://api.minimaxi.com/anthropic'
-    }
-    const next = buildInitialSetupSettings(current, drafts, { presetId: 'minimax', mode: 'token-plan' })
-
-    const profile = getModelProviderSettings(next).providers.find((p) => p.id === 'minimax-token-plan')
-    expect(profile?.apiKey).toBe('mm-tp-key')
-    expect(profile?.image).toEqual({
-      protocol: 'minimax-image',
-      baseUrl: 'https://api.minimaxi.com',
-      models: ['image-01', 'image-01-live']
-    })
-
-    const runtime = getKunRuntimeSettings(next)
-    expect(runtime.providerId).toBe('minimax-token-plan')
-    expect(runtime.imageGeneration.enabled).toBe(true)
-    expect(runtime.imageGeneration.providerId).toBe('minimax-token-plan')
-    expect(getActiveAgentApiKey(next)).toBe('mm-tp-key')
+  it('wires speech from a xiaomi token plan key', () => {
+    const tokenPlanOnly = initialSetupDrafts(settings())
+    tokenPlanOnly['xiaomi-token-plan'] = { ...tokenPlanOnly['xiaomi-token-plan'], apiKey: 'tp-key' }
+    expect(initialSetupAutoWirePlan(settings(), tokenPlanOnly))
+      .toEqual({ speechProviderId: 'xiaomi-token-plan', imageProviderId: '' })
   })
 
   it('never overrides existing speech or image generation config while auto-wiring', () => {
@@ -207,8 +205,8 @@ describe('buildInitialSetupSettings', () => {
 
     const imageConfigured = settings({ agents: { kun: { imageGeneration: { providerId: 'custom-image' } } } })
     const imageDrafts = initialSetupDrafts(imageConfigured)
-    imageDrafts['minimax-token-plan'] = { ...imageDrafts['minimax-token-plan'], apiKey: 'mm-tp-key' }
-    const nextImage = buildInitialSetupSettings(imageConfigured, imageDrafts, { presetId: 'minimax', mode: 'token-plan' })
+    imageDrafts.xiaomi = { ...imageDrafts.xiaomi, apiKey: 'sk-mimo-key' }
+    const nextImage = buildInitialSetupSettings(imageConfigured, imageDrafts, { presetId: 'xiaomi', mode: 'api' })
     expect(getKunRuntimeSettings(nextImage).imageGeneration.providerId).toBe('custom-image')
   })
 
@@ -221,27 +219,27 @@ describe('buildInitialSetupSettings', () => {
 
   it('keeps the model override when the provider does not change', () => {
     const current = settings({
-      provider: { apiKey: 'sk-deepseek-key' },
-      agents: { kun: { providerId: 'deepseek', model: 'deepseek-v4-flash' } }
+      provider: { apiKey: 'sk-mimo-key' },
+      agents: { kun: { providerId: 'xiaomi', model: 'mimo-v2.5' } }
     })
     const next = buildInitialSetupSettings(current, initialSetupDrafts(current), {
-      presetId: 'deepseek',
+      presetId: 'xiaomi',
       mode: 'api'
     })
-    expect(getKunRuntimeSettings(next).model).toBe('deepseek-v4-flash')
+    expect(getKunRuntimeSettings(next).model).toBe('mimo-v2.5')
   })
 
   it('preserves unrelated custom providers', () => {
     const current = settings({
       provider: {
-        apiKey: 'sk-deepseek-key',
+        apiKey: 'sk-mimo-key',
         providers: [
           { id: 'custom-provider-2', name: 'zenmux', apiKey: 'z-key', baseUrl: 'https://zenmux.ai/api' }
         ]
       }
     })
     const next = buildInitialSetupSettings(current, initialSetupDrafts(current), {
-      presetId: 'deepseek',
+      presetId: 'xiaomi',
       mode: 'api'
     })
     const zenmux = getModelProviderSettings(next).providers.find((p) => p.id === 'custom-provider-2')
@@ -251,8 +249,7 @@ describe('buildInitialSetupSettings', () => {
 
 describe('initialSetupProfileId', () => {
   it('maps selection to profile ids', () => {
-    expect(initialSetupProfileId({ presetId: 'deepseek', mode: 'api' })).toBe('deepseek')
+    expect(initialSetupProfileId({ presetId: 'xiaomi', mode: 'api' })).toBe('xiaomi')
     expect(initialSetupProfileId({ presetId: 'xiaomi', mode: 'token-plan' })).toBe('xiaomi-token-plan')
-    expect(initialSetupProfileId({ presetId: 'minimax', mode: 'api' })).toBe('minimax')
   })
 })

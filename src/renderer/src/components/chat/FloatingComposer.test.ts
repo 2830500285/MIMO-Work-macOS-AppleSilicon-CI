@@ -35,10 +35,10 @@ import {
   replaceFileMentionInInput
 } from '../../lib/composer-file-references'
 
-const DEEPSEEK_PROVIDER_GROUP = {
-  providerId: 'deepseek',
-  label: 'DeepSeek',
-  modelIds: ['deepseek-v4-pro', 'deepseek-v4-flash']
+const MIMO_PROVIDER_GROUP = {
+  providerId: 'mimo',
+  label: 'MIMO',
+  modelIds: ['mimo-v4-pro', 'mimo-v4-flash']
 }
 
 describe('FloatingComposer slash commands', () => {
@@ -203,9 +203,20 @@ describe('FloatingComposer file references', () => {
 
 describe('FloatingComposer model controls', () => {
   it('passes explicit reasoning choices through to the runtime', () => {
+    expect(composerReasoningEffortRequestValue('auto')).toBe('auto')
     expect(composerReasoningEffortRequestValue('off')).toBe('off')
     expect(composerReasoningEffortRequestValue('low')).toBe('low')
     expect(composerReasoningEffortRequestValue('max')).toBe('max')
+  })
+
+  it('keeps Auto reasoning available even when the model profile omits it', () => {
+    expect(normalizeComposerReasoningEffort('auto', {
+      reasoning: {
+        supportedEfforts: ['off', 'low', 'medium', 'high'],
+        defaultEffort: 'high',
+        requestProtocol: 'mimo-chat-completions'
+      }
+    })).toBe('auto')
   })
 
   it('falls back to the model default when the selected model does not support the current effort', () => {
@@ -297,12 +308,12 @@ describe('FloatingComposer model controls', () => {
   it('keeps provider model aliases out of the ungrouped fallback menu', () => {
     const groups = buildComposerModelMenuGroups({
       composerModelGroups: [{
-        providerId: 'minimax-token-plan',
-        label: 'MiniMax Token Plan',
-        modelIds: ['minimax-m3'],
+        providerId: 'mimo-token-plan',
+        label: 'MIMO Token Plan',
+        modelIds: ['mimo-m3'],
         modelProfiles: {
-          'minimax-m3': {
-            aliases: ['MiniMax-M3'],
+          'mimo-m3': {
+            aliases: ['MIMO-M3'],
             inputModalities: ['text', 'image'],
             outputModalities: ['text'],
             supportsToolCalling: true,
@@ -310,14 +321,14 @@ describe('FloatingComposer model controls', () => {
           }
         }
       }],
-      modelOptions: ['MiniMax-M3', 'loose-model'],
+      modelOptions: ['MIMO-M3', 'loose-model'],
       ungroupedLabel: 'Other models'
     })
 
     expect(groups).toHaveLength(2)
     expect(groups[0]).toMatchObject({
-      providerId: 'minimax-token-plan',
-      modelIds: ['minimax-m3']
+      providerId: 'mimo-token-plan',
+      modelIds: ['mimo-m3']
     })
     expect(groups[1]).toMatchObject({
       providerId: '__composer_models__',
@@ -330,59 +341,59 @@ describe('FloatingComposer model controls', () => {
     const groups = buildComposerModelMenuGroups({
       composerModelGroups: [
         {
-          providerId: 'deepseek',
-          label: 'DeepSeek',
-          modelIds: ['deepseek-v4-pro', 'deepseek-v4-pro'],
+          providerId: 'mimo',
+          label: 'MIMO',
+          modelIds: ['mimo-v4-pro', 'mimo-v4-pro'],
           modelProfiles: {}
         },
         {
           providerId: 'custom-provider-3',
           label: 'test',
-          modelIds: ['deepseek-v4-pro'],
+          modelIds: ['mimo-v4-pro'],
           modelProfiles: {}
         }
       ],
-      modelOptions: ['deepseek-v4-pro'],
+      modelOptions: ['mimo-v4-pro'],
       ungroupedLabel: 'Other models'
     })
 
     expect(groups).toEqual([
       expect.objectContaining({
-        providerId: 'deepseek',
-        modelIds: ['deepseek-v4-pro']
+        providerId: 'mimo',
+        modelIds: ['mimo-v4-pro']
       }),
       expect.objectContaining({
         providerId: 'custom-provider-3',
-        modelIds: ['deepseek-v4-pro']
+        modelIds: ['mimo-v4-pro']
       })
     ])
   })
 
   it('selects duplicate model ids by provider and model id together', () => {
     expect(composerModelMenuItemSelected({
-      groupProviderId: 'deepseek',
-      selectedProviderId: 'deepseek',
-      currentModel: 'deepseek-v4-pro',
-      modelId: 'deepseek-v4-pro'
+      groupProviderId: 'mimo',
+      selectedProviderId: 'mimo',
+      currentModel: 'mimo-v4-pro',
+      modelId: 'mimo-v4-pro'
     })).toBe(true)
     expect(composerModelMenuItemSelected({
       groupProviderId: 'custom-provider-3',
-      selectedProviderId: 'deepseek',
-      currentModel: 'deepseek-v4-pro',
-      modelId: 'deepseek-v4-pro'
+      selectedProviderId: 'mimo',
+      currentModel: 'mimo-v4-pro',
+      modelId: 'mimo-v4-pro'
     })).toBe(false)
   })
 
   it('filters provider model ids by substring without changing the empty query list', () => {
     const modelIds = [
-      'deepseek-v4-pro',
-      'MiniMax-M2',
-      'moonshot-v1-128k'
+      'mimo-v2.5-pro',
+      'mimo-v2-flash',
+      'custom-128k'
     ]
 
     expect(filterComposerModelIds(modelIds, '')).toEqual(modelIds)
-    expect(filterComposerModelIds(modelIds, 'max')).toEqual(['MiniMax-M2'])
-    expect(filterComposerModelIds(modelIds, '128K')).toEqual(['moonshot-v1-128k'])
+    expect(filterComposerModelIds(modelIds, 'pro')).toEqual(['mimo-v2.5-pro'])
+    expect(filterComposerModelIds(modelIds, '128K')).toEqual(['custom-128k'])
   })
 
   it('keeps the reasoning strength visible in the model control', () => {
@@ -391,8 +402,8 @@ describe('FloatingComposer model controls', () => {
         compact: false,
         mode: 'select',
         composerModel: 'auto',
-        composerPickList: ['auto', 'deepseek-v4-pro'],
-        composerModelGroups: [DEEPSEEK_PROVIDER_GROUP],
+        composerPickList: ['auto', 'mimo-v4-pro'],
+        composerModelGroups: [MIMO_PROVIDER_GROUP],
         composerReasoningEffort: 'high',
         canChangeModel: true,
         onComposerModelChange: () => undefined,
@@ -428,8 +439,8 @@ describe('FloatingComposer model controls', () => {
       createElement(FloatingComposerModelPicker, {
         compact: false,
         mode: 'select',
-        composerModel: 'deepseek-v4-pro',
-        composerPickList: ['deepseek-v4-pro', 'deepseek-v4-flash'],
+        composerModel: 'mimo-v2.5-pro',
+        composerPickList: ['mimo-v2.5-pro', 'mimo-v2-flash'],
         composerModelGroups: [],
         canChangeModel: true,
         onComposerModelChange: () => undefined,
@@ -438,7 +449,7 @@ describe('FloatingComposer model controls', () => {
     )
 
     expect(html).toContain('Set up provider')
-    expect(html).not.toContain('deepseek-v4-pro')
+    expect(html).not.toContain('mimo-v2.5-pro')
   })
 })
 
@@ -601,7 +612,7 @@ describe('FloatingComposer capability controls', () => {
         busy: false,
         runtimeReady: true,
         hasActiveThread: false,
-        workspaceRootOverride: '/workspace/deepseek-gui',
+        workspaceRootOverride: '/workspace/mimo-work',
         composerModel: '',
         composerPickList: [],
         onComposerModelChange: () => undefined,
@@ -636,7 +647,7 @@ describe('FloatingComposer capability controls', () => {
         busy: false,
         runtimeReady: true,
         hasActiveThread: false,
-        workspaceRootOverride: '/workspace/deepseek-gui',
+        workspaceRootOverride: '/workspace/mimo-work',
         composerModel: '',
         composerPickList: [],
         onComposerModelChange: () => undefined,
@@ -672,7 +683,7 @@ describe('FloatingComposer capability controls', () => {
         busy: false,
         runtimeReady: true,
         hasActiveThread: false,
-        workspaceRootOverride: '/workspace/deepseek-gui',
+        workspaceRootOverride: '/workspace/mimo-work',
         composerModel: '',
         composerPickList: [],
         onComposerModelChange: () => undefined,
@@ -696,7 +707,7 @@ describe('FloatingComposer capability controls', () => {
       activeThreadId: 'thr_1',
       activeThreadGoal: null,
       route: 'chat',
-      workspaceRoot: '/workspace/deepseek-gui',
+      workspaceRoot: '/workspace/mimo-work',
       threads: []
     })
 
@@ -704,7 +715,7 @@ describe('FloatingComposer capability controls', () => {
       createElement(FloatingComposer, {
         input: '/openspec',
         setInput: () => undefined,
-        workspaceRootOverride: '/workspace/deepseek-gui',
+        workspaceRootOverride: '/workspace/mimo-work',
         mode: 'agent',
         setMode: () => undefined,
         busy: false,
@@ -723,7 +734,7 @@ describe('FloatingComposer capability controls', () => {
           id: 'openspec-apply-change',
           name: 'Openspec Apply Change',
           description: 'Implement tasks from an OpenSpec change',
-          root: '/workspace/deepseek-gui/.codex/skills/openspec-apply-change'
+          root: '/workspace/mimo-work/.codex/skills/openspec-apply-change'
         }]
       })
     )
@@ -739,7 +750,7 @@ describe('FloatingComposer capability controls', () => {
       activeThreadId: 'thr_1',
       activeThreadGoal: null,
       route: 'chat',
-      workspaceRoot: '/workspace/deepseek-gui',
+      workspaceRoot: '/workspace/mimo-work',
       threads: []
     })
 
@@ -747,7 +758,7 @@ describe('FloatingComposer capability controls', () => {
       createElement(FloatingComposer, {
         input: '/skill',
         setInput: () => undefined,
-        workspaceRootOverride: '/workspace/deepseek-gui',
+        workspaceRootOverride: '/workspace/mimo-work',
         mode: 'agent',
         setMode: () => undefined,
         busy: false,
@@ -768,13 +779,13 @@ describe('FloatingComposer capability controls', () => {
             id: 'test-skill-08',
             name: 'Test Skill 08',
             description: 'Disabled test skill',
-            root: '/workspace/deepseek-gui/.agents/skills/test-skill-08'
+            root: '/workspace/mimo-work/.agents/skills/test-skill-08'
           },
           {
             id: 'test-skill-09',
             name: 'Test Skill 09',
             description: 'Enabled test skill',
-            root: '/workspace/deepseek-gui/.agents/skills/test-skill-09'
+            root: '/workspace/mimo-work/.agents/skills/test-skill-09'
           }
         ]
       })
@@ -910,9 +921,9 @@ describe('FloatingComposer capability controls', () => {
         busy: true,
         runtimeReady: true,
         hasActiveThread: true,
-        composerModel: 'deepseek-v4-pro',
-        composerPickList: ['deepseek-v4-pro'],
-        composerModelGroups: [DEEPSEEK_PROVIDER_GROUP],
+        composerModel: 'mimo-v4-pro',
+        composerPickList: ['mimo-v4-pro'],
+        composerModelGroups: [MIMO_PROVIDER_GROUP],
         onComposerModelChange: () => undefined,
         queuedMessages: [],
         onRemoveQueuedMessage: () => undefined,
@@ -923,7 +934,7 @@ describe('FloatingComposer capability controls', () => {
       })
     )
 
-    expect(html).toContain('deepseek-v4-pro')
+    expect(html).toContain('mimo-v4-pro')
     expect(html).toContain('Stop')
     expect(html).not.toContain('Stop and discard')
     expect(html).not.toContain('lucide-trash-2')
@@ -936,9 +947,9 @@ describe('FloatingComposer capability controls', () => {
       createElement(FloatingComposerModelPicker, {
         compact: false,
         mode: 'select',
-        composerModel: 'deepseek-v4-pro',
-        composerPickList: ['auto', 'deepseek-v4-flash', 'deepseek-v4-pro'],
-        composerModelGroups: [DEEPSEEK_PROVIDER_GROUP],
+        composerModel: 'mimo-v4-pro',
+        composerPickList: ['auto', 'mimo-v4-flash', 'mimo-v4-pro'],
+        composerModelGroups: [MIMO_PROVIDER_GROUP],
         canChangeModel: true,
         composerReasoningEffort: 'max',
         onComposerReasoningEffortChange: () => undefined,
@@ -946,7 +957,7 @@ describe('FloatingComposer capability controls', () => {
       })
     )
 
-    expect(html).toContain('deepseek-v4-pro')
+    expect(html).toContain('mimo-v4-pro')
     expect(html).toContain('Ultra')
     expect(html).toContain('Model and reasoning settings')
     expect(html).not.toContain('>Auto<')
@@ -959,9 +970,9 @@ describe('FloatingComposer capability controls', () => {
       createElement(FloatingComposerModelPicker, {
         compact: true,
         mode: 'combobox',
-        composerModel: 'deepseek-v4-flash',
-        composerPickList: ['auto', 'deepseek-v4-flash', 'deepseek-v4-pro'],
-        composerModelGroups: [DEEPSEEK_PROVIDER_GROUP],
+        composerModel: 'mimo-v4-flash',
+        composerPickList: ['auto', 'mimo-v4-flash', 'mimo-v4-pro'],
+        composerModelGroups: [MIMO_PROVIDER_GROUP],
         canChangeModel: true,
         composerReasoningEffort: 'high',
         onComposerReasoningEffortChange: () => undefined,
@@ -969,7 +980,7 @@ describe('FloatingComposer capability controls', () => {
       })
     )
 
-    expect(html).toContain('deepseek-v4-flash')
+    expect(html).toContain('mimo-v4-flash')
     expect(html).toContain('High')
     expect(html).toContain('Model and reasoning settings')
     expect(html).toContain('aria-haspopup="menu"')
@@ -1054,7 +1065,7 @@ describe('FloatingComposer capability controls', () => {
         onInterrupt: () => undefined,
         fileReferenceEnabled: true,
         fileReferences: [{
-          path: '/workspace/deepseek-gui/src/App.tsx',
+          path: '/workspace/mimo-work/src/App.tsx',
           relativePath: 'src/App.tsx',
           name: 'App.tsx'
         }],
@@ -1075,7 +1086,7 @@ describe('FloatingComposer capability controls', () => {
       activeThreadId: 'thr_1',
       activeThreadGoal: null,
       route: 'chat',
-      workspaceRoot: '/workspace/deepseek-gui'
+      workspaceRoot: '/workspace/mimo-work'
     })
 
     const html = renderToStaticMarkup(
@@ -1113,7 +1124,7 @@ describe('FloatingComposer capability controls', () => {
       activeThreadId: 'thr_1',
       activeThreadGoal: null,
       route: 'chat',
-      workspaceRoot: '/workspace/deepseek-gui'
+      workspaceRoot: '/workspace/mimo-work'
     })
 
     const html = renderToStaticMarkup(
@@ -1157,7 +1168,7 @@ describe('FloatingComposer capability controls', () => {
       activeThreadId: null,
       activeThreadGoal: null,
       route: 'chat',
-      workspaceRoot: '/workspace/deepseek-gui',
+      workspaceRoot: '/workspace/mimo-work',
       threads: []
     })
 
@@ -1165,7 +1176,7 @@ describe('FloatingComposer capability controls', () => {
       createElement(FloatingComposer, {
         input: '',
         setInput: () => undefined,
-        workspaceRootOverride: '/workspace/deepseek-gui',
+        workspaceRootOverride: '/workspace/mimo-work',
         mode: 'agent',
         setMode: () => undefined,
         busy: false,
@@ -1231,7 +1242,7 @@ describe('FloatingComposer capability controls', () => {
       activeThreadId: null,
       activeThreadGoal: null,
       route: 'chat',
-      workspaceRoot: '/workspace/deepseek-gui',
+      workspaceRoot: '/workspace/mimo-work',
       threads: []
     })
 
@@ -1239,7 +1250,7 @@ describe('FloatingComposer capability controls', () => {
       createElement(FloatingComposer, {
         input: 'draft during startup',
         setInput: () => undefined,
-        workspaceRootOverride: '/workspace/deepseek-gui',
+        workspaceRootOverride: '/workspace/mimo-work',
         mode: 'agent',
         setMode: () => undefined,
         busy: false,

@@ -54,7 +54,7 @@ const REASONING_OPTIONS: Array<{ id: ComposerReasoningEffort; labelKey: string }
   { id: 'high', labelKey: 'composerReasoningHigh' },
   { id: 'max', labelKey: 'composerReasoningMax' }
 ]
-const LEGACY_REASONING_EFFORTS: ComposerReasoningEffort[] = ['off', 'low', 'medium', 'high', 'max']
+const LEGACY_REASONING_EFFORTS: ComposerReasoningEffort[] = ['auto', 'off', 'low', 'medium', 'high', 'max']
 
 type FloatingMenuPlacement = {
   left: number
@@ -395,7 +395,7 @@ export function FloatingComposerModelPicker({
             role="menu"
             aria-label={activeProviderGroup.label}
             style={submenuStyle}
-            className="fixed z-[1001] overflow-y-auto rounded-xl border border-ds-border bg-white p-1.5 text-[13px] text-ds-muted shadow-[0_18px_48px_rgba(20,47,95,0.16)] dark:bg-ds-card"
+            className="fixed z-[1001] overflow-y-auto rounded-xl border border-ds-border bg-white p-1.5 text-[13px] text-ds-muted shadow-[0_18px_48px_rgba(31,35,41,0.16)] dark:bg-ds-card"
           >
             <div className="px-2.5 pb-1 pt-1 text-[11px] font-bold uppercase tracking-[0.08em] text-ds-faint">
               {t('composerModel')}
@@ -496,7 +496,7 @@ export function FloatingComposerModelPicker({
             <ChevronDown className="h-3.5 w-3.5" strokeWidth={1.8} />
           </span>
         </button>
-        {renderMenu('fixed z-[1000] overflow-x-hidden overflow-y-auto rounded-xl border border-ds-border bg-white p-1.5 text-[12.5px] shadow-[0_18px_50px_rgba(20,47,95,0.16)] dark:bg-ds-card')}
+        {renderMenu('fixed z-[1000] overflow-x-hidden overflow-y-auto rounded-xl border border-ds-border bg-white p-1.5 text-[12.5px] shadow-[0_18px_50px_rgba(31,35,41,0.16)] dark:bg-ds-card')}
       </div>
     )
   }
@@ -534,7 +534,7 @@ export function FloatingComposerModelPicker({
       </button>
 
       {menuOpen && canOpenModelControls ? (
-        renderMenu('fixed z-[1000] overflow-x-hidden overflow-y-auto rounded-xl border border-ds-border bg-white p-1.5 text-[13px] text-ds-muted shadow-[0_22px_64px_rgba(20,47,95,0.18)] dark:bg-ds-card')
+        renderMenu('fixed z-[1000] overflow-x-hidden overflow-y-auto rounded-xl border border-ds-border bg-white p-1.5 text-[13px] text-ds-muted shadow-[0_22px_64px_rgba(31,35,41,0.18)] dark:bg-ds-card')
       ) : null}
     </div>
   )
@@ -620,6 +620,7 @@ export function normalizeComposerReasoningEffort(
   profile?: Pick<ModelProviderModelProfileV1, 'reasoning'>
 ): ComposerReasoningEffort {
   const normalized = normalizeComposerReasoningEffortValue(value)
+  if (normalized === 'auto') return 'auto'
   if (!profile?.reasoning) return normalized ?? 'max'
   const supported = profile.reasoning.supportedEfforts
   if (normalized && supported.includes(normalized)) return normalized
@@ -853,7 +854,10 @@ function reasoningOptionsForModel(
   profile: Pick<ModelProviderModelProfileV1, 'reasoning'> | undefined
 ): Array<{ id: ComposerReasoningEffort; labelKey: string }> {
   const supported = profile?.reasoning?.supportedEfforts ?? LEGACY_REASONING_EFFORTS
-  return supported
+  const ordered = ['auto', ...supported].filter((effort, index, values) =>
+    values.indexOf(effort) === index
+  ) as ComposerReasoningEffort[]
+  return ordered
     .map((effort) => REASONING_OPTIONS.find((option) => option.id === effort))
     .filter((option): option is { id: ComposerReasoningEffort; labelKey: string } => Boolean(option))
 }

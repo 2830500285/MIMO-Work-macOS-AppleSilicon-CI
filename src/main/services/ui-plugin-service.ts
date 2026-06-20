@@ -12,9 +12,9 @@ import {
 } from '../../shared/ui-plugin'
 
 /**
- * UI 插件落盘服务。插件目录:~/.kun/ui-plugins/<id>/
+ * UI 插件落盘服务。插件目录:<MIMO Work 数据目录>/ui-plugins/<id>/
  * 安装走"白名单复制":只复制 manifest.json 与被 figures 引用到的图片,
- * 源目录里的其它任何文件(脚本、可执行文件等)一概不进入 Kun 数据目录。
+ * 源目录里的其它任何文件(脚本、可执行文件等)一概不进入 MIMO Work 数据目录。
  */
 
 export type UiPluginInstallResult =

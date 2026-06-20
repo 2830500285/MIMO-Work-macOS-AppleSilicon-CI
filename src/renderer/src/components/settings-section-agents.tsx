@@ -2,18 +2,26 @@ import { useEffect, useState, type ReactElement, type ReactNode } from 'react'
 import type {
   ApprovalPolicy,
   AppSettingsV1,
+  ManagedRuntimeId,
+  MimoCredentialMode,
+  MimoCredentialSettingsV1,
+  MimoTokenplanRegion,
   ModelProviderProfileV1,
   SandboxMode
 } from '@shared/app-settings'
 import {
+  DEFAULT_MIMO_MODEL,
+  DEFAULT_MIMO_RECHARGE_BASE_URL,
   DEFAULT_MODEL_PROVIDER_ID,
   DEFAULT_WRITE_INLINE_COMPLETION_BASE_URL,
   DEFAULT_WRITE_INLINE_COMPLETION_MAX_TOKENS,
   DEFAULT_WRITE_INLINE_COMPLETION_MODEL,
   DEFAULT_WRITE_INLINE_LONG_COMPLETION_MAX_TOKENS,
   DEFAULT_KUN_DATA_DIR,
+  MIMO_TOKENPLAN_REGION_BASE_URLS,
   WRITE_INLINE_COMPLETION_MODEL_IDS,
   defaultModelProviderSettings,
+  isMimoTokenplanApiKey,
   isKunRuntimeInsecure
 } from '@shared/app-settings'
 import type { GuiUpdateChannel } from '@shared/gui-update'
@@ -78,7 +86,7 @@ type ModelContextProfileSummary = {
   sourceLabelKey: string
 }
 
-const DEEPSEEK_V4_CONTEXT_PROFILE = {
+const MIMO_CONTEXT_PROFILE = {
   contextWindowTokens: 1_000_000,
   softThreshold: 980_000,
   hardThreshold: 990_000
@@ -96,7 +104,7 @@ function normalizeModelId(model: string | undefined): string {
 function knownModelContextProfile(input: string | undefined): { modelLabel: string } | null {
   const normalized = normalizeModelId(input)
   if (!normalized) return null
-  const match = ['deepseek-v4-pro', 'deepseek-v4-flash', 'deepseek-chat', 'deepseek-reasoner']
+  const match = ['mimo-v2.5-pro', 'mimo-v2.5', 'mimo-v2-pro', 'mimo-v2-flash']
     .find((modelId) => normalized === modelId || normalized.endsWith(`/${modelId}`))
   return match ? { modelLabel: match } : null
 }
@@ -110,9 +118,9 @@ function modelContextProfileSummary(input: {
   if (known) {
     return {
       modelLabel: known.modelLabel,
-      contextWindowLabel: formatTokenNumber(DEEPSEEK_V4_CONTEXT_PROFILE.contextWindowTokens),
-      softThresholdLabel: formatTokenNumber(DEEPSEEK_V4_CONTEXT_PROFILE.softThreshold),
-      hardThresholdLabel: formatTokenNumber(DEEPSEEK_V4_CONTEXT_PROFILE.hardThreshold),
+      contextWindowLabel: formatTokenNumber(MIMO_CONTEXT_PROFILE.contextWindowTokens),
+      softThresholdLabel: formatTokenNumber(MIMO_CONTEXT_PROFILE.softThreshold),
+      hardThresholdLabel: formatTokenNumber(MIMO_CONTEXT_PROFILE.hardThreshold),
       sourceLabelKey: 'kunModelContextSourceBuiltIn'
     }
   }
@@ -247,6 +255,7 @@ export function AgentsSettingsSection({ ctx }: { ctx: Record<string, any> }): Re
   }
   const [tokenEconomySavingsState, setTokenEconomySavingsState] =
     useState<TokenEconomySavingsState>(EMPTY_TOKEN_ECONOMY_SAVINGS_STATE)
+  const [showMimoApiKey, setShowMimoApiKey] = useState(false)
   useEffect(() => {
     let cancelled = false
     if (!tokenEconomy.enabled) {
@@ -266,6 +275,55 @@ export function AgentsSettingsSection({ ctx }: { ctx: Record<string, any> }): Re
     }
   }, [tokenEconomy.enabled])
   const tokenEconomySavings = tokenEconomySavingsState.summary
+  const mimo: MimoCredentialSettingsV1 = {
+    mode: 'tokenplan' as MimoCredentialMode,
+    apiKey: '',
+    baseUrl: MIMO_TOKENPLAN_REGION_BASE_URLS.cn,
+    region: 'cn' as MimoTokenplanRegion,
+    model: DEFAULT_MIMO_MODEL,
+    metadata: {},
+    ...(kun.mimo ?? {})
+  }
+  const runtimeEngine = (kun.runtimeEngine ?? 'mimo-work') as ManagedRuntimeId
+  const mimoTokenplanKeyWarning = runtimeEngine === 'mimo-work' &&
+    mimo.mode === 'tokenplan' &&
+    mimo.apiKey.trim().length > 0 &&
+    !isMimoTokenplanApiKey(mimo.apiKey)
+  const updateMimo = (patch: Partial<typeof mimo>): void => {
+    const next = {
+      ...mimo,
+      ...patch
+    }
+    updateKun({
+      mimo: next
+    })
+  }
+  const selectRuntimeEngine = (engine: ManagedRuntimeId): void => {
+    updateKun({ runtimeEngine: engine })
+  }
+  const selectMimoMode = (mode: MimoCredentialMode): void => {
+    updateKun({
+      runtimeEngine: 'mimo-work',
+      mimo: {
+        ...mimo,
+        mode,
+        baseUrl: mode === 'tokenplan'
+          ? MIMO_TOKENPLAN_REGION_BASE_URLS[mimo.region]
+          : DEFAULT_MIMO_RECHARGE_BASE_URL
+      }
+    })
+  }
+  const selectMimoRegion = (region: MimoTokenplanRegion): void => {
+    updateKun({
+      runtimeEngine: 'mimo-work',
+      mimo: {
+        ...mimo,
+        mode: 'tokenplan',
+        region,
+        baseUrl: MIMO_TOKENPLAN_REGION_BASE_URLS[region]
+      }
+    })
+  }
   const storage = kun.storage ?? {
     backend: 'hybrid',
     sqlitePath: ''
@@ -397,6 +455,92 @@ export function AgentsSettingsSection({ ctx }: { ctx: Record<string, any> }): Re
                       />
                     }
                   />
+                  <SettingRow
+                    title={t('runtimeEngine')}
+                    description={t('runtimeEngineDesc')}
+                    control={
+                      <select
+                        className={selectControlClass}
+                        value={runtimeEngine}
+                        onChange={(e) => selectRuntimeEngine(e.target.value as ManagedRuntimeId)}
+                      >
+                        <option value="mimo-work">{t('runtimeEngineMimoWork')}</option>
+                      </select>
+                    }
+                  />
+                  {runtimeEngine === 'mimo-work' ? (
+                    <>
+                      <SettingRow
+                        title={t('mimoCredentialMode')}
+                        description={t('mimoCredentialModeDesc')}
+                        control={
+                          <select
+                            className={selectControlClass}
+                            value={mimo.mode}
+                            onChange={(e) => selectMimoMode(e.target.value as MimoCredentialMode)}
+                          >
+                            <option value="tokenplan">{t('mimoCredentialModeTokenplan')}</option>
+                            <option value="recharge">{t('mimoCredentialModeRecharge')}</option>
+                          </select>
+                        }
+                      />
+                      {mimo.mode === 'tokenplan' ? (
+                        <SettingRow
+                          title={t('mimoTokenplanRegion')}
+                          description={t('mimoTokenplanRegionDesc')}
+                          control={
+                            <select
+                              className={selectControlClass}
+                              value={mimo.region}
+                              onChange={(e) => selectMimoRegion(e.target.value as MimoTokenplanRegion)}
+                            >
+                              <option value="cn">{t('mimoTokenplanRegionCn')}</option>
+                              <option value="sgp">{t('mimoTokenplanRegionSgp')}</option>
+                              <option value="ams">{t('mimoTokenplanRegionAms')}</option>
+                            </select>
+                          }
+                        />
+                      ) : null}
+                      <SettingRow
+                        title={t('mimoApiKey')}
+                        description={mimoTokenplanKeyWarning ? t('mimoApiKeyTokenplanWarning') : t('mimoApiKeyDesc')}
+                        control={
+                          <SecretInput
+                            value={mimo.apiKey}
+                            onChange={(apiKey) => updateMimo({ apiKey })}
+                            visible={showMimoApiKey}
+                            onToggleVisibility={() => setShowMimoApiKey((value) => !value)}
+                            showLabel={t('showSecret')}
+                            hideLabel={t('hideSecret')}
+                            className="md:max-w-md"
+                          />
+                        }
+                      />
+                      <SettingRow
+                        title={t('mimoBaseUrl')}
+                        description={t('mimoBaseUrlDesc')}
+                        control={
+                          <input
+                            className="w-full min-w-0 rounded-xl border border-ds-border bg-ds-card px-3 py-2 text-[14px] text-ds-ink shadow-sm focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/30 md:max-w-md"
+                            value={mimo.baseUrl}
+                            onChange={(e) => updateMimo({ baseUrl: e.target.value })}
+                          />
+                        }
+                      />
+                      <SettingRow
+                        title={t('mimoModel')}
+                        description={t('mimoModelDesc')}
+                        control={
+                          <input
+                            className="w-full min-w-0 rounded-xl border border-ds-border bg-ds-card px-3 py-2 text-[14px] text-ds-ink shadow-sm focus:border-accent/40 focus:outline-none focus:ring-1 focus:ring-accent/30 md:max-w-md"
+                            value={mimo.model}
+                            onChange={(e) => updateMimo({ model: e.target.value })}
+                            placeholder={DEFAULT_MIMO_MODEL}
+                          />
+                        }
+                      />
+                    </>
+                  ) : null}
                   <SettingRow
                     title={t('kunProvider')}
                     description={t('kunProviderSelectDesc')}

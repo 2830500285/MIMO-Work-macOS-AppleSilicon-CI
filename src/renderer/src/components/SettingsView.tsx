@@ -45,21 +45,18 @@ import { SETTINGS_CHANGED_EVENT, emitRendererSettingsChanged } from '../lib/keyb
 import {
   AgentsSettingsSection,
   ClawSettingsSection,
-  EasterEggSettingsSection,
+  EnvironmentsSettingsSection,
   GeneralSettingsSection,
-  ImageGenerationSettingsSection,
   KeyboardShortcutsSettingsSection,
   LlmDebugSettingsSection,
   WorktreeSettingsSection,
-  MediaGenerationSettingsSection,
   MemorySettingsSection,
   ProvidersSettingsSection,
-  SpeechToTextSettingsSection,
   UpdatesSettingsSection,
   WriteSettingsSection
 } from './settings-sections'
 
-type SettingsCategory = 'general' | 'providers' | 'write' | 'imageGeneration' | 'mediaGeneration' | 'speechToText' | 'agents' | 'permissions' | 'worktree' | 'memory' | 'shortcuts' | 'easterEgg' | 'claw' | 'updates' | 'debug'
+type SettingsCategory = 'general' | 'providers' | 'personalization' | 'agents' | 'permissions' | 'environments' | 'worktree' | 'shortcuts' | 'claw' | 'updates' | 'debug'
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 type SettingsPatch = AppSettingsPatch
 type InlineNotice = {
@@ -96,7 +93,7 @@ export function SettingsView(): ReactElement {
   const [skillRoots, setSkillRoots] = useState<SkillRootListItem[]>([])
   const [skillRootsLoading, setSkillRootsLoading] = useState(false)
   const [skillNotice, setSkillNotice] = useState<InlineNotice | null>(null)
-  const [mcpConfigPath, setMcpConfigPath] = useState('~/.kun/mcp.json')
+  const [mcpConfigPath, setMcpConfigPath] = useState('~/.mimo-work/mcp.json')
   const [mcpConfigText, setMcpConfigText] = useState('')
   const [mcpConfigExists, setMcpConfigExists] = useState(false)
   const [mcpLoading, setMcpLoading] = useState(false)
@@ -207,7 +204,7 @@ export function SettingsView(): ReactElement {
   }, [])
 
   useEffect(() => {
-    if (category !== 'write') return
+    if (category !== 'personalization') return
     void loadWriteDebugEntries()
   }, [category, loadWriteDebugEntries])
 
@@ -229,23 +226,35 @@ export function SettingsView(): ReactElement {
       return
     }
     if (settingsSection === 'write') {
-      setCategory('write')
+      setCategory('personalization')
+      return
+    }
+    if (settingsSection === 'personalization') {
+      setCategory('personalization')
       return
     }
     if (settingsSection === 'imageGeneration') {
-      setCategory('imageGeneration')
+      setCategory('providers')
       return
     }
     if (settingsSection === 'mediaGeneration') {
-      setCategory('mediaGeneration')
+      setCategory('providers')
       return
     }
     if (settingsSection === 'speechToText') {
-      setCategory('speechToText')
+      setCategory('providers')
       return
     }
     if (settingsSection === 'permissions') {
       setCategory('permissions')
+      return
+    }
+    if (settingsSection === 'environments') {
+      setCategory('environments')
+      return
+    }
+    if (settingsSection === 'memory') {
+      setCategory('personalization')
       return
     }
     if (settingsSection === 'claw') {
@@ -254,10 +263,6 @@ export function SettingsView(): ReactElement {
     }
     if (settingsSection === 'shortcuts') {
       setCategory('shortcuts')
-      return
-    }
-    if (settingsSection === 'easterEgg') {
-      setCategory('easterEgg')
       return
     }
     if (settingsSection === 'updates') {
@@ -273,19 +278,21 @@ export function SettingsView(): ReactElement {
       settingsSection === 'general' ||
       settingsSection === 'providers' ||
       settingsSection === 'write' ||
+      settingsSection === 'personalization' ||
       settingsSection === 'imageGeneration' ||
       settingsSection === 'mediaGeneration' ||
       settingsSection === 'speechToText' ||
+      settingsSection === 'memory' ||
+      settingsSection === 'environments' ||
       settingsSection === 'claw' ||
       settingsSection === 'shortcuts' ||
-      settingsSection === 'easterEgg' ||
       settingsSection === 'updates' ||
       (category !== 'agents' && category !== 'permissions')
     ) {
       return
     }
     const refs: Record<
-      Exclude<SettingsRouteSection, 'general' | 'providers' | 'write' | 'imageGeneration' | 'mediaGeneration' | 'speechToText' | 'claw' | 'shortcuts' | 'easterEgg' | 'updates'>,
+      Exclude<SettingsRouteSection, 'general' | 'providers' | 'write' | 'personalization' | 'imageGeneration' | 'mediaGeneration' | 'speechToText' | 'memory' | 'environments' | 'claw' | 'shortcuts' | 'updates'>,
       HTMLDivElement | null
     > = {
       agents: agentsSectionRef.current,
@@ -453,7 +460,7 @@ export function SettingsView(): ReactElement {
   }, [formWorkspaceRoot])
 
   useEffect(() => {
-    if (category !== 'agents' && category !== 'permissions' && category !== 'memory') return
+    if (category !== 'agents' && category !== 'permissions' && category !== 'personalization') return
     void refreshKunDiagnostics()
   }, [category, refreshKunDiagnostics])
 
@@ -469,7 +476,7 @@ export function SettingsView(): ReactElement {
   }
 
   useEffect(() => {
-    if (category !== 'memory') return
+    if (category !== 'personalization') return
     void refreshMemoryDiagnostics()
   }, [category, memoryRecords])
 
@@ -898,7 +905,7 @@ export function SettingsView(): ReactElement {
       <SettingsSidebar category={category} setCategory={setCategory} goBack={goBack} t={t} />
 
       <div className="ds-no-drag min-h-0 min-w-0 flex-1 overflow-y-auto px-10 py-10">
-        <div className="mx-auto max-w-3xl">
+        <div className={`mx-auto ${category === 'providers' ? 'max-w-5xl' : 'max-w-3xl'}`}>
           {!activeApiKey.trim() ? (
             <div className="mb-6 rounded-2xl border border-amber-300/80 bg-amber-50/95 px-5 py-4 text-amber-950 shadow-sm dark:border-amber-700/60 dark:bg-amber-950/35 dark:text-amber-100">
               <div className="text-[15px] font-semibold">{t('apiKeyRequiredTitle')}</div>
@@ -948,15 +955,18 @@ export function SettingsView(): ReactElement {
 
           {category === 'general' ? <GeneralSettingsSection ctx={settingsSectionContext} /> : null}
           {category === 'providers' ? <ProvidersSettingsSection ctx={settingsSectionContext} /> : null}
-          {category === 'write' ? <WriteSettingsSection ctx={settingsSectionContext} /> : null}
-          {category === 'imageGeneration' ? <ImageGenerationSettingsSection ctx={settingsSectionContext} /> : null}
-          {category === 'mediaGeneration' ? <MediaGenerationSettingsSection ctx={settingsSectionContext} /> : null}
-          {category === 'speechToText' ? <SpeechToTextSettingsSection ctx={settingsSectionContext} /> : null}
+          {category === 'personalization' ? (
+            <>
+              <WriteSettingsSection ctx={settingsSectionContext} />
+              <div className="mt-5">
+                <MemorySettingsSection ctx={settingsSectionContext} />
+              </div>
+            </>
+          ) : null}
           {category === 'agents' || category === 'permissions' ? <AgentsSettingsSection ctx={settingsSectionContext} /> : null}
+          {category === 'environments' ? <EnvironmentsSettingsSection ctx={settingsSectionContext} /> : null}
           {category === 'worktree' ? <WorktreeSettingsSection ctx={settingsSectionContext} /> : null}
-          {category === 'memory' ? <MemorySettingsSection ctx={settingsSectionContext} /> : null}
           {category === 'shortcuts' ? <KeyboardShortcutsSettingsSection ctx={settingsSectionContext} /> : null}
-          {category === 'easterEgg' ? <EasterEggSettingsSection ctx={settingsSectionContext} /> : null}
           {category === 'claw' ? <ClawSettingsSection ctx={settingsSectionContext} /> : null}
           {category === 'updates' ? <UpdatesSettingsSection ctx={settingsSectionContext} /> : null}
           {category === 'debug' ? <LlmDebugSettingsSection ctx={settingsSectionContext} /> : null}

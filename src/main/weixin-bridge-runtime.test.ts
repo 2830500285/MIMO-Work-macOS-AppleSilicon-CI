@@ -5,7 +5,7 @@ import { weixinBridgeRuntimeInternals } from './weixin-bridge-runtime'
 vi.mock('electron', () => ({
   app: {
     isPackaged: false,
-    getPath: () => '/tmp/deepseek-gui-test-user-data',
+    getPath: () => '/tmp/mimo-work-test-user-data',
     getVersion: () => '0.2.0-test'
   }
 }))
@@ -47,14 +47,14 @@ describe('weixin bridge runtime', () => {
       ok: true,
       reply: 'done',
       files: [
-        { path: '/ws/.deepseekgui-images/cat.png', fileName: 'cat.png' },
+        { path: '/ws/.mimo-work-images/cat.png', fileName: 'cat.png' },
         { path: '/ws/out/report.pdf' },
         { unrelated: true },
         { path: '/ws/a.png' },
         { path: '/ws/b.png' }
       ]
     })).toEqual([
-      { path: '/ws/.deepseekgui-images/cat.png', fileName: 'cat.png' },
+      { path: '/ws/.mimo-work-images/cat.png', fileName: 'cat.png' },
       { path: '/ws/out/report.pdf', fileName: 'report.pdf' },
       { path: '/ws/a.png', fileName: 'a.png' }
     ])

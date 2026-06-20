@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { ChatBlock } from '../../agent/types'
-import { groupTurns, sameTurnContent, stableTurnKey } from './message-timeline-turns'
+import { blockHasPendingRuntimeWork, groupTurns, sameTurnContent, stableTurnKey } from './message-timeline-turns'
 
 describe('message timeline turns', () => {
   it('uses stable ids for user and assistant-only turns', () => {
@@ -40,5 +40,16 @@ describe('message timeline turns', () => {
     ]
 
     expect(sameTurnContent(groupTurns(firstBlocks)[0], groupTurns(nextBlocks)[0])).toBe(false)
+  })
+
+  it('does not count a MiMo question tool snapshot as running timeline work', () => {
+    expect(blockHasPendingRuntimeWork({
+      kind: 'tool',
+      id: 'tool-question',
+      summary: 'Question question',
+      status: 'running',
+      toolKind: 'tool_call',
+      meta: { toolName: 'question' }
+    })).toBe(false)
   })
 })

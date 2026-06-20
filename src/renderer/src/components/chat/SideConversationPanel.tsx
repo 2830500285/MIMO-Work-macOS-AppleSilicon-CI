@@ -116,7 +116,7 @@ function SideMessageBubble({ block }: { block: ChatBlock }): ReactElement | null
   if (block.kind === 'user') {
     return (
       <div className="flex justify-end">
-        <div className="max-w-[86%] rounded-[14px] bg-ds-card px-3 py-2 text-[13px] leading-5 text-ds-ink shadow-[0_6px_18px_rgba(20,47,95,0.06)]">
+        <div className="max-w-[86%] rounded-[14px] bg-ds-card px-3 py-2 text-[13px] leading-5 text-ds-ink shadow-[0_6px_18px_rgba(31,35,41,0.06)]">
           <div className="ds-markdown whitespace-pre-wrap break-words">{block.text}</div>
         </div>
       </div>
@@ -321,7 +321,7 @@ export function SideConversationPanel({
       <button
         type="button"
         onClick={() => setMinimized(false)}
-        className={`ds-side-chat-mini ds-no-drag fixed bottom-[112px] z-40 flex h-11 items-center gap-2 rounded-full border border-ds-border-muted bg-ds-card/94 px-3 text-ds-muted shadow-[0_16px_42px_rgba(20,47,95,0.18)] backdrop-blur-xl transition hover:bg-ds-card hover:text-ds-ink ${className ?? ''}`}
+        className={`ds-side-chat-mini ds-no-drag fixed bottom-[112px] z-40 flex h-11 items-center gap-2 rounded-full border border-ds-border-muted bg-ds-card/94 px-3 text-ds-muted shadow-[0_16px_42px_rgba(31,35,41,0.18)] backdrop-blur-xl transition hover:bg-ds-card hover:text-ds-ink ${className ?? ''}`}
         style={rightStyle}
         aria-label={t('sidePanelExpand')}
         title={t('sidePanelExpand')}
@@ -337,7 +337,7 @@ export function SideConversationPanel({
 
   return (
     <aside
-      className={`ds-side-chat ds-no-drag fixed bottom-[112px] z-40 flex max-h-[min(520px,calc(100vh-180px))] w-[min(360px,calc(100vw-24px))] flex-col overflow-hidden rounded-[14px] border border-ds-border bg-ds-card/96 text-ds-ink shadow-[0_22px_64px_rgba(20,47,95,0.2)] backdrop-blur-xl dark:bg-ds-card/96 dark:shadow-[0_24px_72px_rgba(0,0,0,0.46)] ${className ?? ''}`}
+      className={`ds-side-chat ds-no-drag fixed bottom-[112px] z-40 flex max-h-[min(520px,calc(100vh-180px))] w-[min(360px,calc(100vw-24px))] flex-col overflow-hidden rounded-[14px] border border-ds-border bg-ds-card/96 text-ds-ink shadow-[0_22px_64px_rgba(31,35,41,0.2)] backdrop-blur-xl dark:bg-ds-card/96 dark:shadow-[0_24px_72px_rgba(0,0,0,0.46)] ${className ?? ''}`}
       style={rightStyle}
       aria-label={t('sidePanelTitle')}
     >
@@ -362,7 +362,7 @@ export function SideConversationPanel({
           </div>
 
           {switchMenuOpen ? (
-            <div className="absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-[12px] border border-ds-border bg-ds-card/98 p-1 shadow-[0_18px_46px_rgba(20,47,95,0.18)] backdrop-blur-xl">
+            <div className="absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-[12px] border border-ds-border bg-ds-card/98 p-1 shadow-[0_18px_46px_rgba(31,35,41,0.18)] backdrop-blur-xl">
               {currentSides.map((side) => {
                 const selected = side.threadId === activeSide?.threadId
                 return (
@@ -424,7 +424,7 @@ export function SideConversationPanel({
               <MoreHorizontal className="h-3.5 w-3.5" strokeWidth={1.9} />
             </button>
             {moreMenuOpen && activeSide ? (
-              <div className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-[12px] border border-ds-border bg-ds-card/98 p-1 text-[12.5px] shadow-[0_18px_46px_rgba(20,47,95,0.18)] backdrop-blur-xl">
+              <div className="absolute right-0 top-full z-50 mt-2 w-44 overflow-hidden rounded-[12px] border border-ds-border bg-ds-card/98 p-1 text-[12.5px] shadow-[0_18px_46px_rgba(31,35,41,0.18)] backdrop-blur-xl">
                 <button
                   type="button"
                   onClick={promoteActiveSide}

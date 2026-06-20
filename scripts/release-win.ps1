@@ -54,7 +54,7 @@ function Require-Command([string]$Name) {
 function Load-LocalReleaseEnv([string]$RootPath) {
   $configured = [Environment]::GetEnvironmentVariable('KUN_RELEASE_ENV', 'Process')
   if (-not $configured) {
-    $configured = [Environment]::GetEnvironmentVariable('DEEPSEEK_GUI_RELEASE_ENV', 'Process')
+    $configured = [Environment]::GetEnvironmentVariable('MIMO_WORK_RELEASE_ENV', 'Process')
   }
   $candidates = @()
   if ($configured) { $candidates += $configured }
@@ -99,8 +99,8 @@ $RequestedChannel = if ($Stable) {
   $env:RELEASE_CHANNEL
 } elseif ($env:KUN_UPDATE_CHANNEL) {
   $env:KUN_UPDATE_CHANNEL
-} elseif ($env:DEEPSEEK_GUI_UPDATE_CHANNEL) {
-  $env:DEEPSEEK_GUI_UPDATE_CHANNEL
+} elseif ($env:MIMO_WORK_UPDATE_CHANNEL) {
+  $env:MIMO_WORK_UPDATE_CHANNEL
 } else {
   'frontier'
 }
@@ -144,11 +144,11 @@ Write-Info "Release channel: $ReleaseChannel"
 $ReleaseVersion = $TagName.TrimStart('v')
 Assert-Semver $ReleaseVersion
 $env:KUN_APP_VERSION = $ReleaseVersion
-$env:DEEPSEEK_GUI_APP_VERSION = $ReleaseVersion
+$env:MIMO_WORK_APP_VERSION = $ReleaseVersion
 $env:RELEASE_CHANNEL = $ReleaseChannel
 $env:KUN_UPDATE_CHANNEL = $ReleaseChannel
-$env:DEEPSEEK_GUI_UPDATE_CHANNEL = $ReleaseChannel
-Write-Info "App version: $env:KUN_APP_VERSION"
+$env:MIMO_WORK_UPDATE_CHANNEL = $ReleaseChannel
+Write-Info "App version: $env:MIMO_WORK_APP_VERSION"
 
 & gh release view $TagName 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) {
@@ -165,9 +165,8 @@ Remove-Item -Recurse -Force -ErrorAction SilentlyContinue `
   (Join-Path $Root 'dist\mac-arm64'), `
   (Join-Path $Root 'dist\linux-unpacked')
 Remove-Item -Force -ErrorAction SilentlyContinue `
-  (Join-Path $Root 'dist\Kun-*'), `
-  (Join-Path $Root 'dist\DeepSeek-GUI-*'), `
-  (Join-Path $Root 'dist\DeepSeek GUI-*'), `
+  (Join-Path $Root 'dist\MIMO-Work-*'), `
+  (Join-Path $Root 'dist\MIMO Work-*'), `
   (Join-Path $Root 'dist\latest*.yml'), `
   (Join-Path $Root 'dist\*.blockmap')
 
@@ -180,8 +179,11 @@ if ($LASTEXITCODE -ne 0) {
 
 $DistDir = Join-Path $Root 'dist'
 $AssetSpecs = @(
-  @{ Label = 'Windows exe'; Filter = '*-win-*.exe' },
-  @{ Label = 'Windows blockmap'; Filter = '*-win-*.exe.blockmap' }
+  @{ Label = 'Windows x64 NSIS installer'; Filter = 'MIMO-Work-*-win-x64-setup.exe' },
+  @{ Label = 'Windows x64 portable exe'; Filter = 'MIMO-Work-*-win-x64-portable.exe' },
+  @{ Label = 'Windows x64 zip'; Filter = 'MIMO-Work-*-win-x64.zip' },
+  @{ Label = 'Windows x64 blockmap'; Filter = 'MIMO-Work-*-win-x64*.blockmap' },
+  @{ Label = 'Windows update metadata'; Filter = 'latest*.yml' }
 )
 
 $Assets = @()

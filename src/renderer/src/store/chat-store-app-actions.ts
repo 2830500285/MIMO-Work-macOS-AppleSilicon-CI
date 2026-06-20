@@ -4,6 +4,7 @@ import { rendererRuntimeClient } from '../agent/runtime-client'
 import type { ChatState, ChatStoreGet, ChatStoreSet, InitialSetupMode, PluginHostRoute, SettingsRouteSection } from './chat-store-types'
 import {
   persistComposerProviderId,
+  providerHasComposerModel,
   providerIdForComposerModel,
   readStoredComposerProviderId
 } from './chat-store-helpers'
@@ -69,7 +70,8 @@ export function createAppActions(options: CreateAppActionsOptions): Pick<
       set({ composerModel: modelId, composerProviderId: nextProviderId })
       const trimmed = modelId.trim()
       if (trimmed && trimmed.toLowerCase() !== 'auto' && typeof window.kunGui !== 'undefined') {
-        void window.kunGui.saveSettingsSilent({ agents: { kun: { model: trimmed } } })
+        const kunPatch = nextProviderId ? { model: trimmed, providerId: nextProviderId } : { model: trimmed }
+        void window.kunGui.saveSettingsSilent({ agents: { kun: kunPatch } })
       }
     },
 
@@ -82,11 +84,16 @@ export function createAppActions(options: CreateAppActionsOptions): Pick<
         const groups = res.ok ? res.modelGroups ?? [] : []
         const allowed = new Set(pick)
         const runtimeDefault = res.ok ? res.defaultModelId?.trim() ?? '' : ''
+        const runtimeProviderId = res.ok ? res.defaultProviderId?.trim() ?? '' : ''
         set((state) => {
           const currentModel = state.composerModel.trim()
           const normalizedCurrentModel = currentModel.toLowerCase() === 'auto' ? '' : currentModel
           const storedModel = readStoredComposerModel(pick)
-          let model = normalizedCurrentModel
+          const runtimeDefaultProviderMatches =
+            runtimeDefault !== ''
+            && allowed.has(runtimeDefault)
+            && providerHasComposerModel(groups, runtimeProviderId, runtimeDefault)
+          let model = runtimeDefaultProviderMatches ? runtimeDefault : normalizedCurrentModel
           let shouldPersist = model !== state.composerModel
           if (model === '' || !allowed.has(model)) {
             model = storedModel
@@ -97,8 +104,9 @@ export function createAppActions(options: CreateAppActionsOptions): Pick<
             shouldPersist = false
           }
           if (shouldPersist) persistComposerModel(model)
-          const storedProviderId = readStoredComposerProviderId(groups, model)
-          const providerId = storedProviderId || providerIdForComposerModel(groups, model)
+          const runtimeProviderForModel = runtimeDefaultProviderMatches ? runtimeProviderId : ''
+          const storedProviderId = runtimeProviderForModel ? '' : readStoredComposerProviderId(groups, model)
+          const providerId = runtimeProviderForModel || storedProviderId || providerIdForComposerModel(groups, model)
           if (providerId !== state.composerProviderId) persistComposerProviderId(providerId)
           return {
             composerPickList: pick,

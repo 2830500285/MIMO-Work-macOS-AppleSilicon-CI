@@ -1,19 +1,18 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeImage, Notification, powerSaveBlocker, Tray } from 'electron'
 import { existsSync } from 'node:fs'
-import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import {
   JsonSettingsStore,
   devServerHintUrl
 } from './settings-store'
-import kunLogoPng from '../asset/img/kun.png?url'
-import kunMacLogoPng from '../asset/img/kun_mac.png?url'
-import kunTrayPng from '../asset/img/kun_tray.png?url'
+import mimoWorkLogoPng from '../asset/img/mimo-work.png?url'
+import mimoWorkMacLogoPng from '../asset/img/mimo-work-mac.png?url'
+import mimoWorkTrayPng from '../asset/img/mimo-work-tray.png?url'
 import { createAppIcon, pickTrayIcon } from './app-icon'
 import { configureLinuxWaylandImeSwitches } from './app-command-line'
-import { configureAppIdentity } from './app-identity'
-import { runLegacyKunDataMigration } from './legacy-data-migration'
+import { APP_PRODUCT_NAME, configureAppIdentity } from './app-identity'
+import { installMainWindowNavigationGuard } from './navigation-guard'
 import {
   applyKunRuntimePatch,
   kunSettingsEnvelope,
@@ -38,13 +37,13 @@ import { isAllowedDevPreviewUrl } from '../shared/dev-preview-url'
 import { isAuthorizedPrototypeFileUrl } from './services/prototype-embed-registry'
 import { fetchUpstreamModelIds } from './upstream-models'
 import {
-  kunRuntimeAdapter,
+  managedRuntimeAdapterForSettings,
   getRuntimeBaseUrlForSettings,
   runtimeAuthHeaders,
   runtimeRequestViaHost
 } from './runtime/kun-adapter'
+import { setMimoWorkUnexpectedExitHandler, type MimoWorkUnexpectedExitInfo } from './runtime/mimo-work-adapter'
 import { waitForRuntimeTurnsIdle } from './runtime/managed-runtime-idle'
-import { setKunUnexpectedExitHandler, type KunUnexpectedExitInfo } from './kun-process'
 import { RestartBudget, type KunRuntimeStatus } from './kun-runtime-supervisor'
 import { configureLogger, logError, logWarn, pruneOnStartup } from './logger'
 import { createClawRuntime, type ClawRuntime } from './claw-runtime'
@@ -76,13 +75,9 @@ import { webhookUrl } from './claw-runtime-helpers'
 import { isKunHealthResponseBody } from './kun-health'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
-// 品牌升级为 Kun 后仍保留旧 AppUserModelId:它必须和 electron-builder
-// 的 appId 一致才能让 Windows 通知 / 任务栏分组在升级前后连续,而
-// appId 因为 NSIS 升级 GUID 与 macOS 更新签名校验的原因永远不改。
-const APP_USER_MODEL_ID = 'com.xingyuzhong.deepseekgui'
+const APP_USER_MODEL_ID = 'com.mimowork.desktop'
 const HIDDEN_START_ARG = '--hidden'
-const startupTraceEnabled =
-  process.env.KUN_STARTUP_TRACE === '1' || process.env.DEEPSEEK_GUI_STARTUP_TRACE === '1'
+const startupTraceEnabled = process.env.MIMO_WORK_STARTUP_TRACE === '1'
 const startupTraceStart = Date.now()
 
 function traceStartup(label: string, detail?: unknown): void {
@@ -144,9 +139,11 @@ function runtimeFailure(code: string, message: string, status = 0, details?: unk
 }
 
 function resolveConfiguredApiKey(settings: AppSettingsV1): string {
-  const fromSettings = getActiveAgentApiKey(settings)
-  const fromEnv = process.env.DEEPSEEK_API_KEY?.trim() ?? ''
-  return fromSettings || fromEnv
+  const runtime = getKunRuntimeSettings(settings)
+  if (runtime.runtimeEngine === 'mimo-work') {
+    return runtime.mimo.apiKey.trim() || getActiveAgentApiKey(settings) || process.env.MIMO_WORK_MIMO_API_KEY?.trim() || ''
+  }
+  return getActiveAgentApiKey(settings) || process.env.MIMO_WORK_MIMO_API_KEY?.trim() || ''
 }
 
 function runtimeJsonError(code: string, message: string): Error {
@@ -165,24 +162,6 @@ if (runningClawScheduleMcpServer && process.platform === 'darwin') {
 // 抽到 app-identity.ts 是为了让测试可以直接 import,不被 main 的
 // whenReady 副作用污染。
 configureAppIdentity()
-
-// 紧跟在身份设置之后、requestSingleInstanceLock() 之前做旧数据迁移:
-// 单实例锁文件就放在 userData 里,必须先把目录定下来。rename 失败
-// (典型场景:老版本还在运行)时退回旧目录,功能不受影响,下次再迁。
-const legacyMigration = runLegacyKunDataMigration({
-  userDataPath: app.getPath('userData'),
-  homeDir: homedir(),
-  log: (message, detail) => console.warn(`[kun-gui] ${message}`, detail ?? '')
-})
-if (legacyMigration.userData.usedLegacyFallback) {
-  app.setPath('userData', legacyMigration.userData.userDataPath)
-}
-traceStartup('legacy data migration checked', {
-  userDataPath: legacyMigration.userData.userDataPath,
-  migratedUserData: legacyMigration.userData.migrated,
-  usedLegacyFallback: legacyMigration.userData.usedLegacyFallback,
-  settingsRewritten: legacyMigration.settingsRewritten
-})
 
 configureLinuxWaylandImeSwitches()
 
@@ -223,7 +202,7 @@ async function stopManagedRuntimes(): Promise<void> {
       scheduleRuntime?.stop()
       clawRuntime?.stop()
       stopWeixinBridgeRuntime()
-      await kunRuntimeAdapter.stopAndWait()
+      await managedRuntimeAdapterForSettings(await store.load()).stopAndWait()
     })().finally(() => {
       managedRuntimesStopPromise = null
     })
@@ -301,9 +280,9 @@ function installDevPreviewWebviewGuards(): void {
 }
 
 
-const appIconSource = process.platform === 'win32' ? kunMacLogoPng : kunLogoPng
+const appIconSource = process.platform === 'win32' ? mimoWorkMacLogoPng : mimoWorkLogoPng
 const appIcon = createAppIcon(appIconSource)
-const trayIcon = createAppIcon(kunTrayPng)
+const trayIcon = createAppIcon(mimoWorkTrayPng)
 traceStartup('app icon loaded', { source: appIconSource.startsWith('data:') ? 'data-url' : 'path' })
 const gotSingleInstanceLock = runningClawScheduleMcpServer || app.requestSingleInstanceLock()
 traceStartup('single instance lock checked', {
@@ -314,15 +293,15 @@ traceStartup('single instance lock checked', {
 function trayLabels(locale: AppSettingsV1['locale']): { show: string; quit: string; tooltip: string } {
   if (locale === 'zh') {
     return {
-      show: '显示 Kun',
+      show: '显示 MIMO Work',
       quit: '退出',
-      tooltip: 'Kun'
+      tooltip: 'MIMO Work'
     }
   }
   return {
-    show: 'Show Kun',
+    show: 'Show MIMO Work',
     quit: 'Quit',
-    tooltip: 'Kun'
+    tooltip: 'MIMO Work'
   }
 }
 
@@ -348,7 +327,7 @@ function syncLoginItemSettings(settings: AppSettingsV1): void {
     })
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    console.warn('[kun-gui] failed to update login item settings:', error)
+    console.warn('[mimo-work] failed to update login item settings:', error)
     logWarn('desktop-behavior', 'Failed to update login item settings.', { message })
   }
 }
@@ -421,7 +400,7 @@ async function showTurnCompleteNotification(
     return { ok: true, shown: false, reason: 'unsupported' }
   }
 
-  const title = normalizeNotificationText(payload.title, 'Kun', 80)
+  const title = normalizeNotificationText(payload.title, 'MIMO Work', 80)
   const body = normalizeNotificationText(payload.body, 'Conversation complete.', 180)
 
   try {
@@ -555,21 +534,21 @@ function noteRuntimeHealthy(source: string): void {
   }
 }
 
-function handleUnexpectedKunExit(info: KunUnexpectedExitInfo): void {
-  void superviseKunCrash(info).catch((error: unknown) => {
-    logError('kun-supervisor', 'supervised restart crashed', {
+function handleUnexpectedMimoWorkExit(info: MimoWorkUnexpectedExitInfo): void {
+  void superviseMimoWorkCrash(info).catch((error: unknown) => {
+    logError('mimo-work-supervisor', 'supervised restart crashed', {
       message: error instanceof Error ? error.message : String(error)
     })
   })
 }
 
-async function superviseKunCrash(info: KunUnexpectedExitInfo): Promise<void> {
+async function superviseMimoWorkCrash(info: MimoWorkUnexpectedExitInfo): Promise<void> {
   if (managedRuntimesStoppedForQuit || isQuitting) return
   const exitLabel = info.signal ? `signal ${info.signal}` : `code ${info.code ?? 'unknown'}`
   publishRuntimeStatus({
     state: 'crashed',
     source: 'supervisor',
-    message: `Kun exited unexpectedly (${exitLabel}).`,
+    message: `MIMO Work runtime exited unexpectedly (${exitLabel}).`,
     stderrTail: info.stderrTail
   })
   if (supervisedRestartInFlight) return
@@ -581,7 +560,7 @@ async function superviseKunCrash(info: KunUnexpectedExitInfo): Promise<void> {
       publishRuntimeStatus({
         state: 'stopped',
         source: 'supervisor',
-        message: 'Kun exited and automatic restart is unavailable (missing API key or auto-start disabled).'
+        message: 'MIMO Work runtime exited and automatic restart is unavailable (missing API key or auto-start disabled).'
       })
       return
     }
@@ -594,8 +573,8 @@ async function superviseKunCrash(info: KunUnexpectedExitInfo): Promise<void> {
           state: 'failed',
           source: 'supervisor',
           message: lastError
-            ? `Kun keeps crashing; automatic restarts are paused. Last error: ${lastError}`
-            : 'Kun keeps crashing; automatic restarts are paused. Check the runtime logs, then retry.',
+            ? `MIMO Work runtime keeps crashing; automatic restarts are paused. Last error: ${lastError}`
+            : 'MIMO Work runtime keeps crashing; automatic restarts are paused. Check the runtime logs, then retry.',
           stderrTail: info.stderrTail
         })
         return
@@ -605,7 +584,7 @@ async function superviseKunCrash(info: KunUnexpectedExitInfo): Promise<void> {
         source: 'supervisor',
         attempt: verdict.attempt,
         maxAttempts: 3,
-        message: `Restarting Kun automatically (attempt ${verdict.attempt}/3).`
+        message: `Restarting MIMO Work runtime automatically (attempt ${verdict.attempt}/3).`
       })
       await new Promise((resolve) => setTimeout(resolve, verdict.delayMs))
       try {
@@ -614,7 +593,7 @@ async function superviseKunCrash(info: KunUnexpectedExitInfo): Promise<void> {
         return
       } catch (error) {
         lastError = error instanceof Error ? error.message : String(error)
-        logWarn('kun-supervisor', `automatic restart attempt ${verdict.attempt} failed: ${lastError}`)
+        logWarn('mimo-work-supervisor', `automatic restart attempt ${verdict.attempt} failed: ${lastError}`)
       }
     }
   } finally {
@@ -626,7 +605,7 @@ function startRuntimeWatchdog(): void {
   if (runtimeWatchdogTimer) return
   const timer = setInterval(() => {
     void runtimeWatchdogTick().catch((error: unknown) => {
-      logWarn('kun-watchdog', 'watchdog tick failed', {
+      logWarn('mimo-work-watchdog', 'watchdog tick failed', {
         message: error instanceof Error ? error.message : String(error)
       })
     })
@@ -659,10 +638,10 @@ async function runtimeWatchdogTick(): Promise<void> {
   ) {
     return
   }
-  if (!kunRuntimeAdapter.isChildRunning()) return
+  const settings = await store.load()
+  if (!managedRuntimeAdapterForSettings(settings).isChildRunning()) return
   runtimeWatchdogTickInFlight = true
   try {
-    const settings = await store.load()
     const healthy = await waitForKunHealth(settings, 5_000)
     if (healthy) {
       runtimeWatchdogFailures = 0
@@ -670,7 +649,7 @@ async function runtimeWatchdogTick(): Promise<void> {
     }
     runtimeWatchdogFailures += 1
     logWarn(
-      'kun-watchdog',
+      'mimo-work-watchdog',
       `health probe failed (${runtimeWatchdogFailures}/${RUNTIME_WATCHDOG_FAILURE_THRESHOLD})`
     )
     if (runtimeWatchdogFailures < RUNTIME_WATCHDOG_FAILURE_THRESHOLD) return
@@ -678,7 +657,7 @@ async function runtimeWatchdogTick(): Promise<void> {
     publishRuntimeStatus({
       state: 'restarting',
       source: 'watchdog',
-      message: 'Kun stopped responding to health checks; restarting it.'
+      message: 'MIMO Work runtime stopped responding to health checks; restarting it.'
     })
     try {
       await restartRuntime(settings)
@@ -687,7 +666,7 @@ async function runtimeWatchdogTick(): Promise<void> {
       publishRuntimeStatus({
         state: 'failed',
         source: 'watchdog',
-        message: `Kun is unresponsive and the automatic restart failed: ${
+        message: `MIMO Work runtime is unresponsive and the automatic restart failed: ${
           error instanceof Error ? error.message : String(error)
         }`
       })
@@ -714,7 +693,7 @@ function queueRuntimeSettingsApply(prev: AppSettingsV1, next: AppSettingsV1): vo
       await restartManagedRuntimeForSettingsChange(anchor, current)
     })
     .catch((error: unknown) => {
-      logWarn('settings-apply', 'Failed to apply Kun runtime settings in background', {
+      logWarn('settings-apply', 'Failed to apply MIMO Work runtime settings in background', {
         message: error instanceof Error ? error.message : String(error)
       })
     })
@@ -738,7 +717,7 @@ function queueRuntimeMcpConfigApply(settings: AppSettingsV1): void {
       await restartManagedRuntimeForMcpConfigChange(current)
     })
     .catch((error: unknown) => {
-      logWarn('mcp-config', 'Failed to apply Kun MCP config change in background', {
+      logWarn('mcp-config', 'Failed to apply MIMO Work MCP config change in background', {
         message: error instanceof Error ? error.message : String(error)
       })
     })
@@ -817,12 +796,12 @@ async function resolveManagedKunLaunchSettings(
   source: string
 ): Promise<AppSettingsV1> {
   const runtime = getKunRuntimeSettings(settings)
-  const resolved = await kunRuntimeAdapter.resolveAvailablePort(runtime.port)
+  const resolved = await managedRuntimeAdapterForSettings(settings).resolveAvailablePort(runtime.port)
   if (!resolved.changed) return settings
 
   const next = await store.patch({ agents: { kun: { port: resolved.port } } })
   lastAppliedSettings = next
-  logWarn(source, `Kun port ${runtime.port} is unavailable; using ${resolved.port} for the managed runtime`, {
+  logWarn(source, `MIMO Work runtime port ${runtime.port} is unavailable; using ${resolved.port} for the managed runtime`, {
     previousPort: runtime.port,
     port: resolved.port,
     message: resolved.message
@@ -847,29 +826,29 @@ async function ensureKunRuntime(settings: AppSettingsV1): Promise<AppSettingsV1>
   if (!hasApiKey) {
     throw runtimeJsonError(
       'missing_api_key',
-      'DeepSeek API Key is required before the GUI can start Kun.'
+      'MIMO API Key is required before MIMO Work can start.'
     )
   }
   if (!runtime.autoStart) {
     throw runtimeJsonError(
       'runtime_offline',
-      'Kun is offline. Enable automatic startup in Settings, or start `kun serve` manually.'
+      'MIMO Work runtime is offline. Enable automatic startup in Settings.'
     )
   }
 
   const launchSettings = await resolveManagedKunLaunchSettings(settings, 'runtime-start')
-  const adapter = kunRuntimeAdapter
+  const adapter = managedRuntimeAdapterForSettings(launchSettings)
   try {
     await adapter.ensureRunning(launchSettings)
   } catch (e) {
-    console.error('[kun-gui] failed to start kun:', e)
+    console.error('[mimo-work] failed to start runtime:', e)
     throw e
   }
   const started = await waitForKunHealth(launchSettings, 20_000)
   if (!started) {
     throw runtimeJsonError(
       'runtime_unhealthy',
-      'Kun did not become healthy after launch.'
+      'MIMO Work runtime did not become healthy after launch.'
     )
   }
 
@@ -902,24 +881,24 @@ async function restartRuntimeOnce(settings: AppSettingsV1): Promise<void> {
   if (!resolveConfiguredApiKey(settings)) {
     throw runtimeJsonError(
       'missing_api_key',
-      'DeepSeek API Key is required before the GUI can start Kun.'
+      'MIMO API Key is required before MIMO Work can start.'
     )
   }
   if (!runtime.autoStart) {
     throw runtimeJsonError(
       'runtime_offline',
-      'Kun is offline. Enable automatic startup in Settings, or start `kun serve` manually.'
+      'MIMO Work runtime is offline. Enable automatic startup in Settings.'
     )
   }
 
-  const adapter = kunRuntimeAdapter
+  const adapter = managedRuntimeAdapterForSettings(settings)
   await adapter.stopAndWait()
   const launchSettings = await resolveManagedKunLaunchSettings(settings, 'runtime-restart')
 
   try {
     await adapter.ensureRunning(launchSettings)
   } catch (e) {
-    console.error('[kun-gui] failed to restart kun:', e)
+    console.error('[mimo-work] failed to restart MIMO Work runtime:', e)
     throw e
   }
 
@@ -927,7 +906,7 @@ async function restartRuntimeOnce(settings: AppSettingsV1): Promise<void> {
   if (!healthy) {
     throw runtimeJsonError(
       'runtime_unhealthy',
-      'Kun did not become healthy after restart.'
+      'MIMO Work runtime did not become healthy after restart.'
     )
   }
 
@@ -943,6 +922,7 @@ function createWindow(options: { suppressInitialShow?: boolean } = {}): void {
   const preloadPath = resolvePreloadPath()
   const usesDesktopTitleBar = process.platform === 'win32' || process.platform === 'linux'
   mainWindow = new BrowserWindow({
+    title: APP_PRODUCT_NAME,
     width: 1280,
     height: 840,
     minWidth: 960,
@@ -965,7 +945,7 @@ function createWindow(options: { suppressInitialShow?: boolean } = {}): void {
   }
   mainWindow.webContents.on('preload-error', (_event, preloadPath, error) => {
     const message = error instanceof Error ? error.message : String(error)
-    console.error(`[kun-gui] failed to load preload ${preloadPath}:`, error)
+    console.error(`[mimo-work] failed to load preload ${preloadPath}:`, error)
     logError('preload', 'Failed to load preload script', { preloadPath, message })
   })
   const showWindow = (): void => {
@@ -982,11 +962,14 @@ function createWindow(options: { suppressInitialShow?: boolean } = {}): void {
     mainWindow = null
   })
   const devUrl = devServerHintUrl()
+  const rendererEntryPath = join(__dirname, '../renderer/index.html')
+  const appShellUrl = devUrl ?? pathToFileURL(rendererEntryPath).href
+  installMainWindowNavigationGuard(mainWindow, appShellUrl)
   traceStartup('createWindow:load', { devUrl: devUrl ?? 'file' })
   if (devUrl) {
     mainWindow.loadURL(devUrl)
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    mainWindow.loadFile(rendererEntryPath)
   }
   mainWindow.once('ready-to-show', () => {
     traceStartup('window:ready-to-show')
@@ -1050,7 +1033,7 @@ function runtimeStartupConfigChanged(prev: AppSettingsV1, next: AppSettingsV1): 
 function validateRuntimeSettingsForApply(next: AppSettingsV1): string | null {
   const runtime = resolveKunRuntimeSettings(next)
   if (!Number.isInteger(runtime.port) || runtime.port < 1 || runtime.port > 65_535) {
-    return `Kun port must be an integer between 1 and 65535 (got ${String(runtime.port)})`
+    return `MIMO Work runtime port must be an integer between 1 and 65535 (got ${String(runtime.port)})`
   }
   const baseUrl = (runtime.baseUrl ?? '').trim()
   if (baseUrl) {
@@ -1073,17 +1056,18 @@ async function restartManagedRuntimeForSettingsChange(
   if (!runtimeStartupConfigChanged(prev, next)) return
 
   const runtime = resolveKunRuntimeSettings(next)
-  const adapter = kunRuntimeAdapter
-  const wasRunning = adapter.isChildRunning()
+  const previousAdapter = managedRuntimeAdapterForSettings(prev)
+  const nextAdapter = managedRuntimeAdapterForSettings(next)
+  const wasRunning = previousAdapter.isChildRunning()
 
   if (!wasRunning) return
   await waitForManagedRuntimeReadyBeforeStop(prev, 'settings-apply')
-  await adapter.stopAndWait()
+  await previousAdapter.stopAndWait()
   if (!resolveConfiguredApiKey(next) || !runtime.autoStart) {
     publishRuntimeStatus({
       state: 'stopped',
       source: 'settings-apply',
-      message: 'Kun was stopped: the new settings have no API key or auto-start is disabled.'
+      message: 'MIMO Work runtime was stopped: the new settings have no API key or auto-start is disabled.'
     })
     return
   }
@@ -1091,16 +1075,16 @@ async function restartManagedRuntimeForSettingsChange(
   publishRuntimeStatus({ state: 'restarting', source: 'settings-apply' })
   try {
     const launchSettings = await resolveManagedKunLaunchSettings(next, 'settings-apply')
-    await adapter.ensureRunning(launchSettings)
+    await nextAdapter.ensureRunning(launchSettings)
     const healthy = await waitForKunHealth(launchSettings, 20_000)
     if (!healthy) {
-      throw new Error('Kun did not become healthy after the settings change')
+      throw new Error('MIMO Work runtime did not become healthy after the settings change')
     }
     noteRuntimeHealthy('settings-apply')
     publishRuntimeStatus({ state: 'running', source: 'settings-apply' })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
-    logWarn('settings-apply', `Kun restart failed after settings change: ${message}`)
+    logWarn('settings-apply', `MIMO Work runtime restart failed after settings change: ${message}`)
     await rollbackRuntimeSettingsAfterFailedApply(prev, message)
   }
 }
@@ -1115,7 +1099,6 @@ async function rollbackRuntimeSettingsAfterFailedApply(
   prev: AppSettingsV1,
   failureMessage: string
 ): Promise<void> {
-  const adapter = kunRuntimeAdapter
   let base: AppSettingsV1 = prev
   try {
     base = await store.patch({
@@ -1139,6 +1122,7 @@ async function rollbackRuntimeSettingsAfterFailedApply(
   }
   try {
     const launchSettings = await resolveManagedKunLaunchSettings(base, 'settings-apply-rollback')
+    const adapter = managedRuntimeAdapterForSettings(launchSettings)
     await adapter.ensureRunning(launchSettings)
     const healthy = await waitForKunHealth(launchSettings, 20_000)
     if (!healthy) {
@@ -1149,7 +1133,7 @@ async function rollbackRuntimeSettingsAfterFailedApply(
       state: 'running',
       source: 'settings-apply',
       rolledBack: true,
-      message: `The new settings failed to apply (${failureMessage}); Kun is running on the previous settings again.`
+      message: `The new settings failed to apply (${failureMessage}); MIMO Work is running on the previous settings again.`
     })
   } catch (error) {
     publishRuntimeStatus({
@@ -1165,7 +1149,7 @@ async function rollbackRuntimeSettingsAfterFailedApply(
 
 async function restartManagedRuntimeForMcpConfigChange(settings: AppSettingsV1): Promise<void> {
   const runtime = resolveKunRuntimeSettings(settings)
-  const adapter = kunRuntimeAdapter
+  const adapter = managedRuntimeAdapterForSettings(settings)
   const wasRunning = adapter.isChildRunning()
 
   if (!wasRunning) return
@@ -1179,17 +1163,17 @@ async function restartManagedRuntimeForMcpConfigChange(settings: AppSettingsV1):
     await adapter.ensureRunning(launchSettings)
     const healthy = await waitForKunHealth(launchSettings, 20_000)
     if (!healthy) {
-      throw new Error('Kun did not become healthy after the MCP config change')
+      throw new Error('MIMO Work runtime did not become healthy after the MCP config change')
     }
     noteRuntimeHealthy('mcp-config')
     publishRuntimeStatus({ state: 'running', source: 'mcp-config' })
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e)
-    logWarn('mcp-config', `Kun restart failed after MCP config change: ${message}`)
+    logWarn('mcp-config', `MIMO Work runtime restart failed after MCP config change: ${message}`)
     publishRuntimeStatus({
       state: 'failed',
       source: 'mcp-config',
-      message: `Kun failed to restart after the MCP config change: ${message}. Check the MCP config file, then retry.`
+      message: `MIMO Work runtime failed to restart after the MCP config change: ${message}. Check the MCP config file, then retry.`
     })
   }
 }
@@ -1200,14 +1184,14 @@ async function waitForManagedRuntimeReadyBeforeStop(
 ): Promise<void> {
   const healthy = await waitForKunHealth(settings, 20_000)
   if (!healthy) {
-    logWarn(source, 'Kun did not become healthy before a managed restart; stopping it anyway')
+    logWarn(source, 'MIMO Work runtime did not become healthy before a managed restart; stopping it anyway')
     return
   }
   const idle = await waitForRuntimeTurnsIdle({ settings })
   if (idle === 'timeout') {
-    logWarn(source, 'Kun still has running turns after waiting; stopping it anyway')
+    logWarn(source, 'MIMO Work runtime still has running turns after waiting; stopping it anyway')
   } else if (idle === 'unavailable') {
-    logWarn(source, 'Could not verify Kun turn idleness before a managed restart; stopping it anyway')
+    logWarn(source, 'Could not verify MIMO Work runtime turn idleness before a managed restart; stopping it anyway')
   }
 }
 
@@ -1244,7 +1228,7 @@ app.whenReady().then(async () => {
   traceStartup('install webview guards:done')
 
   if (process.platform === 'darwin') {
-    const macDockIcon = createAppIcon(kunMacLogoPng)
+    const macDockIcon = createAppIcon(mimoWorkMacLogoPng)
     app.dock.setIcon(macDockIcon.isEmpty() ? appIcon : macDockIcon)
   }
 
@@ -1252,7 +1236,7 @@ app.whenReady().then(async () => {
   traceStartup('settings load:start')
   const initial = await store.load()
   traceStartup('settings load:done')
-  setKunUnexpectedExitHandler(handleUnexpectedKunExit)
+  setMimoWorkUnexpectedExitHandler(handleUnexpectedMimoWorkExit)
   appBehavior = initial.appBehavior
   syncLoginItemSettings(initial)
   syncTray(initial)
@@ -1390,7 +1374,7 @@ app.whenReady().then(async () => {
   })
 
   void loadGuiUpdaterModule().catch((error) => {
-    console.warn('[kun-gui updater] failed to initialize on startup:', error)
+    console.warn('[mimo-work updater] failed to initialize on startup:', error)
   })
 
   registerRuntimeSseIpc({ ipcMain, store, ensureRuntime, logError })
@@ -1400,13 +1384,13 @@ app.whenReady().then(async () => {
   traceStartup('createWindow:returned')
 
   void pruneOnStartup().catch((err) => {
-    console.warn('[kun-gui] prune logs:', err)
+    console.warn('[mimo-work] prune logs:', err)
   })
 
   if (resolveConfiguredApiKey(initial)) {
     setTimeout(() => {
-      void kunRuntimeAdapter.resolveExecutable(initial).catch((err) => {
-        console.warn('[kun-gui] prewarm Kun binary:', err)
+      void managedRuntimeAdapterForSettings(initial).resolveExecutable(initial).catch((err) => {
+        console.warn('[mimo-work] prewarm MIMO Work runtime:', err)
       })
     }, 1500)
   }
@@ -1421,15 +1405,15 @@ app.whenReady().then(async () => {
   })
 }).catch((error) => {
   const message = error instanceof Error ? error.message : String(error)
-  console.error('[kun-gui] startup failed:', error)
-  dialog.showErrorBox('Kun failed to start', message)
+  console.error('[mimo-work] startup failed:', error)
+  dialog.showErrorBox('MIMO Work failed to start', message)
   app.quit()
 })
 }
 
 app.on('window-all-closed', () => {
   void stopManagedRuntimes().catch((error) => {
-    console.warn('[kun-gui] failed to stop Kun runtime:', error)
+    console.warn('[mimo-work] failed to stop runtime:', error)
   })
   if (process.platform !== 'darwin') {
     app.quit()
@@ -1443,7 +1427,7 @@ app.on('before-quit', (event) => {
   event.preventDefault()
   void stopManagedRuntimesForQuit()
     .catch((error) => {
-      console.warn('[kun-gui] failed to stop Kun runtime:', error)
+      console.warn('[mimo-work] failed to stop runtime:', error)
       managedRuntimesStoppedForQuit = true
     })
     .finally(() => {

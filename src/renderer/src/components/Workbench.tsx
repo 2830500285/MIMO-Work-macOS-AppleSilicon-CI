@@ -34,9 +34,9 @@ import {
   extractLatestTurnDevPreviewUrls
 } from '../lib/dev-preview-detection'
 import { Sidebar } from './chat/Sidebar'
+import { ConnectPhoneView } from './chat/ConnectPhoneView'
 import { WorkbenchTopBar, type RightPanelMode } from './chat/WorkbenchTopBar'
 import { MessageTimeline } from './chat/MessageTimeline'
-import { IkunCameoLayer, KunCelebrationLayer } from './chat/AnimatedWorkLogo'
 import {
   FloatingComposer,
   type ComposerExecutionSettings,
@@ -90,8 +90,6 @@ import { normalizeWorkspaceRoot } from '../lib/workspace-path'
 import { useKeyboardShortcutSettings } from '../lib/keyboard-shortcut-settings'
 import { collectComposerChangeSummary } from '../lib/composer-change-summary'
 import { formatWorkspacePickerError } from '../lib/format-workspace-picker-error'
-import { useUiModeCameosEnabled, useUiPluginStore } from '../store/ui-plugin-store'
-import { readFocusModePreference, writeFocusModePreference } from '../lib/focus-mode'
 import {
   buildComposerFileContextPrompt,
   mergeComposerFileReferences,
@@ -131,6 +129,8 @@ type PendingSddPlanTarget = {
 
 const COMPOSER_FILE_CONTEXT_MAX_CHARS_PER_FILE = 60_000
 const COMPOSER_FILE_CONTEXT_MAX_TOTAL_CHARS = 180_000
+const INPUT_OPTIMIZE_POLL_INTERVAL_MS = 700
+const INPUT_OPTIMIZE_TIMEOUT_MS = 45_000
 const SDD_ASSISTANT_TITLE_SYNC_DELAY_MS = 900
 const DESKTOP_SHORTCUT_COMMANDS: Partial<Record<KeyboardShortcutCommandId, DesktopCommand>> = {
   quit: 'quit',
@@ -224,6 +224,60 @@ function sddAssistantThreadTitle(markdown: string, fallback: string): string {
   return titleFromSddDraftContent(markdown, fallback).trim() || fallback
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null
+}
+
+function stringField(value: unknown, key: string): string {
+  if (!isRecord(value)) return ''
+  const field = value[key]
+  return typeof field === 'string' ? field.trim() : ''
+}
+
+function runtimeJson<T = unknown>(result: { ok: boolean; status: number; body: string }, fallbackMessage: string): T {
+  if (!result.ok) throw new Error(result.body || `${fallbackMessage} (${result.status})`)
+  try {
+    return JSON.parse(result.body) as T
+  } catch {
+    throw new Error(fallbackMessage)
+  }
+}
+
+function assistantTextFromThreadResponse(body: unknown): string {
+  const turns = isRecord(body) && Array.isArray(body.turns) ? body.turns : []
+  for (const turn of [...turns].reverse()) {
+    const items = isRecord(turn) && Array.isArray(turn.items) ? turn.items : []
+    for (const item of [...items].reverse()) {
+      if (!isRecord(item)) continue
+      const kind = stringField(item, 'kind')
+      if (kind !== 'assistant_text' && kind !== 'assistant_message') continue
+      const text = stringField(item, 'text')
+      if (text) return text
+    }
+  }
+  return ''
+}
+
+function buildInputOptimizationPrompt(text: string, language: string): string {
+  const chinese = language.toLowerCase().startsWith('zh')
+  const instructions = chinese
+    ? [
+        '你是 MIMO Work 的输入优化器。请改写下面用户将要发送给软件工程智能体的输入。',
+        '要求：保留原意和语言；让目标、上下文、约束、验收标准更清楚；不要添加不存在的事实；不要回答问题；只输出优化后的输入正文，不要 Markdown 包裹、不加解释。'
+      ]
+    : [
+        'You are the MIMO Work input optimizer. Rewrite the draft the user is about to send to a software engineering agent.',
+        'Keep the original intent and language. Clarify the goal, context, constraints, and acceptance criteria. Do not add facts. Do not answer the request. Output only the rewritten draft, with no Markdown wrapper or explanation.'
+      ]
+  return [
+    ...instructions,
+    '',
+    '<input>',
+    text,
+    '</input>'
+  ].join('\n')
+}
+
 function sddPlanMatchesPendingTarget(
   plan: { id: string; workspaceRoot: string; relativePath: string } | null,
   target: PendingSddPlanTarget | null
@@ -290,7 +344,7 @@ function base64ToFile(dataBase64: string, name: string, mimeType: string): File 
 }
 
 export function Workbench(): ReactElement {
-  const { t } = useTranslation('common')
+  const { t, i18n } = useTranslation('common')
   const {
     threads,
     threadSearch,
@@ -322,6 +376,7 @@ export function Workbench(): ReactElement {
     activeClawChannelId,
     selectClawChannel,
     resetClawChannelSession,
+    addClawChannel,
     setClawChannelModel,
     appendLocalClawTurn,
     setError,
@@ -380,6 +435,7 @@ export function Workbench(): ReactElement {
       activeClawChannelId: s.activeClawChannelId,
       selectClawChannel: s.selectClawChannel,
       resetClawChannelSession: s.resetClawChannelSession,
+      addClawChannel: s.addClawChannel,
       setClawChannelModel: s.setClawChannelModel,
       appendLocalClawTurn: s.appendLocalClawTurn,
       setError: s.setError,
@@ -422,9 +478,7 @@ export function Workbench(): ReactElement {
   const [attachmentUploadBusy, setAttachmentUploadBusy] = useState(false)
   const [attachmentUploadError, setAttachmentUploadError] = useState<string | null>(null)
   const [connectPhoneSidebarOpen, setConnectPhoneSidebarOpen] = useState(false)
-  const initUiPlugins = useUiPluginStore((s) => s.initUiPlugins)
-  const uiModeCameosEnabled = useUiModeCameosEnabled()
-  const [focusModeEnabled, setFocusModeEnabled] = useState(readFocusModePreference)
+  const focusModeEnabled = false
   const [runtimeLogPath, setRuntimeLogPath] = useState('')
   const [planPanelOverlayPreferred, setPlanPanelOverlayPreferred] = useState(false)
   const writeAssistantOpen = useWriteWorkspaceStore((s) => s.assistantOpen)
@@ -699,21 +753,6 @@ export function Workbench(): ReactElement {
       cancelled = true
     }
   }, [])
-
-  useEffect(() => {
-    // 形象工坊:读取偏好、应用 DOM 属性/token,并在插件模式下加载图集
-    void initUiPlugins()
-  }, [initUiPlugins])
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return
-    document.documentElement.setAttribute('data-focus-mode', focusModeEnabled ? 'on' : 'off')
-  }, [focusModeEnabled])
-
-  const updateFocusMode = (enabled: boolean): void => {
-    writeFocusModePreference(enabled)
-    setFocusModeEnabled(enabled)
-  }
 
   useEffect(() => {
     const previousThreadId = prevThreadId.current
@@ -1693,6 +1732,55 @@ export function Workbench(): ReactElement {
     return entries
   }
 
+  const optimizeComposerInput = async (draftText: string): Promise<string> => {
+    if (runtimeConnection !== 'ready') throw new Error(t('runtimeActionNeedsConnection'))
+    const workspace = normalizeWorkspaceRoot(activeSkillWorkspace || workspaceRoot)
+    if (!workspace) throw new Error(t('workspaceRequiredToCreateThread'))
+    let tempThreadId = ''
+    try {
+      const created = runtimeJson<Record<string, unknown>>(
+        await rendererRuntimeClient.runtimeRequest('/v1/threads', 'POST', JSON.stringify({
+          workspace,
+          title: 'MIMO Work input optimizer',
+          mode: 'agent'
+        })),
+        t('composerOptimizeNoResult')
+      )
+      tempThreadId = stringField(created, 'id') || stringField(created.thread, 'id')
+      if (!tempThreadId) throw new Error(t('composerOptimizeNoResult'))
+      const reasoningEffort = composerReasoningEffortRequestValue(composerReasoningEffort) || 'auto'
+      await rendererRuntimeClient.runtimeRequest(
+        `/v1/threads/${encodeURIComponent(tempThreadId)}/turns`,
+        'POST',
+        JSON.stringify({
+          prompt: buildInputOptimizationPrompt(draftText, i18n.language),
+          mode: 'agent',
+          model: composerModel,
+          ...(composerProviderId ? { providerId: composerProviderId } : {}),
+          reasoningEffort,
+          approvalPolicy: 'never',
+          sandboxMode: 'read-only',
+          workspace
+        })
+      )
+      const deadline = Date.now() + INPUT_OPTIMIZE_TIMEOUT_MS
+      while (Date.now() < deadline) {
+        await new Promise<void>((resolve) => window.setTimeout(resolve, INPUT_OPTIMIZE_POLL_INTERVAL_MS))
+        const thread = runtimeJson<Record<string, unknown>>(
+          await rendererRuntimeClient.runtimeRequest(`/v1/threads/${encodeURIComponent(tempThreadId)}`, 'GET'),
+          t('composerOptimizeNoResult')
+        )
+        const text = assistantTextFromThreadResponse(thread)
+        if (text) return text
+      }
+      throw new Error(t('composerOptimizeNoResult'))
+    } finally {
+      if (tempThreadId) {
+        void rendererRuntimeClient.runtimeRequest(`/v1/threads/${encodeURIComponent(tempThreadId)}`, 'DELETE')
+      }
+    }
+  }
+
   const handleSend = (): void => {
     void handleSendAsync()
   }
@@ -1929,10 +2017,19 @@ export function Workbench(): ReactElement {
     openSchedule()
   }
 
+  const closeConnectPhoneView = (): void => {
+    setConnectPhoneSidebarOpen(false)
+    if (route === 'claw') setRoute('chat')
+  }
+
   const toggleConnectPhone = (): void => {
     if (activeSddDraft) dismissActiveSddDraft({ closeAssistant: true })
+    if (connectPhoneSidebarOpen) {
+      closeConnectPhoneView()
+      return
+    }
     openClaw()
-    setConnectPhoneSidebarOpen((open) => !open)
+    setConnectPhoneSidebarOpen(true)
   }
 
   const sidebarView: 'chat' | 'write' | 'claw' | 'schedule' =
@@ -2179,19 +2276,14 @@ export function Workbench(): ReactElement {
           <div className="min-h-0 shrink-0" style={{ width: leftSidebarWidth }}>
             {route === 'write' ? (
               <WriteSidebar
-                activeView={sidebarView}
-                connectPhoneSidebarOpen={connectPhoneSidebarOpen}
-                onCodeOpen={openCodeMode}
-                onWriteOpen={openWriteMode}
                 onOpenSettings={(section) => openSettings(section)}
-                onToggleConnectPhone={toggleConnectPhone}
                 onToggleSidebar={toggleLeftSidebar}
               />
             ) : (
             <Sidebar
               threads={codeThreads}
               activeThreadId={activeThreadId}
-              activeView={sidebarView}
+              activeView={connectPhoneSidebarOpen ? 'chat' : sidebarView}
               connectPhoneSidebarOpen={connectPhoneSidebarOpen}
               pluginsActive={route === 'plugins'}
               runtimeReady={runtimeConnection === 'ready'}
@@ -2206,15 +2298,10 @@ export function Workbench(): ReactElement {
               onRestoreThread={(id) => archiveThread(id, false)}
               onNewChat={startNewChat}
               onNewChatInWorkspace={startNewChatInWorkspace}
-              onNewRequirement={() => void startNewSddRequirement()}
               onOpenRequirementDraft={(draft) => void openSddRequirementDraftFromHistory(draft)}
               onOpenSettings={(section) => openSettings(section)}
               onOpenPlugins={openPluginsView}
-              focusModeEnabled={focusModeEnabled}
-              onFocusModeChange={updateFocusMode}
               onToggleConnectPhone={toggleConnectPhone}
-              onCodeOpen={openCodeMode}
-              onWriteOpen={openWriteMode}
               onScheduleOpen={openScheduleView}
               onToggleSidebar={toggleLeftSidebar}
             />
@@ -2273,6 +2360,17 @@ export function Workbench(): ReactElement {
           <>
         {error && !(runtimeConnection !== 'ready' && !activeThreadId) ? renderRuntimeBanner(error, runtimeErrorDetail) : null}
 
+        {connectPhoneSidebarOpen ? (
+          <ConnectPhoneView
+            channels={clawChannels}
+            leftSidebarCollapsed={leftSidebarCollapsed}
+            onToggleSidebar={toggleLeftSidebar}
+            onBack={closeConnectPhoneView}
+            onAddProvider={(provider, agentProfile, platformCredential, options) =>
+              addClawChannel(provider, agentProfile, platformCredential, options)
+            }
+          />
+        ) : (
         <div className="flex min-h-0 flex-1">
           <div className={`flex min-h-0 min-w-0 flex-1 ${activeSddDraft ? '' : stageInsetClass}`}>
           {activeSddDraft ? (
@@ -2314,7 +2412,6 @@ export function Workbench(): ReactElement {
                   <WorkbenchTopBar
                     rightPanelMode={rightPanelMode}
                     onToggleRightPanelMode={toggleRightPanelMode}
-                    planPanelEnabled={Boolean(activeGuiPlan)}
                     sideChatCount={currentSideConversations.length}
                     sideChatRunningCount={currentSideRunningCount}
                     sideChatOpen={sidePanel.open}
@@ -2349,8 +2446,6 @@ export function Workbench(): ReactElement {
                   ) : null
                 }
               />
-              {uiModeCameosEnabled && !focusModeEnabled ? <IkunCameoLayer /> : null}
-              {!focusModeEnabled ? <KunCelebrationLayer active={busy} suppressed={Boolean(error)} /> : null}
             </div>
             <div className="ds-no-drag flex shrink-0 justify-center px-2 pb-3 pt-0 sm:px-4 md:px-6 lg:px-8">
               <FloatingComposer
@@ -2383,6 +2478,8 @@ export function Workbench(): ReactElement {
                   route === 'chat' || route === 'claw' ? setComposerReasoningEffort : undefined
                 }
                 onConfigureProviders={() => openSettings('providers')}
+                onConfigureSpeechToText={() => openSettings('providers')}
+                onOptimizeInput={(text) => optimizeComposerInput(text)}
                 onSend={handleSend}
                 attachments={composerAttachments}
                 attachmentUploadEnabled={attachmentUploadEnabled}
@@ -2431,6 +2528,7 @@ export function Workbench(): ReactElement {
 
           {renderRightPanel()}
         </div>
+        )}
 
           </>
         )}

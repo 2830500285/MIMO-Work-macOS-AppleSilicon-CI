@@ -1,7 +1,7 @@
 import type { Dispatch, ReactElement, SetStateAction } from 'react'
-import { AudioLines, Bot, BrainCircuit, GitBranch, Bug, ChevronLeft, Globe, ImageIcon, Keyboard, Mic, PencilLine, RefreshCw, ServerCog, Settings, ShieldCheck, Smartphone, Sparkles } from 'lucide-react'
+import { Bot, BrainCircuit, GitBranch, Bug, ChevronLeft, Globe, Keyboard, Monitor, RefreshCw, ServerCog, Settings, ShieldCheck, Smartphone } from 'lucide-react'
 
-type SettingsCategory = 'general' | 'providers' | 'write' | 'imageGeneration' | 'mediaGeneration' | 'speechToText' | 'agents' | 'permissions' | 'worktree' | 'memory' | 'shortcuts' | 'easterEgg' | 'claw' | 'updates' | 'debug'
+type SettingsCategory = 'general' | 'providers' | 'personalization' | 'agents' | 'permissions' | 'environments' | 'worktree' | 'shortcuts' | 'claw' | 'updates' | 'debug'
 
 export function SettingsSidebar({
   category,
@@ -43,33 +43,13 @@ export function SettingsSidebar({
           <ServerCog className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
           {t('providers')}
         </button>
-        <button type="button" className={catCls('write')} onClick={() => setCategory('write')}>
-          <PencilLine className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
-          {t('write')}
-        </button>
         <button
           type="button"
-          className={catCls('imageGeneration')}
-          onClick={() => setCategory('imageGeneration')}
+          className={catCls('personalization')}
+          onClick={() => setCategory('personalization')}
         >
-          <ImageIcon className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
-          {t('imageGen')}
-        </button>
-        <button
-          type="button"
-          className={catCls('mediaGeneration')}
-          onClick={() => setCategory('mediaGeneration')}
-        >
-          <AudioLines className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
-          {t('mediaGeneration')}
-        </button>
-        <button
-          type="button"
-          className={catCls('speechToText')}
-          onClick={() => setCategory('speechToText')}
-        >
-          <Mic className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
-          {t('speechToText')}
+          <BrainCircuit className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
+          {t('personalization')}
         </button>
         <button type="button" className={catCls('agents')} onClick={() => setCategory('agents')}>
           <Bot className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
@@ -79,21 +59,17 @@ export function SettingsSidebar({
           <ShieldCheck className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
           {t('permissions')}
         </button>
+        <button type="button" className={catCls('environments')} onClick={() => setCategory('environments')}>
+          <Monitor className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
+          {t('environments')}
+        </button>
         <button type="button" className={catCls('worktree')} onClick={() => setCategory('worktree')}>
           <GitBranch className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
           {t('worktree')}
         </button>
-        <button type="button" className={catCls('memory')} onClick={() => setCategory('memory')}>
-          <BrainCircuit className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
-          {t('memory')}
-        </button>
         <button type="button" className={catCls('shortcuts')} onClick={() => setCategory('shortcuts')}>
           <Keyboard className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
           {t('keyboardShortcuts')}
-        </button>
-        <button type="button" className={catCls('easterEgg')} onClick={() => setCategory('easterEgg')}>
-          <Sparkles className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
-          {t('easterEgg')}
         </button>
         <button type="button" className={catCls('updates')} onClick={() => setCategory('updates')}>
           <RefreshCw className="h-4 w-4 shrink-0 opacity-70" strokeWidth={1.75} />
@@ -114,7 +90,7 @@ export function SettingsSidebar({
             <Settings className="h-4 w-4" strokeWidth={1.75} />
           </div>
           <div className="min-w-0 text-[12px] text-ds-muted">
-            <div className="truncate font-medium text-ds-ink">Kun</div>
+            <div className="truncate font-medium text-ds-ink">MIMO Work</div>
             <div className="truncate">{t('settingsFooter')}</div>
           </div>
         </div>

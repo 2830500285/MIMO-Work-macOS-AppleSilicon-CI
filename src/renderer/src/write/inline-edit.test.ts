@@ -56,7 +56,7 @@ describe('write inline edit helpers', () => {
     const draft = buildWriteInlineEditDraft(content, range, 'Rename Alpha to Write mode.', {
       workspaceRoot: '/tmp/workspace',
       currentFilePath: '/tmp/workspace/draft.md',
-      model: 'deepseek-v4-flash'
+      model: 'mimo-v4-flash'
     })
 
     expect(draft.request.prefix).toBe('# Draft\n\nAlpha is the product name. ')
@@ -75,7 +75,7 @@ describe('write inline edit helpers', () => {
     const draft = buildWriteInlineEditDraft(content, selectionRange(content, 'Alpha helps'), 'Rename Alpha to Write mode.', {
       workspaceRoot: '/tmp/workspace',
       currentFilePath: '/tmp/workspace/draft.md',
-      model: 'deepseek-v4-flash'
+      model: 'mimo-v4-flash'
     })
 
     const request = buildWriteInlineEditCompletionRequest(draft.request)

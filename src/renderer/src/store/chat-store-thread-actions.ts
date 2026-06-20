@@ -1,4 +1,11 @@
-import type { AgentProvider, NormalizedThread, ReviewTarget, ThreadEventSink } from '../agent/types'
+import type {
+  AgentProvider,
+  ChatBlock,
+  NormalizedThread,
+  ReviewTarget,
+  ThreadEventSink,
+  UserInputAnswer
+} from '../agent/types'
 import { getProvider } from '../agent/registry'
 import { rendererRuntimeClient } from '../agent/runtime-client'
 import i18n from '../i18n'
@@ -102,8 +109,28 @@ type StoreActionContext = {
 
 let drainingQueuedMessages = false
 
+type PendingUserInputBlock = Extract<ChatBlock, { kind: 'user_input' }>
+
+function latestPendingUserInputBlock(blocks: ChatBlock[]): PendingUserInputBlock | null {
+  for (let index = blocks.length - 1; index >= 0; index -= 1) {
+    const block = blocks[index]
+    if (block?.kind === 'user_input' && block.status === 'pending') return block
+  }
+  return null
+}
+
+function composerTextAsUserInputAnswers(block: PendingUserInputBlock, text: string): UserInputAnswer[] {
+  const value = text.trim()
+  if (!value) return []
+  return block.questions.map((question) => ({
+    id: question.id,
+    label: value,
+    value
+  }))
+}
+
 function fallbackComposerProviderIdForSend(state: ChatState): string {
-  return state.route === 'claw' ? '' : state.composerProviderId.trim()
+  return state.route === 'claw' && activeClawChannel(state) ? '' : state.composerProviderId.trim()
 }
 
 async function ensureRuntimeProviderForSend(input: {
@@ -399,6 +426,13 @@ export function createThreadActions(
     if (get().route === 'write') {
       const writeThreadId = await get().ensureWriteThreadForWorkspace()
       if (!writeThreadId) return false
+    }
+    const pendingUserInput = !get().busy ? latestPendingUserInputBlock(get().blocks) : null
+    if (pendingUserInput) {
+      const answers = composerTextAsUserInputAnswers(pendingUserInput, trimmedText)
+      if (answers.length === 0) return false
+      await get().resolveUserInput(pendingUserInput.id, { kind: 'submit', answers })
+      return true
     }
     const hasPendingActiveTurn = threadHasPendingRuntimeWork(get().blocks)
     if (get().busy || hasPendingActiveTurn) {

@@ -1,18 +1,29 @@
 const { execFileSync } = require('node:child_process')
-const { existsSync, rmSync } = require('node:fs')
+const { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, rmSync } = require('node:fs')
 const { join } = require('node:path')
 
-const KUN_RUNTIME_REQUIRED_PATHS = [
-  'kun/dist/cli/serve-entry.js',
-  'kun/package.json',
-  'kun/package-lock.json',
-  'kun/node_modules/zod/package.json',
-  'kun/node_modules/diff/package.json',
-  'kun/node_modules/@modelcontextprotocol/sdk/package.json'
+const MIMO_CORE_REQUIRED_PATHS = [
+  'MIMO-Work-Core/package.json',
+  'MIMO-Work-Core/packages/opencode/dist'
 ]
+
+const MIMO_CORE_WINDOWS_RUNTIME_BINARY_CANDIDATES = {
+  x64: [
+    'MIMO-Work-Core/packages/opencode/dist/mimocode-windows-x64/bin/mimo.exe',
+    'MIMO-Work-Core/packages/opencode/dist/mimocode-windows-x64-baseline/bin/mimo.exe'
+  ]
+}
+const WINDOWS_X64_CANVAS_NATIVE_PACKAGE = 'canvas-win32-x64-msvc'
 
 function normalizePlatform(platform) {
   return platform === 'win' ? 'win32' : platform
+}
+
+function normalizeArch(arch) {
+  if (arch === 'x64' || arch === 1) return 'x64'
+  if (arch === 'arm64' || arch === 3) return 'arm64'
+  if (arch === 'ia32' || arch === 0) return 'ia32'
+  return String(arch || '')
 }
 
 function appBundlePath(context) {
@@ -36,6 +47,11 @@ function assertExists(path, label) {
   }
 }
 
+function assertOneExists(paths, label) {
+  if (paths.some((path) => existsSync(path))) return
+  throw new Error(`[after-pack] Missing ${label}; expected one of:\n${paths.join('\n')}`)
+}
+
 function npmCommand(args, platform = process.platform) {
   if (platform === 'win32') {
     return {
@@ -46,43 +62,65 @@ function npmCommand(args, platform = process.platform) {
   return { command: 'npm', args }
 }
 
-function prunePackedKunDependencies(context) {
+function validateBundledMimoRuntime(context) {
   const root = unpackedAppRoot(context)
-  const kunDir = join(root, 'kun')
-  if (!existsSync(kunDir)) return
-
-  assertExists(join(kunDir, 'package.json'), 'Kun package manifest')
-  assertExists(join(kunDir, 'node_modules'), 'Kun node_modules')
-
-  const prune = npmCommand(['prune', '--omit=dev', '--ignore-scripts'])
-  execFileSync(prune.command, prune.args, {
-    cwd: kunDir,
-    env: {
-      ...process.env,
-      npm_config_audit: 'false',
-      npm_config_fund: 'false'
-    },
-    stdio: 'inherit'
-  })
-
-  // Keep native SQLite on the app root dependency so electron-builder's
-  // native-module rebuild owns the target arch and Electron ABI.
   assertExists(
     join(root, 'node_modules', 'better-sqlite3', 'package.json'),
     'root better-sqlite3 dependency'
   )
-  rmSync(join(kunDir, 'node_modules', 'better-sqlite3'), { recursive: true, force: true })
+  const resources = packedResourcesDir(context)
+  for (const relativePath of MIMO_CORE_REQUIRED_PATHS) {
+    assertExists(join(resources, relativePath), relativePath)
+  }
+  if (normalizePlatform(context.electronPlatformName) === 'win32') {
+    const arch = normalizeArch(context.arch)
+    const candidates = MIMO_CORE_WINDOWS_RUNTIME_BINARY_CANDIDATES[arch]
+    if (!candidates) {
+      throw new Error(`[after-pack] Unsupported Windows architecture for MIMO Work runtime: ${arch || context.arch}`)
+    }
+    assertOneExists(
+      candidates.map((relativePath) => join(resources, relativePath)),
+      `Windows ${arch} MiMo-Code runtime binary`
+    )
+  }
 }
 
-function validateBundledKunRuntime(context) {
-  const root = unpackedAppRoot(context)
-  for (const relativePath of KUN_RUNTIME_REQUIRED_PATHS) {
-    assertExists(join(root, relativePath), relativePath)
-  }
-  assertExists(
-    join(root, 'node_modules', 'better-sqlite3', 'package.json'),
-    'root better-sqlite3 dependency'
+function sourceMimoCoreDir() {
+  return process.env.MIMO_WORK_CORE_DIR || join(__dirname, '..', '..', 'MIMO-Work-Core')
+}
+
+function ensureBundledMimoRuntime(context) {
+  const resources = packedResourcesDir(context)
+  const target = join(resources, 'MIMO-Work-Core')
+  if (existsSync(join(target, 'packages', 'opencode', 'dist'))) return
+
+  const source = sourceMimoCoreDir()
+  assertExists(join(source, 'package.json'), 'source MIMO-Work-Core package.json')
+  assertExists(join(source, 'packages', 'opencode', 'dist'), 'source MIMO-Work-Core opencode dist')
+
+  mkdirSync(target, { recursive: true })
+  mkdirSync(join(target, 'packages', 'opencode'), { recursive: true })
+  copyFileSync(join(source, 'package.json'), join(target, 'package.json'))
+  cpSync(
+    join(source, 'packages', 'opencode', 'dist'),
+    join(target, 'packages', 'opencode', 'dist'),
+    { recursive: true }
   )
+}
+
+function pruneWindowsHostNativeOptionalModules(context) {
+  if (normalizePlatform(context.electronPlatformName) !== 'win32') return
+  if (normalizeArch(context.arch) !== 'x64') return
+
+  const napiRsDir = join(unpackedAppRoot(context), 'node_modules', '@napi-rs')
+  if (!existsSync(napiRsDir)) return
+
+  for (const entry of readdirSync(napiRsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue
+    if (!entry.name.startsWith('canvas-')) continue
+    if (entry.name === WINDOWS_X64_CANVAS_NATIVE_PACKAGE) continue
+    rmSync(join(napiRsDir, entry.name), { recursive: true, force: true })
+  }
 }
 
 function maybeAdhocSignMacApp(context) {
@@ -113,18 +151,24 @@ function maybeAdhocSignMacApp(context) {
 }
 
 async function afterPack(context) {
-  prunePackedKunDependencies(context)
-  validateBundledKunRuntime(context)
+  ensureBundledMimoRuntime(context)
+  pruneWindowsHostNativeOptionalModules(context)
+  validateBundledMimoRuntime(context)
   maybeAdhocSignMacApp(context)
 }
 
-exports.KUN_RUNTIME_REQUIRED_PATHS = KUN_RUNTIME_REQUIRED_PATHS
-exports._internals = {
+module.exports = afterPack
+module.exports.default = afterPack
+module.exports.MIMO_CORE_REQUIRED_PATHS = MIMO_CORE_REQUIRED_PATHS
+module.exports.MIMO_CORE_WINDOWS_RUNTIME_BINARY_CANDIDATES = MIMO_CORE_WINDOWS_RUNTIME_BINARY_CANDIDATES
+module.exports._internals = {
   appBundlePath,
   packedResourcesDir,
   unpackedAppRoot,
   npmCommand,
-  prunePackedKunDependencies,
-  validateBundledKunRuntime
+  ensureBundledMimoRuntime,
+  normalizeArch,
+  pruneWindowsHostNativeOptionalModules,
+  sourceMimoCoreDir,
+  validateBundledMimoRuntime
 }
-exports.default = afterPack

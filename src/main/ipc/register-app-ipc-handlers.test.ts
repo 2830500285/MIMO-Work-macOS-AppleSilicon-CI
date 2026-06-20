@@ -203,7 +203,7 @@ describe('registerAppIpcHandlers', () => {
 
   it('writes MCP config JSON and notifies the runtime apply hook', async () => {
     const { registerAppIpcHandlers } = await import('./register-app-ipc-handlers')
-    const tempRoot = mkdtempSync(join(tmpdir(), 'deepseek-gui-ipc-'))
+    const tempRoot = mkdtempSync(join(tmpdir(), 'mimo-work-ipc-'))
     const configPath = join(tempRoot, 'mcp.json')
     const onKunMcpConfigWritten = vi.fn(async () => undefined)
     const content = `${JSON.stringify({
@@ -234,7 +234,7 @@ describe('registerAppIpcHandlers', () => {
 
   it('rejects invalid MCP config JSON before writing or applying it', async () => {
     const { registerAppIpcHandlers } = await import('./register-app-ipc-handlers')
-    const tempRoot = mkdtempSync(join(tmpdir(), 'deepseek-gui-ipc-'))
+    const tempRoot = mkdtempSync(join(tmpdir(), 'mimo-work-ipc-'))
     const configPath = join(tempRoot, 'mcp.json')
     const onKunMcpConfigWritten = vi.fn(async () => undefined)
 
@@ -321,7 +321,7 @@ describe('registerAppIpcHandlers', () => {
         text: 'Remind me tomorrow.',
         workspaceRoot: '/tmp/schedule',
         clawChannelId: 'channel-1',
-        modelHint: 'deepseek-v4-flash',
+        modelHint: 'mimo-v4-flash',
         mode: 'plan'
       })
     ).resolves.toMatchObject({
@@ -333,7 +333,7 @@ describe('registerAppIpcHandlers', () => {
     expect(scheduleRuntime.createScheduledTaskFromText).toHaveBeenCalledWith('Remind me tomorrow.', {
       workspaceRoot: '/tmp/schedule',
       clawChannelId: 'channel-1',
-      modelHint: 'deepseek-v4-flash',
+      modelHint: 'mimo-v4-flash',
       mode: 'plan'
     })
   })

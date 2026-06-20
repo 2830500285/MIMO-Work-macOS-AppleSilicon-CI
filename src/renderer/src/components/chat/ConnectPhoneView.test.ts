@@ -50,12 +50,17 @@ describe('ConnectPhoneView', () => {
         channels: [],
         onAddProvider: async () => undefined,
         leftSidebarCollapsed: false,
-        onToggleSidebar: () => undefined
+        onToggleSidebar: () => undefined,
+        onBack: () => undefined
       })
     )
 
-    expect(html).toContain('Use your phone to connect kun')
+    expect(html).toContain('Use your phone to connect MIMO Work')
+    expect(html).toContain('Back')
     expect(html).toContain('Generate authorization QR')
+    expect(html).toContain('More integrations')
+    expect(html).toContain('DingTalk')
+    expect(html).not.toContain('Check the latest proposal docs')
     expect(html).not.toContain('Kun usage')
   })
 
