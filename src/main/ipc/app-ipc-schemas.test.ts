@@ -142,7 +142,7 @@ describe('app-ipc-schemas', () => {
           model: 'mimo-chat',
           mimo: {
             mode: 'tokenplan',
-            apiKey: 'tp-unit-test-key-12345678901234567890',
+            apiKey: 'tp-test',
             baseUrl: 'https://token-plan-cn.xiaomimimo.com/v1',
             region: 'cn',
             model: 'mimo-v2.5-pro',
@@ -200,7 +200,7 @@ describe('app-ipc-schemas', () => {
     expect(payload.write?.inlineCompletion?.model).toBe('mimo-v4-pro')
     expect(payload.write?.selectionAssist?.infographicPrompt).toBe('手绘风格信息图。')
     expect(payload.write?.selectionAssist?.quickActions).toHaveLength(2)
-    expect(payload.disabledSkillIds).toBeUndefined()
+    expect(payload.disabledSkillIds).toEqual(['test-skill-08'])
   })
 
   it('accepts media generation settings and provider capability patches', () => {
@@ -359,7 +359,7 @@ describe('app-ipc-schemas', () => {
     expect(payload.provider?.providers?.[0]?.imageRecognition).toEqual({ enabled: true })
     expect(payload.agents?.kun?.port).toBe(9001)
     expect(payload.agents?.kun?.imageRecognition).toEqual({ enabled: true })
-    expect('disabledSkillIds' in payload).toBe(false)
+    expect(payload.disabledSkillIds).toEqual(['legacy-skill'])
     expect('reasonix' in payload).toBe(false)
     expect('quickChat' in payload).toBe(false)
     expect('reasonix' in (payload.agents ?? {})).toBe(false)

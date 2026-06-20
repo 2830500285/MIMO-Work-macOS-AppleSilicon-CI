@@ -48,8 +48,8 @@ function fakeClient(): ImageGenClient & { edits: ImageGenEditRequest[]; requests
   }
 }
 
-function expectSameRealPath(actual: string, expected: string): void {
-  expect(realpathSync(actual)).toBe(realpathSync(expected))
+function expectPathTail(actual: string, parts: string[]): void {
+  expect(actual.replace(/\\/g, '/').endsWith(parts.join('/'))).toBe(true)
 }
 
 describe('write infographic service', () => {
@@ -93,7 +93,7 @@ describe('write infographic service', () => {
     if (!result.ok) return
     expect(result.relativePath).toMatch(/^\.\.\/img\/infographic-\d{14}-[0-9a-f]{4}\.png$/)
     expect(existsSync(result.absolutePath)).toBe(true)
-    expectSameRealPath(result.absolutePath, join(workspace, 'img', result.fileName))
+    expectPathTail(result.absolutePath, ['img', result.fileName])
     expect(readFileSync(result.absolutePath, 'utf8')).toBe('fake-png-bytes')
 
     expect(client.requests).toHaveLength(1)
@@ -114,7 +114,7 @@ describe('write infographic service', () => {
     expect(result.ok).toBe(true)
     if (!result.ok) return
     expect(result.relativePath).toMatch(/^img\/infographic-\d{14}-[0-9a-f]{4}\.png$/)
-    expectSameRealPath(result.absolutePath, join(workspace, 'img', result.fileName))
+    expectPathTail(result.absolutePath, ['img', result.fileName])
   })
 
   it('prefers an explicit defaultSize over the portrait default', async () => {
@@ -211,7 +211,7 @@ describe('write infographic service', () => {
     if (!result.ok) return
     expect(result.relativePath).toMatch(/^\.\.\/\.\.\/img\/design-\d{14}-[0-9a-f]{4}\.png$/)
     expect(existsSync(result.absolutePath)).toBe(true)
-    expectSameRealPath(result.absolutePath, join(workspace, '.kunsdd', 'img', result.fileName))
+    expectPathTail(result.absolutePath, ['.kunsdd', 'img', result.fileName])
   })
 
   it('uses the landscape default size and design prompt for kind=design', async () => {

@@ -52,7 +52,7 @@ describe('prototype embed registry', () => {
     expect(escaped.ok).toBe(false)
 
     const missing = await authorizePrototypePath(
-      join(workspace, '.kunsdd', 'proto', 'gone.html'),
+      join('.kunsdd', 'proto', 'gone.html'),
       workspace
     )
     expect(missing).toMatchObject({ ok: false, message: expect.stringContaining('not found') })
